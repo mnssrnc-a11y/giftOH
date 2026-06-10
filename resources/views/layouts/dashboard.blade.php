@@ -45,7 +45,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('dashboard') }}"
+                        <a href="{{ route('dashboarduser') }}"
                             class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('dashboard') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
                             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 13h8V3H3v10zM13 21h8V11h-8v10zM13 3h8v6h-8V3zM3 21h8v-6H3v6z"/>
@@ -84,19 +84,6 @@
                             <span class="text-sm font-semibold">Settings</span>
                         </a>
                     </li>
-                    @auth
-                    <li>
-                    <a href="{{ route('dashboarduser') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('login') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
-                            <svg class="w-5 h-5 text-white-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 21a8 8 0 1 0-16 0"/>
-                            <circle cx="12" cy="8" r="3"/>
-                        </svg>
-                            <span class="text-sm font-semibold">{{ Auth::user()->name }}</span>
-                        </a>
-                    @endauth
-
-                    @guest
                     <a href="{{ route('login') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800">
                         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -107,7 +94,6 @@
                             Guest User
                         </span>
                     </a>
-                    @endguest
                     </li>
                 </ul>
             </nav>
