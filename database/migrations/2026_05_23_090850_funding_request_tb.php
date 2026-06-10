@@ -11,15 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('funding_request_tb_', function (Blueprint $table) {
+        Schema::create('funding_request_tb', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('title');
-            $table->text('description');
-            $table->string('doc_image');
-            $table->string('id_image');
-            $table->string('bank_statement');
-            $table->decimal('amount_requested', 10, 2);
+            $table->string('title')->nullable();
+            $table->text('description')->nullable();
+            $table->string('doc_image')->nullable();
+            $table->string('id_image')->nullable();
+            $table->string('bank_statement')->nullable();
+            $table->decimal('amount_requested', 10, 2)->nullable();
             $table->decimal('amount_paid', 10, 2)->nullable();
             $table->string('status')->default('pending');
             $table->timestamp('approved_at')->nullable();
@@ -34,6 +34,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('funding_request');
+        Schema::dropIfExists('funding_request_tb');
     }
 };

@@ -127,7 +127,7 @@
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="border-b pb-4">
                                     <p class="text-gray-600 text-sm">Full Name</p>
-                                    <p class="text-gray-900 font-semibold">{{ Auth::user()->name }}</p>
+                                    <p class="text-gray-900 font-semibold">{{ Auth::user()->fname }} {{ Auth::user()->lname }}</p>
                                 </div>
                                 <div class="border-b pb-4">
                                     <p class="text-gray-600 text-sm">Email Address</p>
