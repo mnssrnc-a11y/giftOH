@@ -14,7 +14,7 @@
                             Every donation is tracked, verified, and makes a real difference.
                         </p>
                         <div class="flex gap-4">
-                            <a href="{{ route('login ') }}"
+                            <a href="{{ route('login') }}"
                                 class="bg-transparent border-2 border-white px-8 py-3 rounded-lg font-semibold hover:bg-white/10 transition-colors">
                                 Sign In
                             </a>

@@ -18,13 +18,13 @@ Route::middleware('guest')->group(function(){
     Route::get('/register', [PageController::class, 'register'])->name('register');
     Route::post('/register', [PageController::class, 'storeRegister'])->name('register.store');
     Route::get('/forgot-password', [PageController::class, 'forgotPassword'])->name('forgot-password');
-    // App pages (UI prototype)
+});
+
+// App pages (UI prototype)
 Route::get('/dashboard', [PageController::class, 'dashboard'])->name('dashboard');
 Route::get('/iot-monitor', [PageController::class, 'iotMonitor'])->name('iot-monitor');
 Route::get('/donations', [PageController::class, 'donations'])->name('donations');
 Route::get('/reports', [PageController::class, 'reports'])->name('reports');
-});
-
 
 
 Route::middleware('auth')->group(function(){
