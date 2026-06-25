@@ -1,6 +1,6 @@
 @extends('app')
 
 @section('body')
-    @yield('content')
+@yield('content')
 @endsection
 

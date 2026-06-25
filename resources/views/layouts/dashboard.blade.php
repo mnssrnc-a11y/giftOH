@@ -84,14 +84,14 @@
                             <span class="text-sm font-semibold">Settings</span>
                         </a>
                     </li>
-                    <a href="{{ route('login') }}"
+                    <a href="{{ route('user') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800">
                         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M20 21a8 8 0 1 0-16 0"/>
                             <circle cx="12" cy="8" r="3"/>
                         </svg>
                         <span class="text-sm font-semibold">
-                            Guest User
+                            {{ auth()->user()->role }}
                         </span>
                     </a>
                     </li>

@@ -124,4 +124,30 @@
             </div>
         </div>
     </div>
+    <script>
+        function validatePasswordMatch() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('password_confirmation').value;
+
+            const minLength = 8;
+            const hasUpperCase = /[A-Z]/.test(password);
+            const hasLowerCase = /[a-z]/.test(password);
+            const hasNumber = /[0-9]/.test(password);
+            const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+            if (password.length < minLength || !hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+                    alert('Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.');
+                    return false; // Prevent form submission
+                }
+            else if (password !== confirmPassword) {
+                alert('Passwords do not match. Please try again.');
+                return false; // Prevent form submission
+            }
+            return true; // Allow form submission
+        }
+        document.querySelector('form').addEventListener('submit', function(event) {
+            if (!validatePasswordMatch()) {
+                event.preventDefault(); // Prevent form submission if passwords don't match
+            }
+        });
+    </script>
 @endsection

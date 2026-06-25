@@ -1,71 +1,47 @@
 <?php
-
 namespace App\Http\Controllers;
-
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\PasswordResetCode;
+use Illuminate\Support\Str;
 class PageController extends Controller
 {
     public function landing()
     {
         return view('pages.landing');
     }
-
     public function dashboard()
     {
         return view('pages.dashboard');
     }
-
     public function dashboardUser()
     {
-        return view('pages.dashboardUser');
+        return view('users.dashboardUser');
     }
-
     public function user()
     {
-        return view('pages.user');
+        return view('users.user');
     }
-
     public function iotMonitor()
     {
         return view('pages.iot-monitor');
     }
-
     public function reports()
     {
         return view('pages.reports');
     }
-
     public function about()
     {
         return view('pages.about');
     }
-
     public function login()
     {
         return view('pages.login');
-    }
-
-    public function storeLogin(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
-
-        if (!Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
-            return back()->withErrors([
-                'email' => 'These credentials do not match our records.',
-            ])->onlyInput('email');
-        }
-
-        $request->session()->regenerate();
-
-        return redirect()->route('dashboarduser');
-    }
+    } 
 
     public function logout(Request $request)
     {
@@ -74,39 +50,123 @@ class PageController extends Controller
         $request->session()->regenerateToken();
         return redirect()->route('landing');
     }
-
     public function register()
     {
         return view('pages.register');
     }
-
-
     public function forgotPassword()
     {
         return view('pages.forgot-password');
     }
-
-    public function storeForgotPassword(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-        ]);
-
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user) {
-            return back()->withErrors([
-                'email' => 'These credentials do not match our records.',
-            ])->onlyInput('email');
-        }
-
-        $user->sendPasswordResetNotification();
-
-        return back()->with('status', 'Password reset link sent successfully.');
-    }
+    /**
+     * Generate a 6-digit code and send it to the user's email via Gmail SMTP.
+     */
+    
+ 
+    
     public function fundRequest()
     {
         return view('pages.fund-request');
+    }
+
+    public function storeFundRequest(Request $request)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'amount_requested' => 'required|numeric|min:1',
+            'category' => 'required|string',
+            'description' => 'required|string',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        // Find or create category
+        $category = \App\Models\FundingCategory::where('category_name', $request->category)->first();
+        if (!$category) {
+            $category = \App\Models\FundingCategory::firstOrCreate(
+                ['category_name' => $request->category],
+                ['description' => $request->category, 'is_active' => true]
+            );
+        }
+
+        // Generate a random 6-digit code
+        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $user = Auth::user();
+
+        // Store the hashed code in the database
+        DB::table('transaction_verification_codes')->updateOrInsert(
+            ['email' => $user->email],
+            ['token' => Hash::make($code), 'created_at' => now()]
+        );
+
+        // Send the code via email
+        Mail::to($user->email)->send(new \App\Mail\TransactionVerificationCode($code, $user->fname));
+
+        // Save pending request details to session
+        session([
+            'pending_fund_request' => [
+                'title' => $request->title,
+                'amount_requested' => $request->amount_requested,
+                'category_id' => $category->category_id,
+                'description' => $request->description,
+                'start_date' => $request->start_date,
+                'end_date' => $request->end_date,
+            ]
+        ]);
+
+        return redirect()->route('fund-request.verify.form')
+            ->with('status', 'A 6-digit transaction verification code has been sent to your email.');
+    }
+
+    public function showFundRequestVerifyForm()
+    {
+        if (!session()->has('pending_fund_request')) {
+            return redirect()->route('fund-request')->with('alert_error', 'No pending transaction found.');
+        }
+        return view('pages.fund-request-verify', ['email' => Auth::user()->email]);
+    }
+
+    public function initiateApprovalAction(Request $request, $id)
+    {
+        $request->validate([
+            'action' => 'required|in:approved,rejected',
+            'notes' => 'nullable|string',
+        ]);
+
+        $funding = \App\Models\Funding::findOrFail($id);
+        $user = Auth::user();
+
+        // Generate a random 6-digit code
+        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Store the hashed code in the database
+        DB::table('approval_verification_codes')->updateOrInsert(
+            ['email' => $user->email],
+            ['token' => Hash::make($code), 'created_at' => now()]
+        );
+
+        // Send the code via email
+        Mail::to($user->email)->send(new \App\Mail\ApprovalVerificationCode($code, $user->fname, $request->action));
+
+        // Save pending approval details to session
+        session([
+            'pending_approval' => [
+                'request_id' => $funding->id,
+                'action' => $request->action,
+                'notes' => $request->notes,
+            ]
+        ]);
+
+        return redirect()->route('admin.fund-request.verify.form')
+            ->with('status', 'A 6-digit approval verification code has been sent to your email.');
+    }
+
+    public function showApprovalVerifyForm()
+    {
+        if (!session()->has('pending_approval')) {
+            return redirect()->route('admin')->with('alert_error', 'No pending approval found.');
+        }
+        return view('pages.admin-approval-verify', ['email' => Auth::user()->email]);
     }
 
     public function settings()
@@ -114,46 +174,12 @@ class PageController extends Controller
         return view('pages.settings');
     }
 
-    public function storeRegister(Request $request)
+    public function admin()
     {
-        $validated = $request->validate([
-            'fname' => 'required|string|max:255',
-            'lname' => 'required|string|max:255',
-            'mname' => 'nullable|string|max:255',
-            'email' => 'required|email|max:255|unique:users',
-            'password' => 'required|confirmed|min:8',
-            'contact_number' => 'required|string|max:15',
-            'gender' => 'required|in:male,female',
-            'date_of_birth' => 'required|date',
-            'street_address' => 'required|string|max:255',
-            'barangay' => 'required|string|max:255',
-            'city' => 'required|string|max:255',
-            'province' => 'required|string|max:255',
-            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            
-        ]);
-
-        // Concatenate address parts into a single address string
-        $address = $validated['street_address'] . ', ' 
-                 . $validated['barangay'] . ', ' 
-                 . $validated['city'] . ', ' 
-                 . $validated['province'];
-
-        $user = User::create([
-            'fname' => $validated['fname'],
-            'lname' => $validated['lname'],
-            'mname' => $validated['mname'] ?? null,
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'phone' => $validated['contact_number'],
-            'address' => $address,
-            'gender' => $validated['gender'],
-            'date_of_birth' => $validated['date_of_birth'],
-            'profile_picture' => $validated['profile_picture'] ?? null,
-        ]);
-
-        Auth::login($user);
-
-        return redirect()->route('login');
+        if (Auth::user()->role != 'admin') {
+            return redirect()->route('login');
+        }
+        return view('adminPage.admin');
     }
+
 }

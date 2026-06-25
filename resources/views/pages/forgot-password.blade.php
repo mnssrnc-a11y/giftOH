@@ -17,7 +17,7 @@
                     <p class="text-gray-600">No worries! Enter your email and we'll send you a reset link.</p>
                 </div>
 
-                <form method="POST" action="{{ route('forgot-password') }}">
+                <form method="POST" action="{{ route('password.send-code') }}">
                     @csrf
 
                     @if (session('status'))
@@ -69,4 +69,10 @@
             </p>
         </div>
     </div>
+
+    @if (session('alert_error'))
+        <script>
+            alert("{{ session('alert_error') }}");
+        </script>
+    @endif
 @endsection

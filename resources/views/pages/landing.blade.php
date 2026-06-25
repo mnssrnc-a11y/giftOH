@@ -101,7 +101,7 @@
                 <p class="text-xl text-blue-100 mb-8">
                     Join thousands of donors who trust our platform to deliver hope to those in need.
                 </p>
-                <a href="{{ route('donations') }}"
+                <a href="{{ route('login') }}"
                     class="inline-block bg-white text-[#1E3A8A] px-12 py-4 rounded-lg font-semibold text-lg hover:bg-blue-50 transition-colors">
                     Start Donating Today
                 </a>

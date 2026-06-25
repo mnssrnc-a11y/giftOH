@@ -193,4 +193,22 @@ class User extends Authenticatable
     {
         return $this->is_active === false;
     }
+
+    public function forgotPassword()
+    {
+        return $this->hasOne(PasswordReset::class, 'user_id', 'id');
+    }
+
+    public function loginAuthCode()
+    {
+        return $this->hasOne(LoginAuthCode::class, 'user_id', 'id');
+    }
+
+    /**
+     * Get the user's full name.
+     */
+    public function getNameAttribute()
+    {
+        return $this->fname . ' ' . $this->lname;
+    }
 }

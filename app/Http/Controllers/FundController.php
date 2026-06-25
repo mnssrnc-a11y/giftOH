@@ -1,0 +1,67 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\Fund;
+use App\Models\Transaction;
+use Illuminate\Support\Facades\Auth;
+
+class FundController extends Controller
+{
+    public function storeFund(Request $request)
+    {
+        // Validate form data
+        $validated = $request->validate([
+            'org_name' => 'required|string|max:255',
+            'contact_person' => 'required|string|max:255',
+            'contact_email' => 'required|email|max:255',
+            'phone' => 'required|string|max:255',
+            'address' => 'required|string|max:255',
+            'org_type' => 'required|string|max:255',
+            'other_org_type' => 'nullable|string|max:255',
+            'tax_id' => 'required|string|max:255',
+            'org_website' => 'nullable|url|max:255',
+            'annual_report' => 'nullable|file|mimes:pdf|max:2048', // Max 2MB
+            'mission' => 'required|string',
+            'impact_stories' => 'required|string',
+            'financial_report' => 'nullable|file|mimes:pdf|max:2048',
+        ]);
+
+        // Determine the role
+        $role = ($request->has('role') && $request->role == 'individual') ? 'individual' : 'organization';
+
+        // Create fund
+        $fund = Fund::create([
+            'user_id' => Auth::id(),
+            'org_name' => $validated['org_name'],
+            'contact_person' => $validated['contact_person'],
+            'contact_email' => $validated['contact_email'],
+            'contact_phone' => $validated['phone'],
+            'address' => $validated['address'],
+            'org_type' => $validated['org_type'],
+            'other_org_type' => $validated['other_org_type'],
+            'tax_id' => $validated['tax_id'],
+            'org_website' => $validated['org_website'],
+            'mission' => $validated['mission'],
+            'impact_stories' => $validated['impact_stories'],
+            'role' => $role,
+        ]);
+
+        // Upload files
+        if ($request->hasFile('annual_report') && $request->file('annual_report')->isValid()) {
+            $annualReportPath = $request->file('annual_report')->store('annual_reports', 'public');
+            $fund->annual_report = $annualReportPath;
+        }
+
+        if ($request->hasFile('financial_report') && $request->file('financial_report')->isValid()) {
+            $financialReportPath = $request->file('financial_report')->store('financial_reports', 'public');
+            $fund->financial_report = $financialReportPath;
+        }
+
+        $fund->save();
+
+        return redirect()->route('fund')
+            ->with('success', 'Fund created successfully!');
+    }
+}

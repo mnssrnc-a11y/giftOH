@@ -15,6 +15,12 @@
                 <form method="POST" action="{{ route('login.store') }}">
                     @csrf
 
+                    @if (session('status'))
+                        <div class="mb-5 p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <p class="text-sm text-green-700">{{ session('status') }}</p>
+                        </div>
+                    @endif
+
                     @if ($errors->any())
                         <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-lg">
                             @foreach ($errors->all() as $error)
@@ -73,5 +79,34 @@
             </p>
         </div>
     </div>
+<script>
+        function validatePassword() {
+            const passwordInput = document.querySelector('input[name="password"]');
+            const password = passwordInput.value;
+            const errorMessage = document.getElementById('password-error');
+
+            // Password validation criteria
+            
+
+            if (password.length < minLength || !hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+                errorMessage.textContent = 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.';
+                return false; // Prevent form submission
+            } else {
+                errorMessage.textContent = ''; // Clear error message
+                return true; // Allow form submission
+            }
+        }
+        const form = document.querySelector('form');
+        form.addEventListener('submit', function(event) {
+            if (!validatePassword()) {
+                event.preventDefault();
+            }
+        });
+    </script>
+    @if (session('alert_error'))
+        <script>
+            alert("{{ session('alert_error') }}");
+        </script>
+    @endif
 @endsection
 
