@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id('donation_id');
             $table->unsignedBigInteger('iot_box_id');
             $table->foreign('iot_box_id')->references('iot_id')->on('iot_boxes')->onDelete('cascade');
-            
+            $table->string('address');
+
             $table->unsignedBigInteger('user_id')->nullable();
             $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
             

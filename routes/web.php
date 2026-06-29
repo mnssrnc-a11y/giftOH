@@ -12,6 +12,9 @@ Route::post('/login', [AccountController::class, 'storeLogin'])->name('login.sto
 Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/register', [AccountController::class, 'register'])->name('register');
 Route::post('/register', [AccountController::class, 'storeRegister'])->name('register.store');
+Route::get('/register/verify', [AccountController::class, 'showRegisterVerifyForm'])->name('register.verify-code.form');
+Route::post('/register/verify', [VerificationController::class, 'verifyRegister'])->name('register.verify-code');
+Route::post('/register/resend-code', [VerificationController::class, 'resendRegisterCode'])->name('register.resend-code');
 Route::post('/logout',[PageController::class, 'logout'])->name('logout');
 Route::get('/login/verify', [AccountController::class, 'showLoginVerifyForm'])->name('login.verify-code.form');
 Route::post('/login/verify', [VerificationController::class, 'verifyLogin'])->name('login.verify-code');

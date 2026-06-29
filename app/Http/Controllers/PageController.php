@@ -66,7 +66,7 @@ class PageController extends Controller
     
     public function fundRequest()
     {
-        return view('pages.fund-request');
+        return view('FundPage.fund-request');
     }
 
     public function storeFundRequest(Request $request)

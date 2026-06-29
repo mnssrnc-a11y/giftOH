@@ -72,6 +72,11 @@
                         <a href="{{ route('register') }}" class="text-[#3B82F6] font-semibold hover:underline">Sign up</a>
                     </p>
                 </div>
+                @if(session('alert_error'))
+                    <div class="mt-6 text-center p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                        {{ session('alert_error') }}
+                    </div>
+                @endif
             </div>
 
             <p class="text-xs text-gray-500 text-center mt-6">

@@ -121,6 +121,11 @@
                     Already have an account?
                     <a href="{{ route('login') }}" class="text-[#3B82F6] font-semibold hover:underline">Sign in</a>
                 </p>
+                @if(session('alert_error'))
+                    <div class="mt-6 text-center p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                        {{ session('alert_error') }}
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -138,7 +143,7 @@
                     alert('Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.');
                     return false; // Prevent form submission
                 }
-            else if (password !== confirmPassword) {
+            if (password !== confirmPassword) {
                 alert('Passwords do not match. Please try again.');
                 return false; // Prevent form submission
             }
@@ -149,5 +154,14 @@
                 event.preventDefault(); // Prevent form submission if passwords don't match
             }
         });
+
+        @if(session('alert_error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Registration Failed',
+                text: '{{ session('alert_error') }}'
+            });
+        @endif
+
     </script>
 @endsection

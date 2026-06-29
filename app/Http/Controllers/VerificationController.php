@@ -119,6 +119,83 @@ class VerificationController extends Controller
     }
 
     /**
+     * Verify the 6-digit code for registration email verification.
+     */
+    public function verifyRegister(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'code'  => 'required|string|size:6',
+        ]);
+
+        if (!session()->has('pending_registration')) {
+            return redirect()->route('register')->with('alert_error', 'Session expired. Please register again.');
+        }
+
+        $result = $this->verificationService->verify($request->email, $request->code, 'register_verification_codes');
+
+        if (!$result['success']) {
+            return back()->withErrors(['code' => $result['error']])->withInput();
+        }
+
+        // Code is valid — retrieve pending registration data and create the user
+        $data = session('pending_registration');
+
+        $user = User::create([
+            'fname' => $data['fname'],
+            'lname' => $data['lname'],
+            'mname' => $data['mname'],
+            'email' => $data['email'],
+            'password' => $data['password'],
+            'phone' => $data['phone'],
+            'address' => $data['address'],
+            'gender' => $data['gender'],
+            'date_of_birth' => $data['date_of_birth'],
+            'profile_picture' => $data['profile_picture'],
+        ]);
+
+        // Clean up
+        DB::table('register_verification_codes')->where('email', $request->email)->delete();
+        session()->forget('pending_registration');
+
+        // Log the user in
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        if ($user->role == 'admin') {
+            return redirect()->route('admin');
+        } else {
+            return redirect()->route('dashboarduser');
+        }
+    }
+
+    /**
+     * Resend verification code for registration.
+     */
+    public function resendRegisterCode(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        if (!session()->has('pending_registration')) {
+            return redirect()->route('register')->with('alert_error', 'Session expired. Please register again.');
+        }
+
+        $data = session('pending_registration');
+        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        DB::table('register_verification_codes')->updateOrInsert(
+            ['email' => $request->email],
+            ['token' => Hash::make($code), 'created_at' => now()]
+        );
+
+        Mail::to($request->email)->send(new \App\Mail\VerifyEmail($code, $data['fname']));
+
+        return back()->with('status', 'A new verification code has been sent to your email.');
+    }
+
+    /**
      * Verify the 6-digit code for fund request transaction.
      */
     public function verifyFundRequest(Request $request)

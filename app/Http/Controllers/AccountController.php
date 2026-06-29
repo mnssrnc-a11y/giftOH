@@ -11,16 +11,22 @@ use App\Mail\PasswordResetCode;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\LoginAuthCode;
 use App\Mail\VerifyEmail;
+use App\Rules\RealEmail;
 
 class AccountController extends Controller
 {
-        public function storeRegister(Request $request)
+    public function register()
+    {
+        return view('pages.register');
+    }
+
+    public function storeRegister(Request $request)
     {
         $validated = $request->validate([
             'fname' => 'required|string|max:255',
             'lname' => 'required|string|max:255',
             'mname' => 'nullable|string|max:255',
-            'email' => 'required|email|max:255|unique:users',
+            'email' => ['required', 'email:rfc,dns', 'max:255', 'unique:users', new RealEmail],
             'password' => 'required|confirmed|min:8',
             'contact_number' => 'required|string|max:15',
             'gender' => 'required|in:male,female',
@@ -30,27 +36,69 @@ class AccountController extends Controller
             'city' => 'required|string|max:255',
             'province' => 'required|string|max:255',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-
+        ], [
+            'email.email' => 'The email address is not eligible. Please provide a valid email to continue.',
+            'email.unique' => 'This email address is already registered.',
         ]);
+
         // Concatenate address parts into a single address string
         $address = $validated['street_address'] . ', '
                 . $validated['barangay'] . ', '
                 . $validated['city'] . ', '
                 . $validated['province'];
-        $user = User::create([
-            'fname' => $validated['fname'],
-            'lname' => $validated['lname'],
-            'mname' => $validated['mname'] ?? null,
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'phone' => $validated['contact_number'],
-            'address' => $address,
-            'gender' => $validated['gender'],
-            'date_of_birth' => $validated['date_of_birth'],
-            'profile_picture' => $validated['profile_picture'] ?? null,
+
+        // Generate a random 6-digit code
+        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Store hashed code in the database
+        DB::table('register_verification_codes')->updateOrInsert(
+            ['email' => $validated['email']],
+            ['token' => Hash::make($code), 'created_at' => now()]
+        );
+
+        // Send the verification code via email
+        try {
+            Mail::to($validated['email'])
+                ->send(new VerifyEmail($code, $validated['fname']));
+        } catch (\Exception $error) {
+            // Clean up the verification code since email failed
+            DB::table('register_verification_codes')->where('email', $validated['email'])->delete();
+            return back()
+                ->withInput()
+                ->with('alert_error',
+                    'The email address you provided is not eligible. Please use a valid email to register.');
+        }
+
+        // Store pending registration data in session
+        session([
+            'pending_registration' => [
+                'fname' => $validated['fname'],
+                'lname' => $validated['lname'],
+                'mname' => $validated['mname'] ?? null,
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'phone' => $validated['contact_number'],
+                'address' => $address,
+                'gender' => $validated['gender'],
+                'date_of_birth' => $validated['date_of_birth'],
+                'profile_picture' => $validated['profile_picture'] ?? null,
+            ],
         ]);
-        Auth::login($user);
-        return redirect()->route('login');
+
+        return redirect()->route('register.verify-code.form', ['email' => $validated['email']])
+            ->with('status', 'We sent a 6-digit verification code to your email.');
+    }
+
+    /**
+     * Show the register verification form.
+     */
+    public function showRegisterVerifyForm(Request $request)
+    {
+        $email = $request->query('email', session('pending_registration.email'));
+        if (!$email || !session()->has('pending_registration')) {
+            return redirect()->route('register');
+        }
+        return view('pages.register-verify', ['email' => $email]);
     }
 
     public function updatePassword(Request $request)
@@ -189,6 +237,7 @@ class AccountController extends Controller
         $user->save();
         return redirect()->route('settings')->with('success', 'Password changed successfully.');
     }
+
 
     
 }
