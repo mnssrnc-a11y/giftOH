@@ -36,9 +36,6 @@ class AccountController extends Controller
             'city' => 'required|string|max:255',
             'province' => 'required|string|max:255',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-        ], [
-            'email.email' => 'The email address is not eligible. Please provide a valid email to continue.',
-            'email.unique' => 'This email address is already registered.',
         ]);
 
         // Concatenate address parts into a single address string

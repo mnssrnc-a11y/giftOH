@@ -38,8 +38,15 @@ class RealEmail implements ValidationRule
 
         // Try to verify via SMTP RCPT TO
         $verified = false;
+        $allFailedToConnect = true;
+
         foreach ($mxHosts as $mxHost) {
-            $result = $this->checkMailbox($mxHost, $email);
+            $connected = false;
+            $result = $this->checkMailbox($mxHost, $email, $connected);
+            if ($connected) {
+                $allFailedToConnect = false;
+            }
+
             if ($result === true) {
                 $verified = true;
                 break;
@@ -49,11 +56,12 @@ class RealEmail implements ValidationRule
                 $fail('The email address is not eligible. Please provide a valid email to continue.');
                 return;
             }
-            // $result === null means connection issue, try next MX host
         }
 
-        // If no MX host could confirm the mailbox
-        if (!$verified) {
+        // If we connected successfully to at least one mail server, but none of them confirmed the mailbox,
+        // and we did not get an explicit reject (false), then fail.
+        // But if ALL connections failed (e.g. port 25 is blocked), we fall back gracefully and let the email pass.
+        if (!$verified && !$allFailedToConnect) {
             $fail('The email address is not eligible. Please provide a valid email to continue.');
             return;
         }
@@ -64,15 +72,17 @@ class RealEmail implements ValidationRule
      *
      * @return bool|null true = accepted, false = rejected, null = inconclusive/error
      */
-    private function checkMailbox(string $mxHost, string $email): ?bool
+    private function checkMailbox(string $mxHost, string $email, &$connected = false): ?bool
     {
-        $timeout = 10; // seconds
+        $timeout = 5; // seconds
         $socket = @fsockopen($mxHost, 25, $errno, $errstr, $timeout);
 
         if (!$socket) {
+            $connected = false;
             return null; // Could not connect, try next MX
         }
 
+        $connected = true;
         stream_set_timeout($socket, $timeout);
 
         // Read greeting
