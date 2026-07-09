@@ -61,9 +61,7 @@ class PageController extends Controller
     /**
      * Generate a 6-digit code and send it to the user's email via Gmail SMTP.
      */
-    
- 
-    
+
     public function fundRequest()
     {
         return view('FundPage.fund-request');
