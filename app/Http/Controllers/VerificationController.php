@@ -218,7 +218,7 @@ class VerificationController extends Controller
         // Code is valid - retrieve data and insert into db
         $data = session('pending_fund_request');
         
-        Funding::create([
+        $funding = Funding::create([
             'user_id' => $user->id,
             'category_id' => $data['category_id'],
             'status_id' => 1, // Pending
@@ -227,6 +227,20 @@ class VerificationController extends Controller
             'amount_requested' => $data['amount_requested'],
             'amount_paid' => 0.00,
         ]);
+
+        // Run AI scoring on the newly created funding request
+        try {
+            $aiResult = \App\Http\Controllers\aiActionController::scoreFundingRequest($funding);
+            if ($aiResult) {
+                $funding->update([
+                    'ai_score' => $aiResult['total_score'],
+                    'ai_score_breakdown' => $aiResult,
+                ]);
+            }
+        } catch (\Exception $e) {
+            // AI scoring failure should not block the request submission
+            \Illuminate\Support\Facades\Log::warning('AI scoring failed for funding request #' . $funding->id . ': ' . $e->getMessage());
+        }
 
         // Clean up
         DB::table('transaction_verification_codes')->where('email', $user->email)->delete();

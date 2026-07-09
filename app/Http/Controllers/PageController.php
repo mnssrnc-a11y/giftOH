@@ -177,7 +177,14 @@ class PageController extends Controller
         if (Auth::user()->role != 'admin') {
             return redirect()->route('login');
         }
-        return view('adminPage.admin');
+
+        // Fetch pending requests sorted by AI score (highest/most-critical first)
+        $pendingRequests = \App\Models\Funding::pending()
+            ->with(['user', 'category'])
+            ->orderByDesc('ai_score')
+            ->get();
+
+        return view('adminPage.admin', compact('pendingRequests'));
     }
 
 }
