@@ -54,10 +54,7 @@ class PageController extends Controller
     {
         return view('pages.register');
     }
-    public function forgotPassword()
-    {
-        return view('pages.forgot-password');
-    }
+
     /**
      * Generate a 6-digit code and send it to the user's email via Gmail SMTP.
      */
@@ -121,7 +118,7 @@ class PageController extends Controller
         if (!session()->has('pending_fund_request')) {
             return redirect()->route('fund-request')->with('alert_error', 'No pending transaction found.');
         }
-        return view('pages.fund-request-verify', ['email' => Auth::user()->email]);
+        return view('FundPage.fund-request-verify', ['email' => Auth::user()->email]);
     }
 
     public function initiateApprovalAction(Request $request, $id)

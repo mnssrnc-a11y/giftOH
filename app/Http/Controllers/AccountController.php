@@ -235,6 +235,13 @@ class AccountController extends Controller
         return redirect()->route('settings')->with('success', 'Password changed successfully.');
     }
 
+        public function forgotPassword()
+    {
+        return view('pages.forgot-password');
+    }
 
-    
+    public function adminApproval()
+    {
+        return view('adminPage.admin-approval');
+    }
 }

@@ -47,6 +47,7 @@ Route::middleware('auth')->group(function(){
 
     // Admin Panel & Approvals
     Route::get('/admin',[PageController::class, 'admin'])->name('admin');
+    Route::get('admin/admin-approval',[AccountController::class, 'adminApproval'])->name('admin-approval');
     Route::post('/admin/fund-request/{id}/action', [PageController::class, 'initiateApprovalAction'])->name('admin.fund-request.action');
     Route::get('/admin/fund-request/verify', [PageController::class, 'showApprovalVerifyForm'])->name('admin.fund-request.verify.form');
     Route::post('/admin/fund-request/verify', [VerificationController::class, 'verifyApprovalAction'])->name('admin.fund-request.verify');

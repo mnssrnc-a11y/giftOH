@@ -4,7 +4,7 @@
     <div class="flex h-screen bg-gray-50">
         <aside class="w-64 bg-[#1E3A8A] text-white flex flex-col">
             <div class="p-6 border-b border-blue-700">
-                <a href="{{ route('landing') }}" class="block">
+                <a href="{{ route('admin') }}" class="block">
                     <div class="text-2xl font-bold">Gift of Hope</div>
                     <div class="text-blue-200 text-sm mt-1">Charity Platform</div>
                 </a>
@@ -13,8 +13,8 @@
             <nav class="flex-1 p-4">
                 <ul class="space-y-2">
                     <li>
-                        <a href="{{ route('landing') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('landing') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
+                        <a href="{{ route('admin') }}"
+                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('admin') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
                             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 10.5L12 3l9 7.5V21a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 21v-10.5z"/>
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 22.5V15a3 3 0 0 1 6 0v7.5"/>
@@ -23,8 +23,8 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('about') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('about') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
+                        <a href="{{ route('admin-approval') }}"
+                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('admin-approval') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
                             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="9" />
                                 <path stroke-linecap="round" d="M12 10.5h.01" />

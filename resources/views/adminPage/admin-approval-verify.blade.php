@@ -67,7 +67,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             let timeLeft = 300; // 5 minutes in seconds
             const timerElement = document.getElementById('countdown-timer');
-            
+
             const countdown = setInterval(function() {
                 if (timeLeft <= 0) {
                     clearInterval(countdown);
@@ -75,14 +75,13 @@
                     timerElement.classList.replace('text-[#1E3A8A]', 'text-red-500');
                     return;
                 }
-                
+
                 let minutes = Math.floor(timeLeft / 60);
                 let seconds = timeLeft % 60;
-                
-                timerElement.innerText = 
-                    (minutes < 10 ? "0" + minutes : minutes) + ":" + 
+
+                timerElement.innerText =
+                    (minutes < 10 ? "0" + minutes : minutes) + ":" +
                     (seconds < 10 ? "0" + seconds : seconds);
-                    
                 timeLeft -= 1;
             }, 1000);
         });
