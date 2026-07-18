@@ -3,6 +3,8 @@
 @section('title', 'Fund Request - Gift of Hope')
 
 @section('content')
+
+
     <div class="min-h-screen bg-gray-50">
         <div class="bg-white border-b border-gray-200 px-8 py-4">
             <h1 class="text-2xl font-bold text-gray-900">Fund Request</h1>
@@ -15,7 +17,7 @@
 
                 <form method="POST" action="{{ route('fund-request.store') }}">
                     @csrf
-                    
+
                     @if (session('status'))
                         <div class="mb-5 p-4 bg-green-50 border border-green-200 rounded-lg">
                             <p class="text-sm text-green-700">{{ session('status') }}</p>
@@ -101,19 +103,124 @@
                         </div>
                     </div>
 
-                    <button
-                        type="submit"
-                        class="w-full bg-[#1E3A8A] text-white py-3 rounded-lg font-bold hover:bg-[#2d4a9e] transition-colors"
-                    >
-                        Submit Request
-                    </button>
-                </form>
+ <div class="border-t border-gray-200 pt-7 mb-7">
+                    <h3 class="text-base font-bold text-gray-900 mb-1">Supporting Documents</h3>
+                    <p class="text-xs text-gray-500 mb-5">
+                        Upload the three documents below. Accepted formats: JPG, PNG, PDF. Max 5MB each.
+                    </p>
+ 
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+ 
+                        {{-- Supporting Document --}}
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">
+                                Supporting Document <span class="text-red-500">*</span>
+                            </label>
+                            <p class="text-xs text-gray-400 mb-2">e.g. school/medical records, certificates</p>
+                            <label
+                                for="doc_image"
+                                id="doc_image_label"
+                                class="flex flex-col items-center gap-2 px-4 py-5 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#3B82F6] hover:bg-blue-50 transition-colors"
+                            >
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                </svg>
+                                <span class="text-sm text-gray-400" id="doc_image_name">Click to upload</span>
+                            </label>
+                            <input
+                                type="file"
+                                id="doc_image"
+                                name="doc_image"
+                                accept="image/*,.pdf"
+                                required
+                                class="sr-only"
+                                onchange="previewFileName(this, 'doc_image_name')"/>
+                            @error('doc_image')
+                                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        {{-- Valid ID --}}
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Valid ID <span class="text-red-500">*</span></label>
+                            <p class="text-xs text-gray-400 mb-2">Any government-issued photo ID</p>
+                            <label
+                                for="id_image"
+                                class="flex flex-col items-center gap-2 px-4 py-5 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#3B82F6] hover:bg-blue-50 transition-colors">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                </svg>
+                                <span class="text-sm text-gray-400" id="id_image_name">Click to upload</span>
+                            </label>
+                            <input
+                                type="file"
+                                id="id_image"
+                                name="id_image"
+                                accept="image/*,.pdf"
+                                required
+                                class="sr-only"
+                                onchange="previewFileName(this, 'id_image_name')"/>
+                            @error('id_image')
+                                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        {{-- Bank Statement --}}
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">
+                                Bank Statement <span class="text-red-500">*</span>
+                            </label>
+                            <p class="text-xs text-gray-400 mb-2">Latest 3-month bank statement</p>
+                            <label
+                                for="bank_statement"
+                                class="flex flex-col items-center gap-2 px-4 py-5 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#3B82F6] hover:bg-blue-50 transition-colors">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                </svg>
+                                <span class="text-sm text-gray-400" id="bank_statement_name">Click to upload</span>
+                            </label>
+                            <input
+                                type="file"
+                                id="bank_statement"
+                                name="bank_statement"
+                                accept="image/*,.pdf"
+                                required
+                                class="sr-only"
+                                onchange="previewFileName(this, 'bank_statement_name')"
+                            />
+                            @error('bank_statement')
+                                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+                <button
+                    type="submit"
+                    class="w-full bg-[#1E3A8A] text-white py-3.5 rounded-xl font-bold hover:bg-[#2d4a9e] transition-colors">
+                    Submit Request
+                </button>
 
-                <p class="text-xs text-gray-500 mt-6">
-                    Note: This is currently a UI prototype (no database persistence wired yet).
+                <p class="text-xs text-gray-500 text-center mt-5">
+                    Submitted requests are reviewed by our team within 3–5 business days.
+                    You will receive a notification once a decision has been made.
                 </p>
-            </div>
+            </form>
         </div>
     </div>
+</div>
+
+<script>
+    // Shows the selected filename inside the upload box instead of "Click to upload"
+    function previewFileName(input, labelId) {
+        const label = document.getElementById(labelId);
+        if (input.files && input.files[0]) {
+            const name = input.files[0].name;
+            // Truncate long filenames
+            label.textContent = name.length > 22 ? name.substring(0, 20) + '…' : name;
+            label.classList.remove('text-gray-400');
+            label.classList.add('text-[#1E3A8A]', 'font-semibold');
+        }
+    }
+</script>
 @endsection
 

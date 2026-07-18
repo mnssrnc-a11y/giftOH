@@ -40,8 +40,16 @@ class PageController extends Controller
     }
     public function login()
     {
+        if (Auth::check()) {
+            $user = Auth::user();
+            if ($user->role === 'admin') {
+                return redirect()->route('admin');
+            } elseif ($user->role === 'user') {
+                return redirect()->route('dashboarduser');
+            }
+        }
         return view('pages.login');
-    } 
+    }
 
     public function logout(Request $request)
     {
@@ -73,6 +81,9 @@ class PageController extends Controller
             'description' => 'required|string',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'doc_image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'id_image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'bank_statement' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
         ]);
 
         // Find or create category
@@ -168,20 +179,4 @@ class PageController extends Controller
     {
         return view('pages.settings');
     }
-
-    public function admin()
-    {
-        if (Auth::user()->role != 'admin') {
-            return redirect()->route('login');
-        }
-
-        // Fetch pending requests sorted by AI score (highest/most-critical first)
-        $pendingRequests = \App\Models\Funding::pending()
-            ->with(['user', 'category'])
-            ->orderByDesc('ai_score')
-            ->get();
-
-        return view('adminPage.admin', compact('pendingRequests'));
-    }
-
 }

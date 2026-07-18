@@ -2,7 +2,11 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Schema\dropForeignKeyIfExists;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Builder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Schema\ForeignKeyDefinition;
 
 return new class extends Migration
 {
@@ -21,10 +25,10 @@ return new class extends Migration
         Schema::table('funding_request_tb', function (Blueprint $table) {
             // Add category_id foreign key
             $table->foreignId('category_id')->nullable()->constrained('funding_categories_tb', 'category_id')->onDelete('set null');
-            
+
             // Add status_id foreign key
             $table->foreignId('status_id')->default(1)->constrained('request_status_tb', 'status_id');
-            
+
             // Add additional fields for tracking
             $table->decimal('ai_score', 5, 2)->nullable();
             $table->json('ai_score_breakdown')->nullable();

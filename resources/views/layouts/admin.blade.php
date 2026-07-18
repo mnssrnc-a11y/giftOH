@@ -23,8 +23,8 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('admin-approval') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('admin-approval') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
+                        <a href="{{ route('admin.approval-verify') }}"
+                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('admin.approval-verify') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
                             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="9" />
                                 <path stroke-linecap="round" d="M12 10.5h.01" />

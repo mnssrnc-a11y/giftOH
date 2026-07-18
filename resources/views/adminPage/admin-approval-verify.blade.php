@@ -14,10 +14,10 @@
                         </svg>
                     </div>
                     <h1 class="text-3xl font-bold text-gray-900 mb-2">Confirm Decision</h1>
-                    <p class="text-gray-600">Enter the verification code sent to <strong class="text-gray-900">{{ $email }}</strong> to verify your decision.</p>
+                    <p class="text-gray-600">Enter the verification code sent to <strong class="text-gray-900">{{ Auth::user()->email }}</strong> to verify your decision.</p>
                 </div>
 
-                <form method="POST" action="{{ route('admin.fund-request.verify') }}">
+                <form method="POST" action="{{ route('admin.fund-approval-verify') }}">
                     @csrf
 
                     @if (session('status'))

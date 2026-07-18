@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\VerificationController;
+use App\Http\Controllers\AdminController;
 
 // Public routes
 Route::get('/', [PageController::class, 'landing'])->name('landing');
@@ -37,19 +38,22 @@ Route::get('/donations', [PageController::class, 'donations'])->name('donations'
 
 Route::middleware('auth')->group(function(){
     Route::get('/user',[PageController::class, 'user'])->name('user');
-    
+
     // Fund Requests & Transactions
-    Route::get('fund-request',[PageController::class, 'fundrequest'])->name('fund-request');
-    Route::post('fund-request',[PageController::class, 'storeFundRequest'])->name('fund-request.store');
-    Route::get('fund-request/verify',[PageController::class, 'showFundRequestVerifyForm'])->name('fund-request.verify.form');
-    Route::post('fund-request/verify',[VerificationController::class, 'verifyFundRequest'])->name('fund-request.verify');
-    Route::post('fund-request/resend-code',[VerificationController::class, 'resendFundRequestCode'])->name('fund-request.resend-code');
+    Route::get('/fund-request',[PageController::class, 'fundrequest'])->name('fund-request');
+    Route::post('/fund-request',[PageController::class, 'storeFundRequest'])->name('fund-request.store');
+    Route::get('/fund-request/verify',[PageController::class, 'showFundRequestVerifyForm'])->name('fund-request.verify.form');
+    Route::post('/fund-request/verify',[VerificationController::class, 'verifyFundRequest'])->name('fund-request.verify');
+    Route::post('/fund-request/resend-code',[VerificationController::class, 'resendFundRequestCode'])->name('fund-request.resend-code');
 
     // Admin Panel & Approvals
-    Route::get('/admin',[PageController::class, 'admin'])->name('admin');
-    Route::get('admin/admin-approval',[AccountController::class, 'adminApproval'])->name('admin-approval');
-    Route::post('/admin/fund-request/{id}/action', [PageController::class, 'initiateApprovalAction'])->name('admin.fund-request.action');
-    Route::get('/admin/fund-request/verify', [PageController::class, 'showApprovalVerifyForm'])->name('admin.fund-request.verify.form');
+    Route::get('/admin',[AdminController::class, 'admin'])->name('admin');
+    Route::get('/admin/fund-approval-verify',[AdminController::class, 'adminApproval'])->name('admin.fund-approval-verify');
+    Route::post('/admin/fund-request/{id}/approve', [AdminController::class, 'adminFundApprove'])->name('admin.fund-request.approve');
+    Route::post('/admin/fund-request/{id}/reject', [AdminController::class, 'adminFundReject'])->name('admin.fund-request.reject');
+    Route::get('/admin/approval-verify',[AdminController::class, 'adminApproval'])->name('admin.approval-verify');
+    Route::post('/admin/fund-request/{id}/action', [AdminController::class, 'initiateApprovalAction'])->name('admin.fund-request.action');
+    Route::get('/admin/fund-request/verify', [AdminController::class, 'showApprovalVerifyForm'])->name('admin.fund-request.verify.form');
     Route::post('/admin/fund-request/verify', [VerificationController::class, 'verifyApprovalAction'])->name('admin.fund-request.verify');
     Route::post('/admin/fund-request/resend-code', [VerificationController::class, 'resendApprovalCode'])->name('admin.fund-request.resend-code');
 

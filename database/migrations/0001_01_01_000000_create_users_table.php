@@ -24,7 +24,7 @@ return new class extends Migration
             $table->enum('gender', ['male', 'female', 'other'])->nullable();
             $table->date('date_of_birth')->nullable();
             $table->string('profile_picture')->nullable();
-            $table->enum('role', ['admin', 'user', 'provider', 'moderator', 'editor'])->default('user');
+            $table->enum('role', ['admin', 'user'])->default('user');
             $table->boolean('is_active')->default(true);
             $table->timestamp('last_login')->nullable();
             $table->timestamp('last_logout')->nullable();

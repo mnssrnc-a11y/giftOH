@@ -26,6 +26,9 @@ class FundController extends Controller
             'mission' => 'required|string',
             'impact_stories' => 'required|string',
             'financial_report' => 'nullable|file|mimes:pdf|max:2048',
+            'doc_image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'id_image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'bank_statement' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
         ]);
 
         // Determine the role
@@ -46,6 +49,10 @@ class FundController extends Controller
             'mission' => $validated['mission'],
             'impact_stories' => $validated['impact_stories'],
             'role' => $role,
+
+            'doc_image' => $request->file('doc_image')->store('documents', 'public'),
+            'id_image' => $request->file('id_image')->store('valid_ids', 'public'),
+            'bank_statement' => $request->file('bank_statement')->store('bank_statements', 'public'),
         ]);
 
         // Upload files
