@@ -190,7 +190,7 @@
                                                             </div>
                                                             <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
                                                                 <div class="h-2.5 rounded-full transition-all duration-500 {{ $dimScore >= 75 ? 'bg-red-500' : ($dimScore >= 50 ? 'bg-amber-500' : ($dimScore >= 25 ? 'bg-emerald-500' : 'bg-gray-400')) }}"
-                                                                     style="width: {{ $dimScore }}%"></div>
+                                                                    style="width: {{ $dimScore }}%"></div>
                                                             </div>
                                                         </div>
                                                     @endforeach

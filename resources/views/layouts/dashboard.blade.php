@@ -13,7 +13,7 @@
             <nav class="flex-1 p-4">
                 <ul class="space-y-2">
                     <li>
-                        <a href="{{ route('landing') }}"
+                        <a href="{{ route('dashboarduser') }}"
                             class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('landing') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
                             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 10.5L12 3l9 7.5V21a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 21v-10.5z"/>
@@ -33,26 +33,16 @@
                             <span class="text-sm font-semibold">About</span>
                         </a>
                     </li>
+
                     <li>
-                        <a href="{{ route('iot-monitor') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('iot-monitor') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
+                        <a href="{{ route('reports') }}"
+                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('reports') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
                             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 8l-9-5-9 5 9 5 9-5z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 8v8l9 5 9-5V8"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 13v8"/>
-                            </svg>
-                            <span class="text-sm font-semibold">IoT Box Monitor</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('dashboarduser') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('dashboard') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13h8V3H3v10zM13 21h8V11h-8v10zM13 3h8v6h-8V3zM3 21h8v-6H3v6z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3c3.08 0 5.5 2.42 5.5 5.5 0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                             </svg>
                             <span class="text-sm font-semibold">Dashboard</span>
                         </a>
-                    </li>
+
                     <li>
                         <a href="{{ route('fund-request') }}"
                             class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('fund-request') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
@@ -63,17 +53,7 @@
                             <span class="text-sm font-semibold">Fund Request</span>
                         </a>
                     </li>
-                    <li>
-                        <a href="{{ route('reports') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('reports') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 19V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 19h16"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 17v-6M12 17v-9M16 17v-3"/>
-                            </svg>
-                            <span class="text-sm font-semibold">Reports</span>
-                        </a>
-                    </li>
+
                     <li>
                         <a href="{{ route('settings') }}"
                             class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('settings') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
