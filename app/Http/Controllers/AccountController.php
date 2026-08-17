@@ -29,12 +29,12 @@ class AccountController extends Controller
             'email' => ['required', 'email:rfc,dns', 'max:255', 'unique:users', new RealEmail],
             'password' => 'required|confirmed|min:8',
             'contact_number' => 'required|string|max:15',
-            'gender' => 'required|in:male,female',
-            'date_of_birth' => 'required|date',
-            'street_address' => 'required|string|max:255',
-            'barangay' => 'required|string|max:255',
-            'city' => 'required|string|max:255',
-            'province' => 'required|string|max:255',
+            'gender' => 'nullable|in:male,female',
+            'date_of_birth' => 'nullable|date',
+            'street_address' => 'nullable|string|max:255',
+            'barangay' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
+            'province' => 'nullable|string|max:255',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
@@ -99,9 +99,7 @@ class AccountController extends Controller
     }
 
 
-    /**
-     * Show the verify code form.
-     */
+    // show verify code for password
     public function showVerifyCodeForm(Request $request)
     {
         $email = $request->query('email', old('email'));
@@ -110,6 +108,18 @@ class AccountController extends Controller
         }
         return view('pages.verify-code', ['email' => $email]);
     }
+
+    // show verify code form
+    public function showVerifyCodeFormEmail(Request $request)
+    {
+        $email = $request->query('email', old('email'));
+        if (!$email){
+            return redirect()->route('edit-email');
+        }
+        return view('user.', ['email' => $email]);
+    }
+
+
     /**
      * Show the new password form.
      */
@@ -173,8 +183,6 @@ class AccountController extends Controller
 
         public function forgotPassword()
     {
-        // the input field for email should be remove and the email on the login page will be used to send the reset code.
-        // The user will be redirected to the verify code page after submitting the email.
         return view('pages.forgot-password');
     }
 
@@ -247,4 +255,8 @@ class AccountController extends Controller
         return redirect()->route('settings')->with('success', 'Password changed successfully.');
     }
 
+    public function changeEmail(Request $request)
+    {
+
+    }
 }

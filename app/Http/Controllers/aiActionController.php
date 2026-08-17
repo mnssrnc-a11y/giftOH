@@ -9,9 +9,7 @@ use App\Models\Funding;
 
 class aiActionController extends Controller
 {
-    /**
-     * Send a chat request to Gemini AI and return the parsed JSON response.
-     */
+
     function aiChat($systemPrompt, $userMessage) {
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
@@ -39,28 +37,13 @@ class aiActionController extends Controller
         return $result;
     }
 
-    /**
-     * Score a funding request using Gemini AI.
-     *
-     * Evaluates the request across 5 dimensions:
-     *  - Urgency (25%): How time-sensitive is the need
-     *  - Impact (25%): How many people benefit, significance of outcome
-     *  - Need Severity (20%): How dire is the situation described
-     *  - Feasibility (15%): Is the amount reasonable, is the plan realistic
-     *  - Category Fit (15%): Based on category weight and approval priority
-     *
-     * @param  Funding  $fundingRequest  The funding request to score
-     * @return array|null  Scoring result or null on failure
-     */
     public static function scoreFundingRequest(Funding $fundingRequest): ?array
     {
         try {
             $controller = new self();
 
-            // Load relationships if not already loaded
             $fundingRequest->loadMissing(['category', 'user']);
 
-            // Build context about the category's scoring weight and priority
             $categoryWeight = $fundingRequest->category->weight_in_scoring ?? 1.00;
             $categoryPriority = $fundingRequest->category->approval_priority ?? 0;
             $categoryName = $fundingRequest->category->category_name ?? 'General';
@@ -78,7 +61,7 @@ You must evaluate the request across these 5 dimensions, each scored 0-100:
 
 2. **Impact (weight: 25%)** - How many people will benefit? How significant is the positive outcome? Requests affecting many people or producing life-changing results score highest.
 
-3. **Need Severity (weight: 20%)** - How dire is the situation? Life-threatening or critical survival needs (food, shelter, medical) score highest. Nice-to-have improvements score lower.
+3. **Need Severity (weight: 20%)** - How dire is the situation? Life-threatening or critical survival needs (educational, food, shelter, medical) score highest. Nice-to-have improvements score lower.
 
 4. **Feasibility (weight: 15%)** - Is the requested amount reasonable for the described purpose? Is the plan realistic and achievable? Well-structured, reasonable requests score highest.
 

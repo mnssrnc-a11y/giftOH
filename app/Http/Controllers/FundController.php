@@ -24,7 +24,7 @@ class FundController extends Controller
             'org_website' => 'nullable|url|max:255',
             'annual_report' => 'nullable|file|mimes:pdf|max:2048', // Max 2MB
             'mission' => 'required|string',
-            'impact_stories' => 'required|string',
+            'category' => 'required|string',
             'financial_report' => 'nullable|file|mimes:pdf|max:2048',
             'doc_image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
             'id_image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
@@ -47,7 +47,7 @@ class FundController extends Controller
             'tax_id' => $validated['tax_id'],
             'org_website' => $validated['org_website'],
             'mission' => $validated['mission'],
-            'impact_stories' => $validated['impact_stories'],
+            'category' => $validated['category'],
             'role' => $role,
 
             'doc_image' => $request->file('doc_image')->store('documents', 'public'),

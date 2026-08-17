@@ -1,4 +1,16 @@
-@extends('layouts.dashboard')
+<?php
+if ($user = auth()->user()) {
+    $role = $user->role;
+    if ($role === 'admin') {
+        $layout = 'layouts.admin';
+    } else {
+        $layout = 'layouts.dashboard';
+    }
+} else {
+    $layout = 'layouts.dashboard';
+}
+?>
+@extends($layout)
 
 @section('title', 'Settings - Gift of Hope')
 
@@ -14,16 +26,13 @@
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Profile</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">First Name</label>
-                        <input type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]" value="{{ Auth::user()->fname }}" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Last Name</label>
-                        <input type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]" value="{{ Auth::user()->lname }}" />
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Name</label>
+                        <input type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]" value="{{ Auth::user()->fname }} {{ Auth::user()->mname}}. {{ Auth::user()->lname}}" />
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Email</label>
                         <input type="email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]" value="{{ Auth::user()->email }}" />
+                        <a {{route(password.send-code)}}> Edit </a>
                     </div>
                 </div>
             </div>

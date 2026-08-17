@@ -1,5 +1,16 @@
-@extends('layouts.dashboard')
-
+<?php
+if ($user = auth()->user()) {
+    $role = $user->role;
+    if ($role === 'admin') {
+        $layout = 'layouts.admin';
+    } else {
+        $layout = 'layouts.dashboard';
+    }
+} else {
+    $layout = 'layouts.dashboard';
+}
+?>
+@extends($layout)
 @section('title', 'Reports - Gift of Hope')
 
 @section('content')
@@ -98,9 +109,9 @@
                     </div>
                 </div>
             </div>
-                    </table>
                 </div>
             </div>
         </div>
     </div>
 @endsection
+

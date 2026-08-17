@@ -147,30 +147,6 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user has provider role
-     */
-    public function isProvider()
-    {
-        return $this->role === 'provider';
-    }
-
-    /**
-     * Check if user has moderator role
-     */
-    public function isModerator()
-    {
-        return $this->role === 'moderator';
-    }
-
-    /**
-     * Check if user has editor role
-     */
-    public function isEditor()
-    {
-        return $this->role === 'editor';
-    }
-
-    /**
      * Check if user has user role
      */
     public function isUser()
