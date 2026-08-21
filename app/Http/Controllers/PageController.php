@@ -7,9 +7,17 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\PasswordResetCode;
+use App\Services\VerificationService;
 use Illuminate\Support\Str;
+use app\Services\FirebaseService;
 class PageController extends Controller
 {
+    protected $firebaseService;
+
+    public function __construct(
+        private VerificationService $verificationService
+    ) {
+    }
     public function landing()
     {
         return view('pages.landing');
@@ -99,11 +107,7 @@ class PageController extends Controller
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $user = Auth::user();
 
-        // Store the hashed code in the database
-        DB::table('transaction_verification_codes')->updateOrInsert(
-            ['email' => $user->email],
-            ['token' => Hash::make($code), 'created_at' => now()]
-        );
+        $this->verificationService->store($user->email, $code, 'transaction_verification_codes');
 
         // Send the code via email
         Mail::to($user->email)->send(new \App\Mail\TransactionVerificationCode($code, $user->fname));
@@ -145,11 +149,7 @@ class PageController extends Controller
         // Generate a random 6-digit code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        // Store the hashed code in the database
-        DB::table('approval_verification_codes')->updateOrInsert(
-            ['email' => $user->email],
-            ['token' => Hash::make($code), 'created_at' => now()]
-        );
+        $this->verificationService->store($user->email, $code, 'approval_verification_codes');
 
         // Send the code via email
         Mail::to($user->email)->send(new \App\Mail\ApprovalVerificationCode($code, $user->fname, $request->action));

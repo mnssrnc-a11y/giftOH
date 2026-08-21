@@ -1,0 +1,56 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "users": {
+      ".indexOn": [
+        "email"
+      ]
+    },
+    "funding_requests": {
+      ".indexOn": [
+        "user_id",
+        "status_id",
+        "created_at"
+      ]
+    },
+    "funding_documents": {
+      ".indexOn": [
+        "request_id"
+      ]
+    },
+    "funding_approvals": {
+      ".indexOn": [
+        "request_id",
+        "approved_by"
+      ]
+    },
+    "donations": {
+      ".indexOn": [
+        "user_id",
+        "iot_box_id",
+        "detected_at"
+      ]
+    },
+    "audit_logs": {
+      ".indexOn": [
+        "user_id",
+        "subject_id",
+        "created_at"
+      ]
+    },
+    "activity_logs": {
+      ".indexOn": [
+        "user_id",
+        "created_at"
+      ]
+    },
+    "notification_logs": {
+      ".indexOn": [
+        "user_id",
+        "related_id",
+        "created_at"
+      ]
+    }
+  }
+}

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Auth\FirebaseUserProvider;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +21,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Auth::provider('firebase', function ($app, array $config) {
+            return new FirebaseUserProvider(
+                $app->make(\App\Repositories\FirebaseUserRepository::class)
+            );
+        });
     }
 }

@@ -6,9 +6,11 @@ use Illuminate\Http\Request;
 use App\Models\Fund;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Auth;
-
+use app\Services\FirebaseService;
 class FundController extends Controller
 {
+    protected $firebaseService;
+
     public function storeFund(Request $request)
     {
         // Validate form data

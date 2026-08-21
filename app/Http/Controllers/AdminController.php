@@ -13,9 +13,12 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\LoginAuthCode;
 use App\Mail\VerifyEmail;
 use App\Rules\RealEmail;
+use app\Services\FirebaseService;
 
 class AdminController extends Controller
 {
+    protected $firebaseService;
+
     public function admin()
     {
         if (Auth::user()->role != 'admin') {

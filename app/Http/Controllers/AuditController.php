@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-
+use app\Services\FirebaseService;
 class AuditController extends Controller
 {
+    protected $firebaseService;
+
     public function index()
     {
         // Fetch all audit logs from the database
@@ -57,5 +59,4 @@ class AuditController extends Controller
         return response()->download($filename)->deleteFileAfterSend(true);
     }
 
-    
 }

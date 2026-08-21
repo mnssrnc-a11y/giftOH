@@ -59,3 +59,24 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 # giftofhope_2
 # giftofhope_2
+
+## Firebase setup
+
+This project uses Firebase Realtime Database through the Kreait PHP SDK. Realtime Database does not use SQL tables or migrations; it stores JSON data under paths such as `users/{id}` and `funding_requests/{id}`.
+
+Copy `.env.example` to `.env`, set `APP_KEY`, and confirm these values:
+
+```env
+FIREBASE_CREDENTIALS=storage/app/firebase/firebase_credentials.json
+FIREBASE_DATABASE_URL=https://giftofhope-b97d5-default-rtdb.firebaseio.com
+```
+
+The service-account JSON must stay private and must never be committed or placed in `public/`.
+
+Run this command to verify the credentials and database URL:
+
+```text
+php artisan firebase:health
+```
+
+Important: Firebase connectivity is working, but the current application models and verification-token code still use Laravel SQL/Eloquent. Do not remove the SQL database yet. The business-data migration must replace those model queries and Laravel's Eloquent authentication provider with Firebase repositories/provider code while preserving the existing collection paths and relationships.

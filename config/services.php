@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'firebase' => [
+        'credentials' => env('FIREBASE_CREDENTIALS', storage_path('app/firebase/firebase_credentials.json')),
+        'database_url' => env('FIREBASE_DATABASE_URL', 'https://giftofhope-b97d5-default-rtdb.firebaseio.com'),
+    ],
+
 ];

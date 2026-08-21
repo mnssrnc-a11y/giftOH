@@ -7,17 +7,24 @@ use App\Services\VerificationService;
 use App\Models\User;
 use App\Models\Funding;
 use App\Models\FundingApproval;
+use App\Models\FirebaseUser;
+use App\Repositories\FirebaseUserRepository;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use app\Services\FirebaseService;
 
 class VerificationController extends Controller
 {
     protected $verificationService;
+    protected $firebaseService;
 
-    public function __construct(VerificationService $verificationService)
+    public function __construct(
+        VerificationService $verificationService,
+        private FirebaseUserRepository $firebaseUsers
+    )
     {
         $this->verificationService = $verificationService;
     }
@@ -42,9 +49,7 @@ class VerificationController extends Controller
         $resetToken = Str::random(64);
 
         // Update the token so the code can't be reused
-        DB::table('password_reset_tokens')
-            ->where('email', $request->email)
-            ->update(['token' => Hash::make($resetToken), 'created_at' => now()]);
+        $this->verificationService->rotate($request->email, 'password_reset_tokens', $resetToken);
 
         return redirect()->route('password.reset.form', [
             'email' => $request->email,
@@ -69,13 +74,16 @@ class VerificationController extends Controller
         }
 
         // Code is valid — retrieve user and log in
-        $user = User::where('email', $request->email)->first();
+        $userData = $this->firebaseUserProviderEnabled()
+            ? $this->firebaseUsers->findByEmail($request->email)
+            : User::where('email', $request->email)->first();
+        $user = is_array($userData) ? new FirebaseUser($userData) : $userData;
         if (!$user) {
             return back()->withErrors(['code' => 'User account not found.'])->withInput();
         }
 
         // Delete the verified code
-        DB::table('login_auth_codes')->where('email', $request->email)->delete();
+        $this->verificationService->forget($request->email, 'login_auth_codes');
 
         // Log the user in
         Auth::login($user, session('login_2fa_remember', false));
@@ -98,7 +106,9 @@ class VerificationController extends Controller
             'email' => 'required|email',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $user = $this->firebaseUserProviderEnabled()
+            ? $this->firebaseUsers->findByEmail($request->email)
+            : User::where('email', $request->email)->first();
         if (!$user) {
             return back()->with('alert_error', 'Invalid email address.');
         }
@@ -107,15 +117,18 @@ class VerificationController extends Controller
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         // Store hashed code in database
-        DB::table('login_auth_codes')->updateOrInsert(
-            ['email' => $request->email],
-            ['token' => Hash::make($code), 'created_at' => now()]
-        );
+        $this->verificationService->store($request->email, $code, 'login_auth_codes');
 
         // Send email
-        Mail::to($request->email)->send(new \App\Mail\LoginAuthCode($code, $user->fname));
+        $firstName = is_array($user) ? ($user['fname'] ?? '') : $user->fname;
+        Mail::to($request->email)->send(new \App\Mail\LoginAuthCode($code, $firstName));
 
         return back()->with('status', 'A new 6-digit verification code has been sent to your email.');
+    }
+
+    private function firebaseUserProviderEnabled(): bool
+    {
+        return config('auth.providers.users.driver') === 'firebase';
     }
 
     /**
@@ -141,7 +154,7 @@ class VerificationController extends Controller
         // Code is valid — retrieve pending registration data and create the user
         $data = session('pending_registration');
 
-        $user = User::create([
+        $userData = [
             'fname' => $data['fname'],
             'lname' => $data['lname'],
             'mname' => $data['mname'],
@@ -152,10 +165,13 @@ class VerificationController extends Controller
             'gender' => $data['gender'],
             'date_of_birth' => $data['date_of_birth'],
             'profile_picture' => $data['profile_picture'],
-        ]);
+        ];
 
+        $user = $this->firebaseUserProviderEnabled()
+            ? new FirebaseUser($this->firebaseUsers->create($userData))
+            : User::create($userData);
         // Clean up
-        DB::table('register_verification_codes')->where('email', $request->email)->delete();
+        $this->verificationService->forget($request->email, 'register_verification_codes');
         session()->forget('pending_registration');
 
         // Log the user in
@@ -185,10 +201,7 @@ class VerificationController extends Controller
         $data = session('pending_registration');
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        DB::table('register_verification_codes')->updateOrInsert(
-            ['email' => $request->email],
-            ['token' => Hash::make($code), 'created_at' => now()]
-        );
+        $this->verificationService->store($request->email, $code, 'register_verification_codes');
 
         Mail::to($request->email)->send(new \App\Mail\VerifyEmail($code, $data['fname']));
 
@@ -243,7 +256,7 @@ class VerificationController extends Controller
         }
 
         // Clean up
-        DB::table('transaction_verification_codes')->where('email', $user->email)->delete();
+        $this->verificationService->forget($user->email, 'transaction_verification_codes');
         session()->forget('pending_fund_request');
 
         return redirect()->route('dashboarduser')->with('status', 'Your funding request has been submitted successfully.');
@@ -261,10 +274,7 @@ class VerificationController extends Controller
         $user = Auth::user();
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        DB::table('transaction_verification_codes')->updateOrInsert(
-            ['email' => $user->email],
-            ['token' => Hash::make($code), 'created_at' => now()]
-        );
+        $this->verificationService->store($user->email, $code, 'transaction_verification_codes');
 
         Mail::to($user->email)->send(new \App\Mail\TransactionVerificationCode($code, $user->fname));
 
@@ -315,7 +325,7 @@ class VerificationController extends Controller
         ]);
 
         // Clean up
-        DB::table('approval_verification_codes')->where('email', $user->email)->delete();
+        $this->verificationService->forget($user->email, 'approval_verification_codes');
         session()->forget('pending_approval');
 
         return redirect()->route('admin')->with('status', 'Funding request updated successfully.');
@@ -334,10 +344,7 @@ class VerificationController extends Controller
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $action = session('pending_approval.action');
 
-        DB::table('approval_verification_codes')->updateOrInsert(
-            ['email' => $user->email],
-            ['token' => Hash::make($code), 'created_at' => now()]
-        );
+        $this->verificationService->store($user->email, $code, 'approval_verification_codes');
 
         Mail::to($user->email)->send(new \App\Mail\ApprovalVerificationCode($code, $user->fname, $action));
 

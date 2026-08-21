@@ -7,14 +7,26 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
+use App\Models\FirebaseUser;
+use App\Services\VerificationService;
 use App\Mail\PasswordResetCode;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\LoginAuthCode;
 use App\Mail\VerifyEmail;
 use App\Rules\RealEmail;
+use App\Repositories\FirebaseUserRepository;
+use app\Services\FirebaseService;
 
 class AccountController extends Controller
 {
+    protected $firebaseService;
+
+    public function __construct(
+        private FirebaseUserRepository $firebaseUsers,
+        private VerificationService $verificationService
+    ) {
+    }
+
     public function register()
     {
         return view('pages.register');
@@ -48,10 +60,7 @@ class AccountController extends Controller
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         // Store hashed code in the database
-        DB::table('register_verification_codes')->updateOrInsert(
-            ['email' => $validated['email']],
-            ['token' => Hash::make($code), 'created_at' => now()]
-        );
+        $this->verificationService->store($validated['email'], $code, 'register_verification_codes');
 
         // Send the verification code via email
         try {
@@ -59,7 +68,7 @@ class AccountController extends Controller
                 ->send(new VerifyEmail($code, $validated['fname']));
         } catch (\Exception $error) {
             // Clean up the verification code since email failed
-            DB::table('register_verification_codes')->where('email', $validated['email'])->delete();
+            $this->verificationService->forget($validated['email'], 'register_verification_codes');
             return back()
                 ->withInput()
                 ->with('alert_error',
@@ -147,21 +156,30 @@ class AccountController extends Controller
             'password' => 'required',
             'role' => 'nullable|in:user,admin',
         ]);
-        $user = User::where('email', $request->email)->first();
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        $user = $this->firebaseUserProviderEnabled()
+            ? $this->firebaseUsers->findByEmail($request->email)
+            : User::where('email', $request->email)->first();
+        $passwordHash = is_array($user) ? ($user['password'] ?? '') : ($user->password ?? '');
+
+        if (!$user || !Hash::check($request->password, $passwordHash)) {
             return back()->withErrors([
                 'email' => 'These credentials do not match our records.',
+            ])->onlyInput('email');
+        }
+
+        $isActive = is_array($user) ? ($user['is_active'] ?? true) : $user->is_active;
+        if (! $isActive) {
+            return back()->withErrors([
+                'email' => 'This account is inactive.',
             ])->onlyInput('email');
         }
         // Generate a random 6-digit code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         // Store the hashed code in the database
-        DB::table('login_auth_codes')->updateOrInsert(
-            ['email' => $request->email],
-            ['token' => Hash::make($code), 'created_at' => now()]
-        );
+        $this->verificationService->store($request->email, $code, 'login_auth_codes');
         // Send the code via Gmail
-        Mail::to($request->email)->send(new \App\Mail\LoginAuthCode($code, $user->fname));
+        $firstName = is_array($user) ? ($user['fname'] ?? '') : $user->fname;
+        Mail::to($request->email)->send(new \App\Mail\LoginAuthCode($code, $firstName));
         // Store verification details in session
         session([
             'login_2fa_email' => $request->email,
@@ -193,23 +211,30 @@ class AccountController extends Controller
             'token'    => 'required|string',
             'password' => 'required|confirmed|min:8',
         ]);
-        $record = DB::table('password_reset_tokens')
-            ->where('email', $request->email)
-            ->first();
-        if (!$record || !Hash::check($request->token, $record->token)) {
+        $record = $this->verificationService->find($request->email, 'password_reset_tokens');
+        if (!$record || !Hash::check($request->token, $record['token'])) {
             return back()->withErrors(['email' => 'Invalid or expired reset session. Please start over.']);
         }
         // Check expiry (15 minutes from when the token was refreshed)
-        if (now()->diffInMinutes($record->created_at) > 15) {
-            DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+        if (now()->diffInMinutes($record['created_at']) > 15) {
+            $this->verificationService->forget($request->email, 'password_reset_tokens');
             return back()->withErrors(['email' => 'Reset session expired. Please start over.']);
         }
         // Update password
-        $user = User::where('email', $request->email)->first();
-        $user->password = Hash::make($request->password);
-        $user->save();
+        $userData = $this->firebaseUserProviderEnabled()
+            ? $this->firebaseUsers->findByEmail($request->email)
+            : User::where('email', $request->email)->first();
+        $user = is_array($userData) ? new FirebaseUser($userData) : $userData;
+        if ($this->firebaseUserProviderEnabled()) {
+            $this->firebaseUsers->update($user->getAuthIdentifier(), [
+                'password' => Hash::make($request->password),
+            ]);
+        } else {
+            $user->password = Hash::make($request->password);
+            $user->save();
+        }
         // Clean up the token
-        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+        $this->verificationService->forget($request->email, 'password_reset_tokens');
         return redirect()->route('login')->with('status', 'Your password has been reset successfully. Please sign in.');
     }
 
@@ -218,20 +243,17 @@ class AccountController extends Controller
         $request->validate([
             'email' => 'required|email',
         ]);
-        $user = User::where('email', $request->email)->first();
+        $userData = $this->firebaseUserProviderEnabled()
+            ? $this->firebaseUsers->findByEmail($request->email)
+            : User::where('email', $request->email)->first();
+        $user = is_array($userData) ? new FirebaseUser($userData) : $userData;
         if (!$user) {
             return back()->with('alert_error', 'Please enter the correct email.')->onlyInput('email');
         }
         // Generate a random 6-digit code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         // Delete any existing reset tokens for this email
-        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
-        // Store the hashed code in the database
-        DB::table('password_reset_tokens')->insert([
-            'email' => $request->email,
-            'token' => Hash::make($code),
-            'created_at' => now(),
-        ]);
+        $this->verificationService->store($request->email, $code, 'password_reset_tokens');
         // Send the code via Gmail
         Mail::to($request->email)->send(new PasswordResetCode($code, $user->fname));
         return redirect()->route('password.verify-code.form', ['email' => $request->email])
@@ -250,13 +272,24 @@ class AccountController extends Controller
             return back()->withErrors(['current_password' => 'Current password does not match.']);
         }
         // Update password
-        $user->password = Hash::make($request->password);
-        $user->save();
+        if ($this->firebaseUserProviderEnabled()) {
+            $this->firebaseUsers->update($user->getAuthIdentifier(), [
+                'password' => Hash::make($request->password),
+            ]);
+        } else {
+            $user->password = Hash::make($request->password);
+            $user->save();
+        }
         return redirect()->route('settings')->with('success', 'Password changed successfully.');
     }
 
     public function changeEmail(Request $request)
     {
 
+    }
+
+    private function firebaseUserProviderEnabled(): bool
+    {
+        return config('auth.providers.users.driver') === 'firebase';
     }
 }
