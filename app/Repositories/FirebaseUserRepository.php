@@ -25,6 +25,19 @@ class FirebaseUserRepository extends FirebaseRepository
         return null;
     }
 
+    public function findRole(string|int $id): ?string
+    {
+        $user = $this->find($id);
+        $role = $user['role'];
+        if ($role === "admin") {
+            return "admin";
+        } elseif ($role === "user") {
+            return "user";
+        } else {
+            return null;
+        }
+    }
+
     public function update(string|int $id, array $data): ?array
     {
         if (isset($data['email'])) {

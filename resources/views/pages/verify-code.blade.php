@@ -72,7 +72,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             let timeLeft = 300; // 5 minutes in seconds
             const timerElement = document.getElementById('countdown-timer');
-
+            
             const countdown = setInterval(function() {
                 if (timeLeft <= 0) {
                     clearInterval(countdown);

@@ -1,16 +1,5 @@
-<?php
-if ($user = auth()->user()) {
-    $role = $user->role;
-    if ($role === 'admin') {
-        $layout = 'layouts.admin';
-    } else {
-        $layout = 'layouts.dashboard';
-    }
-} else {
-    $layout = 'layouts.dashboard';
-}
-?>
-@extends($layout)
+@extends('layouts.dashboard')
+
 @section('title', 'Reports - Gift of Hope')
 
 @section('content')
@@ -109,9 +98,9 @@ if ($user = auth()->user()) {
                     </div>
                 </div>
             </div>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 @endsection
-
