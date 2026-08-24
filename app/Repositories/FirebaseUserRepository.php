@@ -33,6 +33,8 @@ class FirebaseUserRepository extends FirebaseRepository
             return "admin";
         } elseif ($role === "user") {
             return "user";
+        } elseif ($role === "super_admin") {
+            return "super_admin";
         } else {
             return null;
         }

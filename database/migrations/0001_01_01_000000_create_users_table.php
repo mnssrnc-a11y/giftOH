@@ -3,7 +3,8 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 return new class extends Migration
 {
     /**
@@ -24,7 +25,7 @@ return new class extends Migration
             $table->enum('gender', ['male', 'female', 'other'])->nullable();
             $table->date('date_of_birth')->nullable();
             $table->string('profile_picture')->nullable();
-            $table->enum('role', ['admin', 'user'])->default('user');
+            $table->enum('role', ['admin', 'user', 'super_admin'])->default('user');
             $table->boolean('is_active')->default(true);
             $table->timestamp('last_login')->nullable();
             $table->timestamp('last_logout')->nullable();

@@ -71,6 +71,11 @@ class FirebaseUser implements Authenticatable
         return ($this->attributes['role'] ?? null) === 'user';
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return ($this->attributes['role'] ?? null) === 'super_admin';
+    }
+
     public function isActive(): bool
     {
         return ($this->attributes['is_active'] ?? false) === true;
