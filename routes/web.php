@@ -5,9 +5,11 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ConfigController;
 use App\Services\FirebaseService;
 use Illuminate\Support\Facades\Auth;
 // Public routes
+Route::get(uri: '/config/firebase', action: [ConfigController::class, 'firebaseConfig'])->name('config.firebase');
 Route::get(uri: '/', action: [PageController::class, 'landing'])->name('landing');
 Route::get(uri: '/login', action: [PageController::class, 'login'])->name('login');
 Route::post(uri: '/login', action: [AccountController::class, 'storeLogin'])->name('login.store');

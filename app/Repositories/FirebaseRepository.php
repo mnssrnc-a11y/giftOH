@@ -93,24 +93,10 @@ abstract class FirebaseRepository
 
     protected function queryBy(string $field, string|int|bool $value): array
     {
-        $records = $this->root()
-            ->orderByChild($field)
-            ->equalTo($value)
-            ->getValue();
-
-        if (! is_array($records)) {
-            return [];
-        }
-
-        $result = [];
-        foreach ($records as $id => $record) {
-            if (is_array($record)) {
-                $record['id'] ??= (string) $id;
-                $result[] = $record;
-            }
-        }
-
-        return $result;
+        return (new FirebaseQuery($this->firebase))
+            ->from($this->nodeKey())
+            ->where($field, $value)
+            ->get();
     }
 
     abstract protected function nodeKey(): string;

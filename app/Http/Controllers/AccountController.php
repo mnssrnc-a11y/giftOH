@@ -175,12 +175,9 @@ class AccountController extends Controller
         }
         // Generate a random 6-digit code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        // Store the hashed code in the database
         $this->verificationService->store($request->email, $code, 'login_auth_codes');
-        // Send the code via Gmail
         $firstName = is_array($user) ? ($user['fname'] ?? '') : $user->fname;
         Mail::to($request->email)->send(new \App\Mail\LoginAuthCode($code, $firstName));
-        // Store verification details in session
         session([
             'login_2fa_email' => $request->email,
             'login_2fa_remember' => $request->boolean('remember'),
@@ -215,8 +212,7 @@ class AccountController extends Controller
         if (!$record || !Hash::check($request->token, $record['token'])) {
             return back()->withErrors(['email' => 'Invalid or expired reset session. Please start over.']);
         }
-        // Check expiry (15 minutes from when the token was refreshed)
-        if (now()->diffInMinutes($record['created_at']) > 15) {
+        if (now()->diffInMinutes($record['created_at']) > 5) {
             $this->verificationService->forget($request->email, 'password_reset_tokens');
             return back()->withErrors(['email' => 'Reset session expired. Please start over.']);
         }
@@ -250,11 +246,8 @@ class AccountController extends Controller
         if (!$user) {
             return back()->with('alert_error', 'Please enter the correct email.')->onlyInput('email');
         }
-        // Generate a random 6-digit code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        // Delete any existing reset tokens for this email
         $this->verificationService->store($request->email, $code, 'password_reset_tokens');
-        // Send the code via Gmail
         Mail::to($request->email)->send(new PasswordResetCode($code, $user->fname));
         return redirect()->route('password.verify-code.form', ['email' => $request->email])
             ->with('status', 'We sent a 6-digit code to your email.');
