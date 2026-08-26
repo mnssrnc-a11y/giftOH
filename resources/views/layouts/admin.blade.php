@@ -1,118 +1,63 @@
 @extends('app')
 
 @section('body')
-    <div class="flex h-screen bg-gray-50">
-        <aside class="w-64 bg-[#1E3A8A] text-white flex flex-col">
-            <div class="p-6 border-b border-blue-700">
-                <a href="{{ route('admin') }}" class="block">
-                    <div class="text-2xl font-bold">Gift of Hope</div>
-                    <div class="text-blue-200 text-sm mt-1">Charity Platform</div>
-                </a>
-            </div>
-
-            <nav class="flex-1 p-4">
-                <ul class="space-y-2">
-                    <li>
-                        <a href="{{ route('admin') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('admin') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10.5L12 3l9 7.5V21a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 21v-10.5z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 22.5V15a3 3 0 0 1 6 0v7.5"/>
-                            </svg>
-                            <span class="text-sm font-semibold">Home</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('admin.approval-verify') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('admin.approval-verify') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="9" />
-                                <path stroke-linecap="round" d="M12 10.5h.01" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 12h1v4h1" />
-                            </svg>
-                            <span class="text-sm font-semibold">About</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('iot-monitor') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('iot-monitor') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 8l-9-5-9 5 9 5 9-5z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 8v8l9 5 9-5V8"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 13v8"/>
-                            </svg>
-                            <span class="text-sm font-semibold">IoT Box Monitor</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('dashboard') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('dashboard') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13h8V3H3v10zM13 21h8V11h-8v10zM13 3h8v6h-8V3zM3 21h8v-6H3v6z"/>
-                            </svg>
-                            <span class="text-sm font-semibold">Dashboard</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('donations') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('donations') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.5-7 10-7 10z"/>
-                            </svg>
-                            <span class="text-sm font-semibold">Donations</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('fund-request') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('fund-request') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h10M7 12h10M7 17h6"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
-                            </svg>
-                            <span class="text-sm font-semibold">Fund Request</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('reports') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('reports') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 19V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 19h16"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 17v-6M12 17v-9M16 17v-3"/>
-                            </svg>
-                            <span class="text-sm font-semibold">Reports</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('settings') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('settings') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a7.9 7.9 0 0 0 .1-2l2-1.2-2-3.4-2.3.7a7.7 7.7 0 0 0-1.7-1l-.3-2.4h-4l-.3 2.4a7.7 7.7 0 0 0-1.7 1L6.9 8.4l-2 3.4 2 1.2a7.9 7.9 0 0 0 .1 2l-2 1.2 2 3.4 2.3-.7a7.7 7.7 0 0 0 1.7 1l.3 2.4h4l.3-2.4a7.7 7.7 0 0 0 1.7-1l2.3.7 2-3.4-2-1.2z"/>
-                            </svg>
-                            <span class="text-sm font-semibold">Settings</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('user') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-blue-100 hover:bg-blue-800 {{ request()->routeIs('login') ? 'bg-[#3B82F6] text-white hover:bg-[#3B82F6]' : '' }}">
-                            <svg class="w-5 h-5 text-white-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 21a8 8 0 1 0-16 0"/>
-                            <circle cx="12" cy="8" r="3"/>
-                        </svg>
-                            <span class="text-sm font-semibold">{{ Auth::user()->name }}</span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-
-            <div class="p-4 border-t border-blue-700">
-                <div class="text-xs text-blue-200">&copy; 2026 Gift of Hope</div>
-            </div>
-        </aside>
-
-        <main class="flex-1 overflow-auto">
-            @yield('content')
-        </main>
+<div id="adminApp" class="admin-shell" data-admin-app>
+    <div class="admin-mobile-bar">
+        <button type="button" class="admin-icon-button" data-sidebar-toggle aria-label="Open navigation">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <a href="#dashboard" class="admin-mobile-brand">Gift of Hope</a>
+        <button type="button" class="admin-icon-button" data-theme-toggle aria-label="Toggle dark mode">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
+        </button>
     </div>
+
+    <aside class="admin-sidebar" data-sidebar>
+        <div class="admin-brand">
+            <div class="admin-brand-mark">GH</div>
+            <div><strong>Gift of Hope</strong><span>Admin workspace</span></div>
+            <button type="button" class="admin-sidebar-close" data-sidebar-toggle aria-label="Close navigation">&times;</button>
+        </div>
+        <nav class="admin-nav" aria-label="Admin navigation">
+            <p>Workspace</p>
+            <a href="#dashboard" data-admin-nav="dashboard" class="is-active"><span>⌂</span>Dashboard</a>
+            <a href="#funding" data-admin-nav="funding"><span>₱</span>Funding <b data-pending-count>{{ $pendingRequests->count() ?: 4 }}</b></a>
+            <a href="#reports" data-admin-nav="reports"><span>▥</span>Reports</a>
+            <a href="#settings" data-admin-nav="settings"><span>⚙</span>Settings</a>
+            <p>Monitoring</p>
+            <a href="{{ route('iot-monitor') }}"><span>◫</span>IoT Box Monitor</a>
+            <a href="{{ route('donations') }}"><span>♡</span>Donations</a>
+        </nav>
+        <div class="admin-user-card">
+            <div class="admin-avatar">{{ strtoupper(substr(Auth::user()->fname ?? Auth::user()->name ?? 'A', 0, 1)) }}</div>
+            <div><strong>{{ Auth::user()->name ?? trim((Auth::user()->fname ?? 'Admin').' '.(Auth::user()->lname ?? '')) }}</strong><span>Administrator</span></div>
+            <a href="{{ route('user') }}" aria-label="Open profile">›</a>
+        </div>
+        <div class="admin-sidebar-footer">© 2026 Gift of Hope</div>
+    </aside>
+    <button type="button" class="admin-sidebar-scrim" data-sidebar-toggle aria-label="Close navigation"></button>
+
+    <main class="admin-main">
+        <header class="admin-topbar">
+            <div><p data-page-kicker>Overview</p><h1 data-page-title>Dashboard</h1></div>
+            <div class="admin-top-actions">
+                <label class="admin-global-search"><span>⌕</span><input type="search" placeholder="Search workspace" data-global-search></label>
+                <button type="button" class="admin-icon-button admin-desktop-theme" data-theme-toggle title="Toggle dark mode">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
+                </button>
+                <button type="button" class="admin-icon-button has-dot" data-notification-open title="Notifications" aria-label="Open notifications">♢</button>
+            </div>
+        </header>
+        <div class="admin-content">@yield('content')</div>
+    </main>
+
+    <div class="admin-snackbar" data-snackbar-box role="status" aria-live="polite"></div>
+    <div class="admin-modal" data-modal hidden>
+        <button class="admin-modal-backdrop" data-modal-close aria-label="Close dialog"></button>
+        <section class="admin-modal-panel" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle">
+            <button type="button" class="admin-modal-close" data-modal-close aria-label="Close dialog">&times;</button>
+            <div data-modal-content></div>
+        </section>
+    </div>
+</div>
 @endsection

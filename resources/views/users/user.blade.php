@@ -121,7 +121,7 @@
                                 </div>
                                 <div class="border-b pb-4">
                                     <p class="text-gray-600 text-sm">Member Since</p>
-                                    <p class="text-gray-900 font-semibold">{{ Auth::user()->created_at->format('M d, Y') }}</p>
+                                    <p class="text-gray-900 font-semibold">{{ Auth::user()->created_at }}</p>
                                 </div>
                                 <div class="border-b pb-4">
                                     <p class="text-gray-600 text-sm">Account Status</p>

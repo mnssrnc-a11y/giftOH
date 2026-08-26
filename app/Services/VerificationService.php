@@ -76,15 +76,6 @@ class VerificationService
         return $record ? (array) $record : null;
     }
 
-    /**
-     * Verify a generic code against a specific database table.
-     *
-     * @param string $email The email to check for.
-     * @param string $code The code provided by the user.
-     * @param string $tableName The table containing the tokens.
-     * @param int $expirationMinutes The number of minutes before the code expires.
-     * @return array An array containing success status, and error message if failed, or record if success.
-     */
     public function verify(string $email, string $code, string $tableName, int $expirationMinutes = 5): array
     {
         if ($this->firebaseEnabled()) {

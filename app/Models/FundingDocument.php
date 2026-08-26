@@ -1,8 +1,7 @@
 <?php
 
 namespace App\Models;
-
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Firebase\Eloquent\Model;
 
 class FundingDocument extends Model
 {
