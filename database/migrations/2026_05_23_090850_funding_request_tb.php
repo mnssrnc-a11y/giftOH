@@ -14,11 +14,18 @@ return new class extends Migration
         Schema::create('funding_request_tb', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('title')->nullable();
-            $table->text('description')->nullable();
+            $table->string('org_name')->nullable();
+            $table->text('contact_person')->nullable();
+            $table->text('contact_email')->nullable();
+            $table->text('contact_phone')->nullable();
+            $table->text('address')->nullable();
+            $table->string('tax_id')->nullable();
+            $table->text('mission')->nullable();
+            $table->string('category')->nullable();
             $table->string('doc_image')->nullable();
             $table->string('id_image')->nullable();
-            $table->string('bank_statement')->nullable();
+            $table->string('financial_rprt')->nullable();
+            $table->string('barangay_clr')->nullable();
             $table->decimal('amount_requested', 10, 2)->nullable();
             $table->decimal('amount_paid', 10, 2)->nullable();
             $table->string('status')->default('pending');

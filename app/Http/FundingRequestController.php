@@ -13,14 +13,32 @@ class FundingRequestController {
     ) {}
 
     public function store(Request $request) {
-        $fundingRequest = $this->fundingService->createRequest(
-            $request->validated()
-        );
-        return redirect()->route('funding.show', $fundingRequest['id']);
+            $validated = $request->validate([
+        'org_name' => ['required', 'string', 'max:255'],
+        'category' => ['required', 'string', 'max:255'],
+        'mission' => ['required', 'string'],
+        'contact_person' => ['required', 'string', 'max:255'],
+        'contact_email' => ['required', 'email', 'max:255'],
+        'phone' => ['required', 'string', 'max:255'],
+        'address' => ['required', 'string', 'max:255'],
+        'tax_id' => ['required', 'string', 'max:255'],
+        'financial_rprt' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf|max:2048'],
+        'doc_image' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf|max:2048'],
+        'id_image' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf|max:2048'],
+        'barangay_clr' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf|max:2048'],
+    ]);
+
+    $fundingRequest = $this->fundingService->createRequest($validated);
+
+    return redirect()->route(
+        'funding.show',
+        $fundingRequest['id']
+    );
     }
 
     public function show(string|int $id) {
         $fundingRequest = $this->fundingService->getRequestById($id);
+        abort_if($fundingRequest === null, 404);
         return view('funding.show', compact('fundingRequest'));
     }
 }

@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Repositories\FirebasePasswordResetRepository;
 use App\Repositories\FirebaseVerificationRepository;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class VerificationService
@@ -17,139 +16,80 @@ class VerificationService
 
     public function store(string $email, string $code, string $tableName): void
     {
-        if ($this->firebaseEnabled()) {
-            if ($tableName === 'password_reset_tokens') {
-                $this->firebaseResets->put($email, $code);
-            } else {
-                $this->firebaseCodes->put($this->typeFor($tableName), $email, $code);
-            }
+        if ($tableName === 'password_reset_tokens') {
+            $this->firebaseResets->put($email, $code);
 
             return;
         }
 
-        DB::table($tableName)->updateOrInsert(
-            ['email' => $email],
-            ['token' => Hash::make($code), 'created_at' => now()]
-        );
+        $this->firebaseCodes->put($this->typeFor($tableName), $email, $code);
     }
 
     public function forget(string $email, string $tableName): void
     {
-        if ($this->firebaseEnabled()) {
-            if ($tableName === 'password_reset_tokens') {
-                $this->firebaseResets->forget($email);
-            } else {
-                $this->firebaseCodes->forget($this->typeFor($tableName), $email);
-            }
+        if ($tableName === 'password_reset_tokens') {
+            $this->firebaseResets->forget($email);
 
             return;
         }
 
-        DB::table($tableName)->where('email', $email)->delete();
+        $this->firebaseCodes->forget($this->typeFor($tableName), $email);
     }
 
     public function rotate(string $email, string $tableName, string $token): void
     {
-        if ($this->firebaseEnabled()) {
-            if ($tableName === 'password_reset_tokens') {
-                $this->firebaseResets->put($email, $token);
-            } else {
-                $this->firebaseCodes->put($this->typeFor($tableName), $email, $token);
-            }
+        if ($tableName === 'password_reset_tokens') {
+            $this->firebaseResets->put($email, $token);
 
             return;
         }
 
-        DB::table($tableName)
-            ->where('email', $email)
-            ->update(['token' => Hash::make($token), 'created_at' => now()]);
+        $this->firebaseCodes->put($this->typeFor($tableName), $email, $token);
     }
 
     public function find(string $email, string $tableName): ?array
     {
-        $record = $this->firebaseEnabled()
-            ? ($tableName === 'password_reset_tokens'
-                ? $this->firebaseResets->find($email)
-                : $this->firebaseCodes->find($this->typeFor($tableName), $email))
-            : DB::table($tableName)->where('email', $email)->first();
+        $record = $tableName === 'password_reset_tokens'
+            ? $this->firebaseResets->find($email)
+            : $this->firebaseCodes->find($this->typeFor($tableName), $email);
 
         return $record ? (array) $record : null;
     }
 
     public function verify(string $email, string $code, string $tableName, int $expirationMinutes = 5): array
     {
-        if ($this->firebaseEnabled()) {
-            $record = $tableName === 'password_reset_tokens'
-                ? $this->firebaseResets->find($email)
-                : $this->firebaseCodes->find($this->typeFor($tableName), $email);
+        $record = $tableName === 'password_reset_tokens'
+            ? $this->firebaseResets->find($email)
+            : $this->firebaseCodes->find($this->typeFor($tableName), $email);
 
-            if (! $record) {
-                return [
-                    'success' => false,
-                    'error' => 'No code found. Please request a new one.',
-                ];
-            }
-
-            if (now()->diffInMinutes($record['created_at']) > $expirationMinutes) {
-                $this->forget($email, $tableName);
-
-                return [
-                    'success' => false,
-                    'error' => 'This code has expired. Please request a new one.',
-                ];
-            }
-
-            $valid = Hash::check($code, $record['token'] ?? '');
-            if (! $valid) {
-                return [
-                    'success' => false,
-                    'error' => 'Invalid code. Please try again.',
-                ];
-            }
-
+        if (! $record) {
             return [
-                'success' => true,
-                'record' => $record,
+                'success' => false,
+                'error' => 'No code found. Please request a new one.',
             ];
         }
 
-        $record = DB::table($tableName)
-            ->where('email', $email)
-            ->first();
+        if (now()->diffInMinutes($record['created_at']) > $expirationMinutes) {
+            $this->forget($email, $tableName);
 
-        if (!$record) {
             return [
                 'success' => false,
-                'error' => 'No code found. Please request a new one.'
+                'error' => 'This code has expired. Please request a new one.',
             ];
         }
 
-        // Check if code has expired
-        if (now()->diffInMinutes($record->created_at) > $expirationMinutes) {
-            DB::table($tableName)->where('email', $email)->delete();
+        $valid = Hash::check($code, $record['token'] ?? '');
+        if (! $valid) {
             return [
                 'success' => false,
-                'error' => 'This code has expired. Please request a new one.'
-            ];
-        }
-
-        // Verify the code against the hash
-        if (!Hash::check($code, $record->token)) {
-            return [
-                'success' => false,
-                'error' => 'Invalid code. Please try again.'
+                'error' => 'Invalid code. Please try again.',
             ];
         }
 
         return [
             'success' => true,
-            'record' => $record
+            'record' => $record,
         ];
-    }
-
-    private function firebaseEnabled(): bool
-    {
-        return config('auth.providers.users.driver') === 'firebase';
     }
 
     private function typeFor(string $tableName): string

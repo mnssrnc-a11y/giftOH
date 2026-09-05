@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class FundingCategory extends Model
 {
-    protected $table = 'funding_categories';
+    protected $table = 'funding_categories_tb';
     protected $primaryKey = 'category_id';
     public $timestamps = true;
 

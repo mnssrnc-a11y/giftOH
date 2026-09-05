@@ -63,7 +63,7 @@ return [
 
     'providers' => [
         'users' => [
-            'driver' => env('AUTH_USER_PROVIDER', 'eloquent'),
+            'driver' => env('AUTH_USER_PROVIDER', 'sqlite'),
             'model' => env('AUTH_MODEL', User::class),
         ],
 

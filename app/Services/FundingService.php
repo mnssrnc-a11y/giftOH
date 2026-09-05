@@ -1,15 +1,27 @@
 <?php
 
-class FundingService {
+namespace App\Services;
+
+use App\Repositories\FirebaseFundingRepository;
+
+class FundingService
+{
     public function __construct(
-        private FundingService $fundingService,
-        private AiScoringService $aiScoring,
+        private FirebaseFundingRepository $fundingRequests
     ) {}
 
-    public function store(Request $request) {
-        $fundingRequest = $this->fundingService->createRequest(
-            $request->validated()
-        );
-        return redirect()->route('funding.show', $fundingRequest['id']);
+    public function createRequest(array $data): array
+    {
+        return $this->fundingRequests->create($data);
+    }
+
+    public function getRequestById(string|int $id): ?array
+    {
+        return $this->fundingRequests->findById($id);
+    }
+
+    public function getRequestsByUser(string|int $userId): array
+    {
+        return $this->fundingRequests->findByUserId($userId);
     }
 }

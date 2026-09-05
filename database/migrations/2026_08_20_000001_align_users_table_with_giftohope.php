@@ -51,13 +51,15 @@ return new class extends Migration
             }
         });
 
-        DB::table('users')
-            ->whereNull('fname')
-            ->whereNotNull('name')
-            ->update([
-                'fname' => DB::raw('name'),
-                'lname' => '',
-            ]);
+        if (Schema::hasColumn('users', 'name')) {
+            DB::table('users')
+                ->whereNull('fname')
+                ->whereNotNull('name')
+                ->update([
+                    'fname' => DB::raw('name'),
+                    'lname' => '',
+                ]);
+        }
     }
 
     public function down(): void

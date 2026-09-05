@@ -15,7 +15,7 @@
             <div class="max-w-3xl bg-white rounded-xl shadow-sm border border-gray-100 p-8">
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">Request Details</h2>
 
-                <form method="POST" action="{{ route('fund-request.store') }}">
+                <form method="POST" action="{{ route('fund-request.store') }}" enctype="multipart/form-data">
                     @csrf
 
                     @if (session('status'))
@@ -32,20 +32,22 @@
                         </div>
                     @endif
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Request Title</label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Organization Name</label>
                             <input
-                                name="title"
+                                name="org_name"
                                 type="text"
                                 required
-                                value="{{ old('title') }}"
-                                placeholder="Education Fund"
+                                value="{{ old('org_name') }}"
+                                placeholder="Organization Name"
                                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
                             />
                         </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Target Amount (₱)</label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Amount Requested (₱)</label>
                             <input
                                 name="amount_requested"
                                 type="number"
@@ -60,7 +62,8 @@
 
                     <div class="mb-6">
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Category</label>
-                        <select name="category" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] bg-white">
+                        <select name="category" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] bg-white placeholder-gray-400= SELECT   ">
+                            <option value="" {{ old('category') == '' ? 'selected' : '' }}>Select a category</option>
                             <option value="Education" {{ old('category') == 'Education' ? 'selected' : '' }}>Education</option>
                             <option value="Healthcare" {{ old('category') == 'Healthcare' ? 'selected' : '' }}>Healthcare</option>
                             <option value="Food & Shelter" {{ old('category') == 'Food & Shelter' ? 'selected' : '' }}>Food & Shelter</option>
@@ -70,53 +73,87 @@
                     </div>
 
                     <div class="mb-6">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Description</label>
-                        <textarea
-                            name="description"
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Contact Person</label>
+                        <input
+                            name="contact_person"
+                            type="text"
                             required
-                            rows="6"
-                            placeholder="Describe what the funds will be used for..."
+                            value="{{ old('contact_person') }}"
+                            placeholder="contact person name"
                             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-                        >{{ old('description') }}</textarea>
+                        />
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
-                            <input
-                                name="start_date"
-                                type="date"
-                                required
-                                value="{{ old('start_date') }}"
-                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-                            />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">End Date</label>
-                            <input
-                                name="end_date"
-                                type="date"
-                                required
-                                value="{{ old('end_date') }}"
-                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-                            />
-                        </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Contact Email</label>
+                        <input
+                            name="contact_email"
+                            type="email"
+                            required
+                            value="{{ old('contact_email') }}"
+                            placeholder="contact@example.com"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
+                        />
                     </div>
 
- <div class="border-t border-gray-200 pt-7 mb-7">
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Contact Number</label>
+                        <input
+                            name="phone"
+                            type="text"
+                            required
+                            value="{{ old('phone') }}"
+                            placeholder="09123456789"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
+                        />
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Tax ID</label>
+                        <input
+                            name="tax_id"
+                            type="text"
+                            required
+                            value="{{ old('tax_id') }}"
+                            placeholder="TAX-123456789"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
+                        />
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Address</label>
+                        <input
+                            name="address"
+                            type="text"
+                            required
+                            value="{{ old('address') }}"
+                            placeholder="123 Main St, City, Province"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
+                        />
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Mission</label>
+                        <textarea
+                            name="mission"
+                            required
+                            placeholder="Describe your organization's mission and how the requested funds will be used."
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
+                        >{{ old('mission') }}</textarea>
+                    </div>
+
+<div class="border-t border-gray-200 pt-7 mb-7">
                     <h3 class="text-base font-bold text-gray-900 mb-1">Supporting Documents</h3>
                     <p class="text-xs text-gray-500 mb-5">
                         Upload the three documents below. Accepted formats: JPG, PNG, PDF. Max 5MB each.
                     </p>
- 
+                    <!-- <<-- Document Uploads -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
- 
-                        {{-- Supporting Document --}}
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">
                                 Supporting Document <span class="text-red-500">*</span>
                             </label>
-                            <p class="text-xs text-gray-400 mb-2">e.g. school/medical records, certificates</p>
+                            <p class="text-xs text-gray-400 mb-2">e.g. organization/foundation BIR registration and relevant tax documents Mayor’s/Business Permit, if applicable</p>
                             <label
                                 for="doc_image"
                                 id="doc_image_label"
@@ -140,7 +177,7 @@
                                 <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                             @enderror
                         </div>
-                        {{-- Valid ID --}}
+                        <!-- Valid ID -->
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Valid ID <span class="text-red-500">*</span></label>
                             <p class="text-xs text-gray-400 mb-2">Any government-issued photo ID</p>
@@ -164,31 +201,55 @@
                                 <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                             @enderror
                         </div>
-                        {{-- Bank Statement --}}
+                        <!-- Financial Report -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Financial Report <span class="text-red-500">*</span></label>
+                            <p class="text-xs text-gray-400 mb-2">Annual financial report</p>
+                            <label
+                                for="financial_rprt"
+                                class="flex flex-col items-center gap-2 px-4 py-5 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#3B82F6] hover:bg-blue-50 transition-colors">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                </svg>
+                                <span class="text-sm text-gray-400" id="financial_rprt_name">Click to upload</span>
+                            </label>
+                            <input
+                                type="file"
+                                id="financial_rprt"
+                                name="financial_rprt"
+                                accept="image/*,.pdf"
+                                required
+                                class="sr-only"
+                                onchange="previewFileName(this, 'financial_rprt_name')"/>
+                            @error('financial_rprt')
+                                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <!-- Government Document -->
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">
-                                Bank Statement <span class="text-red-500">*</span>
+                                Barangay Clearance <span class="text-red-500">*</span>
                             </label>
-                            <p class="text-xs text-gray-400 mb-2">Latest 3-month bank statement</p>
+                            <p class="text-xs text-gray-400 mb-2">Latest Barangay Clearance</p>
                             <label
-                                for="bank_statement"
+                                for="barangay_clr"
                                 class="flex flex-col items-center gap-2 px-4 py-5 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#3B82F6] hover:bg-blue-50 transition-colors">
                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                                 </svg>
-                                <span class="text-sm text-gray-400" id="bank_statement_name">Click to upload</span>
+                                <span class="text-sm text-gray-400" id="barangay_clr_name">Click to upload</span>
                             </label>
                             <input
                                 type="file"
-                                id="bank_statement"
-                                name="bank_statement"
+                                id="barangay_clr"
+                                name="barangay_clr"
                                 accept="image/*,.pdf"
                                 required
                                 class="sr-only"
-                                onchange="previewFileName(this, 'bank_statement_name')"
+                                onchange="previewFileName(this, 'barangay_clr_name')"
                             />
-                            @error('bank_statement')
+                            @error('barangay_clr')
                                 <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                             @enderror
                         </div>

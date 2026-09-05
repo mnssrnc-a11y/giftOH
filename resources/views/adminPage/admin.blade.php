@@ -18,6 +18,10 @@
             <button class="admin-button" data-dashboard-state="error">Preview error</button>
             <button class="admin-button primary" data-admin-go="funding">Review requests</button>
         </div>
+        <form class="logout-form" method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button class="admin-button danger" type="submit">Log out</button>
+        </form>
     </div>
     <div class="admin-loading" data-dashboard-loading><div class="admin-spinner"></div><strong>Loading dashboard data…</strong></div>
     <div class="admin-error" data-dashboard-error><div style="font-size:28px;margin-bottom:8px">!</div><strong>Dashboard data could not be loaded.</strong><p>This is a UI preview. Try again to restore the mock data.</p><button class="admin-button primary" data-dashboard-state="ready">Try again</button></div>

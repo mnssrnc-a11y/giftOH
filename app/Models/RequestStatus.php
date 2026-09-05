@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class RequestStatus extends Model
 {
-    protected $table = 'request_status';
+    protected $table = 'request_status_tb';
     protected $primaryKey = 'status_id';
     public $timestamps = true;
 

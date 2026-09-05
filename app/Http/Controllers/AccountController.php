@@ -156,9 +156,7 @@ class AccountController extends Controller
             'password' => 'required',
             'role' => 'nullable|in:user,admin',
         ]);
-        $user = $this->firebaseUserProviderEnabled()
-            ? $this->firebaseUsers->findByEmail($request->email)
-            : User::where('email', $request->email)->first();
+        $user = $this->firebaseUsers->findByEmail($request->email);
         $passwordHash = is_array($user) ? ($user['password'] ?? '') : ($user->password ?? '');
 
         if (!$user || !Hash::check($request->password, $passwordHash)) {
@@ -217,18 +215,11 @@ class AccountController extends Controller
             return back()->withErrors(['email' => 'Reset session expired. Please start over.']);
         }
         // Update password
-        $userData = $this->firebaseUserProviderEnabled()
-            ? $this->firebaseUsers->findByEmail($request->email)
-            : User::where('email', $request->email)->first();
+        $userData = $this->firebaseUsers->findByEmail($request->email);
         $user = is_array($userData) ? new FirebaseUser($userData) : $userData;
-        if ($this->firebaseUserProviderEnabled()) {
-            $this->firebaseUsers->update($user->getAuthIdentifier(), [
-                'password' => Hash::make($request->password),
-            ]);
-        } else {
-            $user->password = Hash::make($request->password);
-            $user->save();
-        }
+        $this->firebaseUsers->update($user->getAuthIdentifier(), [
+            'password' => Hash::make($request->password),
+        ]);
         // Clean up the token
         $this->verificationService->forget($request->email, 'password_reset_tokens');
         return redirect()->route('login')->with('status', 'Your password has been reset successfully. Please sign in.');
@@ -239,9 +230,7 @@ class AccountController extends Controller
         $request->validate([
             'email' => 'required|email',
         ]);
-        $userData = $this->firebaseUserProviderEnabled()
-            ? $this->firebaseUsers->findByEmail($request->email)
-            : User::where('email', $request->email)->first();
+        $userData = $this->firebaseUsers->findByEmail($request->email);
         $user = is_array($userData) ? new FirebaseUser($userData) : $userData;
         if (!$user) {
             return back()->with('alert_error', 'Please enter the correct email.')->onlyInput('email');
@@ -265,24 +254,14 @@ class AccountController extends Controller
             return back()->withErrors(['current_password' => 'Current password does not match.']);
         }
         // Update password
-        if ($this->firebaseUserProviderEnabled()) {
-            $this->firebaseUsers->update($user->getAuthIdentifier(), [
-                'password' => Hash::make($request->password),
-            ]);
-        } else {
-            $user->password = Hash::make($request->password);
-            $user->save();
-        }
+        $this->firebaseUsers->update($user->getAuthIdentifier(), [
+            'password' => Hash::make($request->password),
+        ]);
         return redirect()->route('settings')->with('success', 'Password changed successfully.');
     }
 
     public function changeEmail(Request $request)
     {
 
-    }
-
-    private function firebaseUserProviderEnabled(): bool
-    {
-        return config('auth.providers.users.driver') === 'firebase';
     }
 }

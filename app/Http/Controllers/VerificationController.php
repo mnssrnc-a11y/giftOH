@@ -74,9 +74,7 @@ class VerificationController extends Controller
         }
 
         // Code is valid — retrieve user and log in
-        $userData = $this->firebaseUserProviderEnabled()
-            ? $this->firebaseUsers->findByEmail($request->email)
-            : User::where('email', $request->email)->first();
+        $userData = $this->firebaseUsers->findByEmail($request->email);
         $user = is_array($userData) ? new FirebaseUser($userData) : $userData;
         if (!$user) {
             return back()->withErrors(['code' => 'User account not found.'])->withInput();
@@ -106,9 +104,7 @@ class VerificationController extends Controller
             'email' => 'required|email',
         ]);
 
-        $user = $this->firebaseUserProviderEnabled()
-            ? $this->firebaseUsers->findByEmail($request->email)
-            : User::where('email', $request->email)->first();
+        $user = $this->firebaseUsers->findByEmail($request->email);
         if (!$user) {
             return back()->with('alert_error', 'Invalid email address.');
         }
@@ -124,11 +120,6 @@ class VerificationController extends Controller
         Mail::to($request->email)->send(new \App\Mail\LoginAuthCode($code, $firstName));
 
         return back()->with('status', 'A new 6-digit verification code has been sent to your email.');
-    }
-
-    private function firebaseUserProviderEnabled(): bool
-    {
-        return config('auth.providers.users.driver') === 'firebase';
     }
 
     /**
@@ -167,9 +158,7 @@ class VerificationController extends Controller
             'profile_picture' => $data['profile_picture'],
         ];
 
-        $user = $this->firebaseUserProviderEnabled()
-            ? new FirebaseUser($this->firebaseUsers->create($userData))
-            : User::create($userData);
+        $user = new FirebaseUser($this->firebaseUsers->create($userData));
         // Clean up
         $this->verificationService->forget($request->email, 'register_verification_codes');
         session()->forget('pending_registration');
@@ -209,79 +198,6 @@ class VerificationController extends Controller
     }
 
     /**
-     * Verify the 6-digit code for fund request transaction.
-     */
-    public function verifyFundRequest(Request $request)
-    {
-        $request->validate([
-            'code' => 'required|string|size:6',
-        ]);
-
-        if (!session()->has('pending_fund_request')) {
-            return redirect()->route('fund-request')->with('alert_error', 'Session expired. Please request again.');
-        }
-
-        $user = Auth::user();
-        $result = $this->verificationService->verify($user->email, $request->code, 'transaction_verification_codes');
-
-        if (!$result['success']) {
-            return back()->withErrors(['code' => $result['error']])->withInput();
-        }
-
-        // Code is valid - retrieve data and insert into db
-        $data = session('pending_fund_request');
-        
-        $funding = Funding::create([
-            'user_id' => $user->id,
-            'category_id' => $data['category_id'],
-            'status_id' => 1, // Pending
-            'title' => $data['title'],
-            'description' => $data['description'],
-            'amount_requested' => $data['amount_requested'],
-            'amount_paid' => 0.00,
-        ]);
-
-        // Run AI scoring on the newly created funding request
-        try {
-            $aiResult = \App\Http\Controllers\aiActionController::scoreFundingRequest($funding);
-            if ($aiResult) {
-                $funding->update([
-                    'ai_score' => $aiResult['total_score'],
-                    'ai_score_breakdown' => $aiResult,
-                ]);
-            }
-        } catch (\Exception $e) {
-            // AI scoring failure should not block the request submission
-            \Illuminate\Support\Facades\Log::warning('AI scoring failed for funding request #' . $funding->id . ': ' . $e->getMessage());
-        }
-
-        // Clean up
-        $this->verificationService->forget($user->email, 'transaction_verification_codes');
-        session()->forget('pending_fund_request');
-
-        return redirect()->route('dashboarduser')->with('status', 'Your funding request has been submitted successfully.');
-    }
-
-    /**
-     * Resend verification code for fund transaction request.
-     */
-    public function resendFundRequestCode()
-    {
-        if (!session()->has('pending_fund_request')) {
-            return redirect()->route('fund-request')->with('alert_error', 'Session expired. Please request again.');
-        }
-
-        $user = Auth::user();
-        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        $this->verificationService->store($user->email, $code, 'transaction_verification_codes');
-
-        Mail::to($user->email)->send(new \App\Mail\TransactionVerificationCode($code, $user->fname));
-
-        return back()->with('status', 'A new transaction verification code has been sent to your email.');
-    }
-
-    /**
      * Verify the 6-digit code for fund approval action.
      */
     public function verifyApprovalAction(Request $request)
@@ -305,17 +221,17 @@ class VerificationController extends Controller
         $funding = Funding::findOrFail($data['request_id']);
 
         if ($data['action'] === 'approved') {
-            $funding->status_id = 2; // Approved
+            $funding->status_id = 2;
             $funding->approved_at = now();
             $funding->approved_by = $user->id;
         } else {
-            $funding->status_id = 3; // Rejected
+            $funding->status_id = 3;
             $funding->rejected_at = now();
             $funding->approved_by = $user->id;
         }
         $funding->save();
 
-        // Create approval record
+        // this is to create approval record
         FundingApproval::create([
             'request_id' => $funding->id,
             'approved_by' => $user->id,
