@@ -53,6 +53,7 @@ Route::middleware('auth')->group(function(){
     Route::get('/fund-request/verify', [PageController::class, 'showFundRequestVerifyForm'])->name('fund-request.verify.form');
     Route::post('/fund-request/verify', [VerificationController::class, 'verifyFundRequest'])->name('fund-request.verify');
     Route::post('/fund-request/resend-code', [VerificationController::class, 'resendFundRequestCode'])->name('fund-request.resend-code');
+    Route::get('/fund-request/{id}', [PageController::class, 'showFundRequest'])->name('fund-request.show');
 
     // Admin Panel & Approvals
     Route::get('/admin', [AdminController::class, 'admin'])->name('admin');
@@ -66,6 +67,7 @@ Route::middleware('auth')->group(function(){
     Route::post('/admin/fund-request/resend-code', [VerificationController::class, 'resendApprovalCode'])->name('admin.fund-request.resend-code');
 
     Route::get('/dashboarduser', [PageController::class, 'dashboardUser'])->name('dashboarduser');
+    Route::post('/notifications/{id}/read', [PageController::class, 'markNotificationRead'])->name('notifications.read');
     Route::get('/settings', [PageController::class, 'settings'])->name('settings');
     Route::post('/settings', [PageController::class, 'updateSettings'])->name('settings.update');
     Route::get('/change-password', [AccountController::class, 'showChangePasswordForm'])->name('change-password.form');

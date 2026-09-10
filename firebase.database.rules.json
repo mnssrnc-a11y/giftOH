@@ -51,6 +51,19 @@
         "related_id",
         "created_at"
       ]
+    },
+    "notifications": {
+      ".indexOn": [
+        "user_id",
+        "created_at"
+      ]
+    },
+    "notification_history": {
+      ".indexOn": [
+        "user_id",
+        "created_at",
+        "read_at"
+      ]
     }
   }
 }

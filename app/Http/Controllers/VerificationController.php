@@ -9,6 +9,7 @@ use App\Models\Funding;
 use App\Models\FundingApproval;
 use App\Models\FirebaseUser;
 use App\Repositories\FirebaseUserRepository;
+use App\Services\NotificationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -23,7 +24,8 @@ class VerificationController extends Controller
 
     public function __construct(
         VerificationService $verificationService,
-        private FirebaseUserRepository $firebaseUsers
+        private FirebaseUserRepository $firebaseUsers,
+        private NotificationService $notificationService
     )
     {
         $this->verificationService = $verificationService;
@@ -239,6 +241,13 @@ class VerificationController extends Controller
             'approval_notes' => $data['notes'] ?? null,
             'decision_at' => now(),
         ]);
+
+        $this->notificationService->createFundingDecision(
+            $funding->user_id,
+            $funding->id,
+            $data['action'],
+            $funding->org_name ?? 'your organization'
+        );
 
         // Clean up
         $this->verificationService->forget($user->email, 'approval_verification_codes');

@@ -27,8 +27,8 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-gray-600 text-sm font-semibold mb-2">Notifications</p>
-                            <p class="text-2xl font-bold text-gray-900">5</p>
-                            <p class="text-gray-500 text-xs mt-2">Unread messages</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ $notificationCount }}</p>
+                            <p class="text-gray-500 text-xs mt-2">Fund request notifications</p>
                         </div>
                         <svg class="w-10 h-10 text-yellow-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
@@ -44,7 +44,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-gray-600 text-sm font-semibold mb-2">Fund Requests</p>
-                            <p class="text-2xl font-bold text-gray-900">12</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ $fundRequestCount }}</p>
                             <p class="text-gray-500 text-xs mt-2">Active requests</p>
                         </div>
                         <svg class="w-10 h-10 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -52,9 +52,57 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
                         </svg>
                     </div>
-                    <a href="{{ route('fund-request') }}" class="mt-4 inline-block w-full text-center bg-purple-500 text-white py-2 rounded-lg hover:bg-purple-600 transition-colors text-sm font-semibold">
+                    <button type="button" data-fund-requests-open class="mt-4 inline-block w-full text-center bg-purple-500 text-white py-2 rounded-lg hover:bg-purple-600 transition-colors text-sm font-semibold">
                         View Requests
-                    </a>
+                    </button>
+                </div>
+            </div>
+
+            <div id="fund-requests-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="fund-requests-title">
+                <div class="w-full max-w-5xl rounded-xl bg-white shadow-2xl">
+                    <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+                        <div>
+                            <h2 id="fund-requests-title" class="text-xl font-bold text-gray-900">My Fund Requests</h2>
+                            <p class="text-sm text-gray-500">Select a request to view its submitted details.</p>
+                        </div>
+                        <button type="button" data-fund-requests-close class="text-2xl leading-none text-gray-500 hover:text-gray-900" aria-label="Close fund requests">&times;</button>
+                    </div>
+
+                    <div class="max-h-[65vh] overflow-auto p-6">
+                        @if (count($fundRequests))
+                            <div class="overflow-x-auto">
+                                <table class="w-full min-w-[640px] text-left text-sm">
+                                    <thead class="border-b border-gray-200 text-xs uppercase text-gray-500">
+                                        <tr>
+                                            <th class="px-4 py-3">Organization</th>
+                                            <th class="px-4 py-3">Category</th>
+                                            <th class="px-4 py-3">Amount</th>
+                                            <th class="px-4 py-3">Status</th>
+                                            <th class="px-4 py-3">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        @foreach ($fundRequests as $fundRequest)
+                                            @php
+                                                $status = $fundRequest['status_name'] ?? $fundRequest['status'] ?? 'Pending';
+                                            @endphp
+                                            <tr class="hover:bg-gray-50">
+                                                <td class="px-4 py-4 font-semibold text-gray-900">{{ $fundRequest['org_name'] ?? 'Unnamed organization' }}</td>
+                                                <td class="px-4 py-4 text-gray-600">{{ $fundRequest['category'] ?? $fundRequest['category_name'] ?? 'N/A' }}</td>
+                                                <td class="px-4 py-4 text-gray-600">₱{{ number_format((float) ($fundRequest['amount_requested'] ?? 0), 2) }}</td>
+                                                <td class="px-4 py-4 capitalize text-gray-600">{{ $status }}</td>
+                                                <td class="px-4 py-4">
+                                                    <a href="{{ route('fund-request.show', $fundRequest['id']) }}" class="font-semibold text-blue-600 hover:underline">View details</a>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @else
+                            <p class="py-8 text-center text-sm text-gray-500">You have not submitted any fund requests yet.</p>
+                        @endif
+                    </div>
                 </div>
             </div>
 
@@ -109,47 +157,32 @@
                         </div>
 
                         <div class="space-y-4">
-                            <!-- Notification Item 1 -->
-                            <div class="flex items-start gap-4 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
-                                <div class="flex-shrink-0">
-                                    <svg class="w-5 h-5 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
-                                    </svg>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="font-semibold text-gray-900">New Donation Received</p>
-                                    <p class="text-gray-600 text-sm">You received a donation of $100 for Education Program</p>
-                                    <p class="text-gray-500 text-xs mt-1">2 hours ago</p>
-                                </div>
-                            </div>
-
-                            <!-- Notification Item 2 -->
-                            <div class="flex items-start gap-4 p-4 bg-green-50 rounded-lg border-l-4 border-green-500">
-                                <div class="flex-shrink-0">
-                                    <svg class="w-5 h-5 text-green-500" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                                    </svg>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="font-semibold text-gray-900">Fund Request Approved</p>
-                                    <p class="text-gray-600 text-sm">Your fund request for Healthcare Support has been approved</p>
-                                    <p class="text-gray-500 text-xs mt-1">1 day ago</p>
-                                </div>
-                            </div>
-
-                            <!-- Notification Item 3 -->
-                            <div class="flex items-start gap-4 p-4 bg-yellow-50 rounded-lg border-l-4 border-yellow-500">
-                                <div class="flex-shrink-0">
-                                    <svg class="w-5 h-5 text-yellow-500" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
-                                    </svg>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="font-semibold text-gray-900">Profile Update Needed</p>
-                                    <p class="text-gray-600 text-sm">Please update your profile information to improve your visibility</p>
-                                    <p class="text-gray-500 text-xs mt-1">3 days ago</p>
-                                </div>
-                            </div>
+                            @forelse ($notifications as $notification)
+                                @php($isApproved = in_array($notification['type'], ['approved', 'funding_approved'], true))
+                                <form method="POST" action="{{ route('notifications.read', $notification['id']) }}">
+                                    @csrf
+                                    <button type="submit" class="flex w-full items-start gap-4 p-4 text-left {{ $isApproved ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-500' }} rounded-lg border-l-4 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                                        <div class="flex-shrink-0">
+                                            <svg class="w-5 h-5 {{ $isApproved ? 'text-green-500' : 'text-red-500' }}" viewBox="0 0 24 24" fill="currentColor">
+                                                @if ($isApproved)
+                                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                                @else
+                                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                                                @endif
+                                            </svg>
+                                        </div>
+                                        <div class="flex-1">
+                                            <p class="font-semibold text-gray-900">{{ $notification['label'] }}</p>
+                                            <p class="text-gray-600 text-sm">{{ $notification['message'] }}</p>
+                                            @if ($notification['created_at'])
+                                                <p class="text-gray-500 text-xs mt-1">{{ \Carbon\Carbon::parse($notification['created_at'])->diffForHumans() }}</p>
+                                            @endif
+                                        </div>
+                                    </button>
+                                </form>
+                            @empty
+                                <p class="text-gray-500 text-sm">No approval or denial notifications yet.</p>
+                            @endforelse
                         </div>
 
                         <!-- View All Notifications Button -->
@@ -201,7 +234,7 @@
                     </div>
 
                     Statistics Card
-                    <div class="bg-gradient-to-br from-[#3B82F6] to-[#1E3A8A] rounded-lg shadow-md p-6 text-white"> 
+                    <div class="bg-gradient-to-br from-[#3B82F6] to-[#1E3A8A] rounded-lg shadow-md p-6 text-white">
                         <h2 class="text-xl font-bold mb-4">Your Impact</h2>
                         <div class="space-y-4">
                             <div class="flex items-center justify-between">
@@ -218,4 +251,40 @@
         </div>
     </div>
 
-                @endsection
+@endsection
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const modal = document.getElementById('fund-requests-modal');
+        const openButton = document.querySelector('[data-fund-requests-open]');
+        const closeButton = document.querySelector('[data-fund-requests-close]');
+
+        if (!modal || !openButton || !closeButton) {
+            return;
+        }
+
+        const closeModal = () => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        openButton.addEventListener('click', () => {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        });
+
+        closeButton.addEventListener('click', closeModal);
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        });
+    });
+</script>

@@ -15,6 +15,7 @@ class FundingRequestController {
     public function store(Request $request) {
             $validated = $request->validate([
         'org_name' => ['required', 'string', 'max:255'],
+        'amount_requested' => ['required', 'numeric', 'min:1'],
         'category' => ['required', 'string', 'max:255'],
         'mission' => ['required', 'string'],
         'contact_person' => ['required', 'string', 'max:255'],
@@ -41,4 +42,6 @@ class FundingRequestController {
         abort_if($fundingRequest === null, 404);
         return view('funding.show', compact('fundingRequest'));
     }
+
+
 }

@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\PasswordResetCode;
+use App\Services\FundingService;
+use App\Services\NotificationService;
 use App\Services\VerificationService;
 use Illuminate\Support\Str;
 use app\Services\FirebaseService;
@@ -15,7 +17,9 @@ class PageController extends Controller
     protected $firebaseService;
 
     public function __construct(
-        private VerificationService $verificationService
+        private VerificationService $verificationService,
+        private FundingService $fundingService,
+        private NotificationService $notificationService
     ) {
     }
     public function landing()
@@ -28,7 +32,22 @@ class PageController extends Controller
     }
     public function dashboardUser()
     {
-        return view('users.dashboardUser');
+        $notifications = $this->notificationService->getByUser(Auth::id());
+        $notificationCount = count($notifications);
+        $fundRequests = $this->fundingService->getRequestsByUser(Auth::id());
+        $fundRequestCount = count($fundRequests);
+
+        return view('users.dashboardUser', compact('fundRequestCount', 'fundRequests', 'notificationCount', 'notifications'));
+    }
+
+    public function markNotificationRead(string $id)
+    {
+        $marked = $this->notificationService->markAsRead($id, Auth::id());
+
+        return redirect()->route('dashboarduser')->with(
+            $marked ? 'status' : 'alert_error',
+            $marked ? 'Notification moved to history.' : 'Notification could not be found.'
+        );
     }
     public function user()
     {
@@ -74,6 +93,18 @@ class PageController extends Controller
     public function fundRequest()
     {
         return view('FundPage.fund-request');
+    }
+
+    public function showFundRequest(string $id)
+    {
+        $fundRequest = $this->fundingService->getRequestById($id);
+
+        abort_if(
+            $fundRequest === null || (string) ($fundRequest['user_id'] ?? '') !== (string) Auth::id(),
+            404
+        );
+
+        return view('FundPage.fund-request-detail', compact('fundRequest'));
     }
 
     public function showFundRequestVerifyForm()

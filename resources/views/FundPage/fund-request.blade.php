@@ -54,7 +54,7 @@
                                 required
                                 min="1"
                                 value="{{ old('amount_requested') }}"
-                                placeholder="100000"
+                                placeholder="100"
                                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
                             />
                         </div>

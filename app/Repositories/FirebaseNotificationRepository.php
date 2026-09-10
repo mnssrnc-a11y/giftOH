@@ -4,7 +4,7 @@ namespace App\Repositories;
 
 use Kreait\Firebase\Exception\Database\UnsupportedQuery;
 
-class FirebaseFundingRepository extends FirebaseRepository
+class FirebaseNotificationRepository extends FirebaseRepository
 {
     public function findByUserId(string|int $userId): array
     {
@@ -13,18 +13,13 @@ class FirebaseFundingRepository extends FirebaseRepository
         } catch (UnsupportedQuery) {
             return array_values(array_filter(
                 $this->all(),
-                static fn (array $request): bool => (string) ($request['user_id'] ?? '') === (string) $userId
+                static fn (array $notification): bool => (string) ($notification['user_id'] ?? '') === (string) $userId
             ));
         }
     }
 
-    public function findByStatus(string|int $statusId): array
-    {
-        return $this->queryBy('status_id', $statusId);
-    }
-
     protected function nodeKey(): string
     {
-        return 'funding_requests';
+        return 'notifications';
     }
 }

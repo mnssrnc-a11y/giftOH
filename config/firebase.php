@@ -19,6 +19,8 @@ return [
         'audit_logs' => 'audit_logs',
         'activity_logs' => 'activity_logs',
         'notification_logs' => 'notification_logs',
+        'notifications' => 'notifications',
+        'notification_history' => 'notification_history',
         'verification_codes' => 'verification_codes',
         'password_reset_tokens' => 'password_reset_tokens',
     ],
