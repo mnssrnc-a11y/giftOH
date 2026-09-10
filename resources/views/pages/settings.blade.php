@@ -15,15 +15,15 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">First Name</label>
-                        <input type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]" value="{{ Auth::user()->fname }}" />
+                        <p class="text-gray-900 text-lg font-semibold">{{ Auth::user()->fname }}</p>
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Last Name</label>
-                        <input type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]" value="{{ Auth::user()->lname }}" />
+                        <p class="block text-gray-900 text-lg font-semibold ">{{ Auth::user()->lname }}</p>
                     </div>
                     <div action="{{ route('user.update') }}" method="POST">
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-                        <p>{{ Auth::user()->email }}</p>
+                        <p class="text-gray-900 text-lg font-semibold">{{ Auth::user()->email }}</p>
                         <button class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200">Change Email</button>
                     </div>
                 </div>
