@@ -13,7 +13,7 @@ class FirebaseService
 
     public function __construct()
     {
-        $credentials = config('services.firebase_credentials',
+        $credentials = config('services.firebase.credentials',
         storage_path('app/firebase/firebase_credentials.json'));
         $databaseUrl = config('services.firebase.database_url');
 

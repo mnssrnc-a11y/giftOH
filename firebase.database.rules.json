@@ -64,6 +64,27 @@
         "created_at",
         "read_at"
       ]
-    }
+    },
+  "doc_image": {
+    "storage_path": "funding_documents/request123/doc_image.jpg",
+    "file_name": "registration.jpg",
+    "content_type": "image/jpeg/png/pdf/jpg",
+    "download_url": "...",
+    "uploaded_at": "..."
+  },
+  "id_img": {
+    "storage_path": "funding_documents/request123/id_img.jpg",
+    "file_name": "id_card.jpg",
+    "content_type": "image/jpeg/png/pdf/jpg",
+    "download_url": "...",
+    "uploaded_at": "..."
+  },
+  "financial_rprt": {
+    "storage_path": "funding_documents/request123/financial_rprt.jpg",
+    "file_name": "financial_report.jpg",
+    "content_type": "image/jpeg/png/pdf/jpg",
+    "download_url": "...",
+    "uploaded_at": "..."
+  }
   }
 }

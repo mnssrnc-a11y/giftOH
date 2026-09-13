@@ -68,7 +68,7 @@ Copy `.env.example` to `.env`, set `APP_KEY`, and confirm these values:
 
 ```env
 FIREBASE_CREDENTIALS=storage/app/firebase/firebase_credentials.json
-FIREBASE_DATABASE_URL=https://giftofhope-b97d5-default-rtdb.firebaseio.com
+FIREBASE_DATABASE_URL=https://githope-d36ee-default-rtdb.asia-southeast1.firebasedatabase.app
 ```
 
 The service-account JSON must stay private and must never be committed or placed in `public/`.

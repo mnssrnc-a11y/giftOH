@@ -37,7 +37,7 @@ return [
 
     'firebase' => [
         'credentials' => env('FIREBASE_CREDENTIALS', storage_path('app/firebase/firebase_credentials.json')),
-        'database_url' => env('FIREBASE_DATABASE_URL', 'https://giftofhope-b97d5-default-rtdb.firebaseio.com'),
+        'database_url' => env('FIREBASE_DATABASE_URL', 'https://githope-d36ee-default-rtdb.asia-southeast1.firebasedatabase.app'),
         'client' => [
             'apiKey' => env('FIREBASE_API_KEY'),
             'authDomain' => env('FIREBASE_AUTH_DOMAIN'),

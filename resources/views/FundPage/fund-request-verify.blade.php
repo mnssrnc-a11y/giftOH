@@ -78,11 +78,11 @@
                 
                 let minutes = Math.floor(timeLeft / 60);
                 let seconds = timeLeft % 60;
-                
-                timerElement.innerText = 
-                    (minutes < 10 ? "0" + minutes : minutes) + ":" + 
+
+                timerElement.innerText =
+                    (minutes < 10 ? "0" + minutes : minutes) + ":" +
                     (seconds < 10 ? "0" + seconds : seconds);
-                    
+
                 timeLeft -= 1;
             }, 1000);
         });

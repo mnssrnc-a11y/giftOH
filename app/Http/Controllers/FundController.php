@@ -25,10 +25,10 @@ class FundController extends Controller
             'mission' => 'required|string',
             'category' => 'required|string',
             'amount_requested' => 'required|numeric|min:1',
-            'barangay_clr' => 'nullable|file|mimes:pdf|max:2048',
-            'financial_rprt' => 'nullable|file|mimes:pdf|max:2048',
-            'doc_image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
-            'id_image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'barangay_clr' => 'nullable|file|mimes:pdf,png,jpeg,jpg|max:5000',
+            'financial_rprt' => 'nullable|file|mimes:jpg,png,jpeg,pdf|max:5000',
+            'doc_image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5000',
+            'id_image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5000',
         ]);
 
         $this->fundingService->createRequest([
