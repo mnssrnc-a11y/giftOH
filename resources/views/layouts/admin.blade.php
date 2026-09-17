@@ -25,6 +25,7 @@
             <a href="#reports" data-admin-nav="reports"><span>▥</span>Reports</a>
             <a href="#settings" data-admin-nav="settings"><span>⚙</span>Settings</a>
             <p>Monitoring</p>
+            <a href="{{ route('superadmin') }}"><span aria-hidden="true">◇</span>Superadmin preview</a>
             <a href="{{ route('iot-monitor') }}"><span>◫</span>IoT Box Monitor</a>
             <a href="{{ route('donations') }}"><span>♡</span>Donations</a>
         </nav>

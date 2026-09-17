@@ -44,6 +44,11 @@ Route::get('/donations', [PageController::class, 'donations'])->name('donations'
 
 
 Route::middleware('auth')->group(function(){
+    // UI preview: no production records or privileged mutations.
+    Route::get('/superadmin', function () {
+        abort_unless(in_array(auth()->user()->role, ['admin', 'superadmin'], true), 403);
+        return view('supperAdminPage.spAd_dashB');
+    })->name('superadmin');
     Route::get('/user', [PageController::class, 'user'])->name('user');
 
     // Fund Requests & Transactions
