@@ -17,6 +17,12 @@ class FirebaseService
         storage_path('app/firebase/firebase_credentials.json'));
         $databaseUrl = config('services.firebase.database_url');
 
+        if (is_string($credentials)
+            && ! str_starts_with($credentials, DIRECTORY_SEPARATOR)
+            && ! preg_match('/^[A-Za-z]:[\\\\\/]/', $credentials)) {
+            $credentials = base_path($credentials);
+        }
+
         if (! is_string($credentials) || ! is_file($credentials)) {
             throw new \RuntimeException("Firebase credentials file was not found: {$credentials}");
         }

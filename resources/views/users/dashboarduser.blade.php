@@ -3,7 +3,7 @@
 @section('title', 'Dashboard - Gift of Hope')
 
 @section('content')
-            <!-- Top Stats Row -->
+    <div class="min-h-screen bg-gray-50">
             <div class="flex items-center grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                 <!-- User Profile Card -->
                 <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-[#3B82F6]">
@@ -22,7 +22,6 @@
                     </a>
                 </div>
 
-                <!-- Notifications Card -->
                 <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
                     <div class="flex items-center justify-between">
                         <div>
@@ -34,12 +33,12 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                         </svg>
                     </div>
-                    <a href="{{ route('user') }}" class="mt-4 inline-block w-full text-center bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition-colors text-sm font-semibold">
+                    <button type="button" data-notifications-open class="mt-4 inline-block w-full text-center bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition-colors text-sm font-semibold">
                         View Notifications
-                    </a>
+                    </button>
                 </div>
 
-                <!-- Fund Requests -->
+
                 <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
                     <div class="flex items-center justify-between">
                         <div>
@@ -106,6 +105,38 @@
                 </div>
             </div>
 
+            <div id="notifications-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="notifications-title">
+                <div class="w-full max-w-2xl rounded-xl bg-white shadow-2xl">
+                    <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+                        <div>
+                            <h2 id="notifications-title" class="text-xl font-bold text-gray-900">Notifications</h2>
+                            <p class="text-sm text-gray-500">Your latest fund request updates.</p>
+                        </div>
+                        <button type="button" data-notifications-close class="text-2xl leading-none text-gray-500 hover:text-gray-900" aria-label="Close notifications">&times;</button>
+                    </div>
+
+                    <div class="max-h-[65vh] space-y-3 overflow-auto p-6">
+                        @forelse ($notifications as $notification)
+                            @php($isApproved = in_array($notification['type'] ?? '', ['approved', 'funding_approved'], true))
+                            <form method="POST" action="{{ route('notifications.read', $notification['id']) }}">
+                                @csrf
+                                <button type="submit" class="flex w-full items-start gap-4 rounded-lg border-l-4 p-4 text-left {{ $isApproved ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-500' }} hover:shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                                    <div class="flex-1">
+                                        <p class="font-semibold text-gray-900">{{ $notification['label'] ?? 'Notification' }}</p>
+                                        <p class="text-sm text-gray-600">{{ $notification['message'] ?? '' }}</p>
+                                        @if (!empty($notification['created_at']))
+                                            <p class="mt-1 text-xs text-gray-500">{{ \Carbon\Carbon::parse($notification['created_at'])->diffForHumans() }}</p>
+                                        @endif
+                                    </div>
+                                </button>
+                            </form>
+                        @empty
+                            <p class="py-8 text-center text-sm text-gray-500">No notifications yet.</p>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+
             <!-- Main Content Row -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <!-- Left Column - Recent Activity -->
@@ -148,12 +179,12 @@
                     <div class="bg-white rounded-lg shadow-md p-6">
                         <div class="flex items-center justify-between mb-6">
                             <h2 class="text-2xl font-bold text-gray-900">Latest Notifications</h2>
-                            <a href="{{ route('user') }}" class="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors text-sm font-semibold">
+                            <button type="button" data-notifications-open class="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors text-sm font-semibold">
                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                                 </svg>
                                 View All
-                            </a>
+                            </button>
                         </div>
 
                         <div class="space-y-4">
@@ -187,7 +218,7 @@
 
                         <!-- View All Notifications Button -->
                         <div class="mt-6 text-center">
-                            <a href="{{ route('user') }}" class="inline-block px-6 py-2 border-2 border-yellow-500 text-yellow-500 rounded-lg hover:bg-yellow-50 transition-colors font-semibold">
+                            <a href="{{ route('notifications') }}" class="inline-block px-6 py-2 border-2 border-yellow-500 text-yellow-500 rounded-lg hover:bg-yellow-50 transition-colors font-semibold">
                                 View All Notifications →
                             </a>
                         </div>
@@ -208,12 +239,12 @@
                                 <span class="font-semibold">My Profile</span>
                             </a>
 
-                            <a href="{{ route('user') }}" class="flex items-center gap-3 p-4 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors">
+                            <button type="button" data-notifications-open class="flex items-center gap-3 p-4 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors">
                                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                                 </svg>
                                 <span class="font-semibold">Notifications</span>
-                            </a>
+                            </button>
 
                             <a href="{{ route('fund-request') }}" class="flex items-center gap-3 p-4 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors">
                                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -258,32 +289,62 @@
         const modal = document.getElementById('fund-requests-modal');
         const openButton = document.querySelector('[data-fund-requests-open]');
         const closeButton = document.querySelector('[data-fund-requests-close]');
-
-        if (!modal || !openButton || !closeButton) {
-            return;
-        }
+        const notificationsModal = document.getElementById('notifications-modal');
+        const notificationOpenButtons = document.querySelectorAll('[data-notifications-open]');
+        const notificationCloseButton = document.querySelector('[data-notifications-close]');
 
         const closeModal = () => {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
         };
 
-        openButton.addEventListener('click', () => {
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        });
+        if (modal && openButton && closeButton) {
+            openButton.addEventListener('click', () => {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            });
 
-        closeButton.addEventListener('click', closeModal);
+            closeButton.addEventListener('click', closeModal);
 
-        modal.addEventListener('click', (event) => {
-            if (event.target === modal) {
-                closeModal();
+            modal.addEventListener('click', (event) => {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            });
+        }
+
+        const closeNotifications = () => {
+            if (notificationsModal) {
+                notificationsModal.classList.add('hidden');
+                notificationsModal.classList.remove('flex');
             }
+        };
+
+        notificationOpenButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                notificationsModal.classList.remove('hidden');
+                notificationsModal.classList.add('flex');
+            });
         });
+
+        if (notificationCloseButton) {
+            notificationCloseButton.addEventListener('click', closeNotifications);
+        }
+
+        if (notificationsModal) {
+            notificationsModal.addEventListener('click', (event) => {
+                if (event.target === notificationsModal) {
+                    closeNotifications();
+                }
+            });
+        }
 
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
                 closeModal();
+                closeNotifications();
             }
         });
     });

@@ -15,6 +15,7 @@ use App\Mail\LoginAuthCode;
 use App\Mail\VerifyEmail;
 use App\Rules\RealEmail;
 use App\Repositories\FirebaseUserRepository;
+use App\Services\NotificationService;
 use app\Services\FirebaseService;
 
 class AccountController extends Controller
@@ -23,7 +24,8 @@ class AccountController extends Controller
 
     public function __construct(
         private FirebaseUserRepository $firebaseUsers,
-        private VerificationService $verificationService
+        private VerificationService $verificationService,
+        private NotificationService $notificationService
     ) {
     }
 
@@ -171,6 +173,14 @@ class AccountController extends Controller
                 'email' => 'This account is inactive.',
             ])->onlyInput('email');
         }
+
+        if (! filter_var($user['email_notifications'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
+            Auth::login(is_array($user) ? new FirebaseUser($user) : $user, $request->boolean('remember'));
+            $request->session()->regenerate();
+
+            return redirect()->route(($user['role'] ?? null) === 'admin' ? 'admin' : 'dashboarduser');
+        }
+
         // Generate a random 6-digit code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $this->verificationService->store($request->email, $code, 'login_auth_codes');
@@ -235,11 +245,21 @@ class AccountController extends Controller
         if (!$user) {
             return back()->with('alert_error', 'Please enter the correct email.')->onlyInput('email');
         }
+        if (! filter_var($userData['email_notifications'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
+            return back()->with('alert_error', 'Email notifications are disabled for this account.')->onlyInput('email');
+        }
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $this->verificationService->store($request->email, $code, 'password_reset_tokens');
         Mail::to($request->email)->send(new PasswordResetCode($code, $user->fname));
         return redirect()->route('password.verify-code.form', ['email' => $request->email])
             ->with('status', 'We sent a 6-digit code to your email.');
+    }
+
+    public function notifications()
+    {
+        $userId = Auth::id();
+        $notifications = $this->notificationService->getByUser($userId);
+        return view('users.notifications', ['notifications' => $notifications]);
     }
 
     public function changePassword(Request $request)
@@ -260,8 +280,38 @@ class AccountController extends Controller
         return redirect()->route('settings')->with('success', 'Password changed successfully.');
     }
 
-    public function changeEmail(Request $request)
+    public function updateUser(Request $request)
     {
+        $validated = $request->validate([
+            'fname' => ['required', 'string', 'max:255'],
+            'lname' => ['required', 'string', 'max:255'],
+        ]);
+        $currentUser = Auth::user();
 
+        $this->firebaseUsers->update($currentUser->getAuthIdentifier(), [
+            'fname' => $validated['fname'],
+            'lname' => $validated['lname'],
+            'contact_number' => $request->input('contact_number', $currentUser->contact_number),
+        ]);
+
+        return redirect()->route('settings')->with('status', 'Your profile has been updated successfully.');
+    }
+
+    public function updateProfilePicture(Request $request)
+    {
+        $request->validate([
+            'profile_picture' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+
+        $user = Auth::user();
+        $file = $request->file('profile_picture');
+        $path = $file->store('profile_pictures', 'public');
+
+        // Update the user's profile picture in Firebase
+        $this->firebaseUsers->update($user->getAuthIdentifier(), [
+            'profile_picture' => $path,
+        ]);
+
+        return redirect()->route('settings')->with('status', 'Your profile picture has been updated successfully.');
     }
 }

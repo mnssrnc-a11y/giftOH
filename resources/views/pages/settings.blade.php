@@ -14,40 +14,52 @@
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Profile</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">First Name</label>
-                        <p class="text-gray-900 text-lg font-semibold">{{ Auth::user()->fname }}</p>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Last Name</label>
+                        <p class="block text-gray-900 text-lg font-semibold ">{{ Auth::user()->lname }} {{ Auth::user()->fname }}</p>
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Last Name</label>
-                        <p class="block text-gray-900 text-lg font-semibold ">{{ Auth::user()->lname }}</p>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Contact Number</label>
+                        <p class="text-gray-900 text-lg font-semibold">{{ Auth::user()->phone }}</p>
                     </div>
-                    <div action="{{ route('user.update') }}" method="POST">
+                    <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Email</label>
                         <p class="text-gray-900 text-lg font-semibold">{{ Auth::user()->email }}</p>
-                        <button class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200">Change Email</button>
+                        <a href="{{ route('user.edit') }}" class="inline-block mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200">Edit Profile</a>
                     </div>
                 </div>
             </div>
 
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Preferences</h2>
-                <div class="space-y-4">
+                <form method="POST" action="{{ route('settings.update') }}" class="space-y-4">
+                    @csrf
                     <label class="flex items-center justify-between">
                         <span class="text-sm font-semibold text-gray-700">Email Notifications</span>
-                        <input type="checkbox" class="w-5 h-5" checked />
-                    </label>
-                    <label class="flex items-center justify-between">
-                        <span class="text-sm font-semibold text-gray-700">SMS Alerts</span>
-                        <input type="checkbox" class="w-5 h-5" />
+                        <input
+                            type="checkbox"
+                            name="email_notifications"
+                            value="1"
+                            class="w-5 h-5"
+                            {{ filter_var(Auth::user()->email_notifications ?? true, FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}
+                        />
                     </label>
                     <label class="flex items-center justify-between">
                         <span class="text-sm font-semibold text-gray-700">Dark Mode</span>
-                        <input type="checkbox" class="w-5 h-5" />
+                        <input
+                            type="checkbox"
+                            name="dark_mode"
+                            value="1"
+                            class="w-5 h-5"
+                            {{ filter_var(Auth::user()->dark_mode ?? false, FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}
+                        />
                     </label>
-                </div>
-                <p class="text-xs text-gray-500 mt-4">
-                    Note: This is currently a UI prototype (no preference persistence wired yet).
-                </p>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        Save Preferences
+                    </button>
+                </form>
+                @if (session('status'))
+                    <p class="text-sm text-green-700 mt-4">{{ session('status') }}</p>
+                @endif
             </div>
         </div>
     </div>

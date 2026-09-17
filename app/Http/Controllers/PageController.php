@@ -10,6 +10,7 @@ use App\Mail\PasswordResetCode;
 use App\Services\FundingService;
 use App\Services\NotificationService;
 use App\Services\VerificationService;
+use App\Repositories\FirebaseUserRepository;
 use Illuminate\Support\Str;
 use app\Services\FirebaseService;
 class PageController extends Controller
@@ -19,7 +20,8 @@ class PageController extends Controller
     public function __construct(
         private VerificationService $verificationService,
         private FundingService $fundingService,
-        private NotificationService $notificationService
+        private NotificationService $notificationService,
+        private FirebaseUserRepository $firebaseUsers
     ) {
     }
     public function landing()
@@ -125,6 +127,10 @@ class PageController extends Controller
         $funding = \App\Models\Funding::findOrFail($id);
         $user = Auth::user();
 
+        if (! filter_var($user->email_notifications ?? true, FILTER_VALIDATE_BOOLEAN)) {
+            return back()->with('alert_error', 'Email notifications are disabled for this account.');
+        }
+
         // Generate a random 6-digit code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
@@ -157,5 +163,17 @@ class PageController extends Controller
     public function settings()
     {
         return view('pages.settings');
+    }
+
+    public function updateSettings(Request $request)
+    {
+        $currentUser = Auth::user();
+
+        $this->firebaseUsers->update($currentUser->getAuthIdentifier(), [
+            'email_notifications' => $request->boolean('email_notifications'),
+            'dark_mode' => $request->boolean('dark_mode'),
+        ]);
+
+        return redirect()->route('settings')->with('status', 'Preferences updated successfully.');
     }
 }

@@ -1,7 +1,7 @@
 @extends('app')
 
 @section('body')
-    <div class="flex h-screen bg-gray-50">
+    <div class="flex h-screen bg-gray-50 {{ filter_var(auth()->user()->dark_mode ?? false, FILTER_VALIDATE_BOOLEAN) ? 'dark' : '' }}">
         <aside class="w-64 bg-[#1E3A8A] text-white flex flex-col">
             <div class="p-6 border-b border-blue-700">
                 <a href="{{ route('landing') }}" class="block">

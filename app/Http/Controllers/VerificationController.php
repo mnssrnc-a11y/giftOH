@@ -111,6 +111,10 @@ class VerificationController extends Controller
             return back()->with('alert_error', 'Invalid email address.');
         }
 
+        if (! filter_var($user['email_notifications'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
+            return back()->with('alert_error', 'Email notifications are disabled for this account.');
+        }
+
         // Generate code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
@@ -213,6 +217,9 @@ class VerificationController extends Controller
         }
 
         $user = Auth::user();
+        if (! filter_var($user->email_notifications ?? true, FILTER_VALIDATE_BOOLEAN)) {
+            return back()->with('alert_error', 'Email notifications are disabled for this account.');
+        }
         $result = $this->verificationService->verify($user->email, $request->code, 'approval_verification_codes');
 
         if (!$result['success']) {
@@ -266,6 +273,9 @@ class VerificationController extends Controller
         }
 
         $user = Auth::user();
+        if (! filter_var($user->email_notifications ?? true, FILTER_VALIDATE_BOOLEAN)) {
+            return back()->with('alert_error', 'Email notifications are disabled for this account.');
+        }
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $action = session('pending_approval.action');
 

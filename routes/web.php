@@ -27,7 +27,6 @@ Route::post('/login/resend-code', [VerificationController::class, 'resendLoginCo
 
 //user profile routes
 Route::get('/user', [PageController::class, 'user'])->name('user');
-Route::post('/user/update', [AccountController::class, 'updateUser'])->name('user.update');
 
 // Password Reset Flow
 Route::get('/forgot-password', [AccountController::class, 'forgotPassword'])->name('forgot-password');
@@ -68,8 +67,11 @@ Route::middleware('auth')->group(function(){
 
     Route::get('/dashboarduser', [PageController::class, 'dashboardUser'])->name('dashboarduser');
     Route::post('/notifications/{id}/read', [PageController::class, 'markNotificationRead'])->name('notifications.read');
+    Route::get('/notifications', [AccountController::class, 'notifications'])->name('notifications');
     Route::get('/settings', [PageController::class, 'settings'])->name('settings');
     Route::post('/settings', [PageController::class, 'updateSettings'])->name('settings.update');
+    Route::get('/user/update', fn () => view('users.update'))->name('user.edit');
+    Route::post('/user/update', [AccountController::class, 'updateUser'])->name('user.update');
     Route::get('/change-password', [AccountController::class, 'showChangePasswordForm'])->name('change-password.form');
     Route::post('/change-password', [AccountController::class, 'changePassword'])->name('change-password');
 });

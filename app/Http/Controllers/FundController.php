@@ -15,6 +15,10 @@ class FundController extends Controller
 
     public function storeFund(Request $request)
     {
+        if ($denialReason = $this->fundingService->requestDenialReason(Auth::id())) {
+            return back()->withErrors(['fund_request' => $denialReason])->withInput();
+        }
+
         $validated = $request->validate([
             'org_name' => 'required|string|max:255',
             'contact_person' => 'required|string|max:255',

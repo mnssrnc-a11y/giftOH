@@ -69,6 +69,13 @@
     </div>
 
     <script>
+        document.addEventListener('CountAge',function(){
+            const year = new Date().getFullYear();
+            const restrict = 18;
+            let age = year - restrict;
+
+        })
+
         document.addEventListener('DOMContentLoaded', function() {
             let timeLeft = 300; // 5 minutes in seconds
             const timerElement = document.getElementById('countdown-timer');
