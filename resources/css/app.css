@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import './theme.css';
+@import './admin.css';
 @import './superadmin.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
