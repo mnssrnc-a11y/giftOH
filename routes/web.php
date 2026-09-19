@@ -44,6 +44,9 @@ Route::get('/donations', [PageController::class, 'donations'])->name('donations'
 
 
 Route::middleware('auth')->group(function(){
+    foreach (['groups', 'fundraisers', 'request-status', 'activity'] as $screen) {
+        Route::view('/'.$screen, 'users.flow', ['screen' => $screen])->name($screen);
+    }
     // UI preview: no production records or privileged mutations.
     Route::get('/superadmin', function () {
         abort_unless(in_array(auth()->user()->role, ['admin', 'superadmin'], true), 403);

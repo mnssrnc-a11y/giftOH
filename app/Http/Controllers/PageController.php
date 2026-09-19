@@ -39,7 +39,7 @@ class PageController extends Controller
         $fundRequests = $this->fundingService->getRequestsByUser(Auth::id());
         $fundRequestCount = count($fundRequests);
 
-        return view('users.dashboardUser', compact('fundRequestCount', 'fundRequests', 'notificationCount', 'notifications'));
+        return view('users.dashboarduser', compact('fundRequestCount', 'fundRequests', 'notificationCount', 'notifications'));
     }
 
     public function markNotificationRead(string $id)
