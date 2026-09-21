@@ -1,16 +1,67 @@
 @extends('layouts.dashboard')
+
 @section('title', 'Settings - Gift of Hope')
+
 @section('content')
-<div class="hope-actions" style="margin:24px"><a class="hope-button secondary" href="{{ route('user.edit') }}">Edit account details</a><a class="hope-button secondary" href="{{ route('change-password.form') }}">Change account password</a></div>
-<div class="hope-page"><div class="hope-heading"><div><div class="hope-eyebrow">SETTINGS</div><h1>Make yourself at home.</h1><p>Manage your profile, preferences, and account security.</p></div></div>
-<div class="hope-preview"><strong>Profile & security UI preview</strong> · Edits and verification below demonstrate the flow and do not update your account or send email. Appearance is saved on this browser.</div>
-<div class="hope-grid two"><section class="hope-card"><h2>Profile picture</h2><p>Give your community a familiar face.</p><div class="hope-actions"><span class="hope-avatar" id="profile-initial">{{ mb_substr(auth()->user()->fname ?? 'U', 0, 1) }}</span><img id="profile-photo-preview" class="hope-avatar" alt="Selected profile photo preview" hidden><div><label for="profile-photo" class="hope-text-button">Choose a photo</label><input id="profile-photo" type="file" accept=".jpg,.jpeg,.png" data-profile-photo data-validate-file data-max-mb="5"><p>JPG or PNG, up to 5 MB. Preview only.</p></div></div><p class="hope-error" id="photo-error" role="alert"></p></section>
-<section class="hope-card"><h2>Preferences</h2><div class="hope-toggle-row"><label for="email-preference">Email notifications<small>Preview your preference for account activity emails.</small></label><input id="email-preference" type="checkbox" data-email-preference checked></div><div class="hope-toggle-row"><label for="dark-preference">Dark mode<small>A softer view, saved on this browser.</small></label><input id="dark-preference" type="checkbox" data-dark-preference></div></section></div>
-<section class="hope-card hope-section"><h2>Personal information</h2><p>Changes require verification through your current email address.</p><form class="hope-section" data-profile-form><div class="hope-grid two">@foreach(['fname' => ['First name','text'], 'lname' => ['Last name','text'], 'email' => ['Email address','email'], 'phone' => ['Phone number','tel'], 'address' => ['Address','text'], 'date_of_birth' => ['Birthdate','date']] as $field => [$label,$type])<div class="hope-field"><label for="profile-{{ $field }}">{{ $label }}</label><input id="profile-{{ $field }}" name="{{ $field }}" type="{{ $type }}" value="{{ auth()->user()->$field }}" @if(in_array($field,['fname','lname','email'])) required @endif @if($type === 'date') max="{{ date('Y-m-d') }}" @endif maxlength="255"></div>@endforeach</div><button class="hope-button" type="submit">Review profile changes</button></form></section>
-<section class="hope-card hope-section"><div class="hope-heading" style="margin:0"><div><h2>Security</h2><p>Password protected · Your password is never displayed.</p></div><button class="hope-button secondary" data-open-dialog="password-confirm">Change password</button></div></section>
-</div>
-<dialog id="profile-review" class="hope-dialog" aria-labelledby="profile-review-title"><button class="hope-close" data-close-dialog aria-label="Close">×</button><h2 id="profile-review-title">Review your changes</h2><dl class="hope-detail" id="profile-review-values"></dl><p class="hope-section">Verification would be sent to your current email: <strong>{{ auth()->user()->email }}</strong>.</p><div class="hope-actions"><button class="hope-button" data-verification-target="profile">Preview verification</button><button class="hope-button secondary" data-close-dialog>Keep editing</button></div></dialog>
-<dialog id="password-confirm" class="hope-dialog" aria-labelledby="password-confirm-title"><button class="hope-close" data-close-dialog aria-label="Close">×</button><h2 id="password-confirm-title">Change your password?</h2><p>First, verify your identity using a code sent to your current email address.</p><p><strong>{{ auth()->user()->email }}</strong></p><div class="hope-actions"><button class="hope-button" data-verification-target="password">Preview verification</button><button class="hope-button secondary" data-close-dialog>Cancel</button></div></dialog>
-<dialog id="verification-preview" class="hope-dialog" aria-labelledby="verification-title"><button class="hope-close" data-close-dialog aria-label="Close">×</button><h2 id="verification-title">Check your email</h2><div class="hope-preview">Preview only. No email was sent. Enter <strong>123456</strong> to explore the next step.</div><form data-verification-form><div class="hope-field"><label for="preview-code">6-digit verification code</label><input id="preview-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="000000"></div><p class="hope-error" data-code-error role="alert"></p><div class="hope-actions"><button class="hope-button" type="submit">Verify code</button><button class="hope-button secondary" type="button" data-preview-resend>Resend code</button></div></form></dialog>
-<dialog id="password-preview" class="hope-dialog" aria-labelledby="password-title"><button class="hope-close" data-close-dialog aria-label="Close">×</button><h2 id="password-title">Choose a new password</h2><p>UI preview only. Your actual password will not change.</p><form class="hope-section" data-password-preview><div class="hope-field"><label for="new-password">New password</label><input id="new-password" type="password" autocomplete="new-password" minlength="8" required><small>At least 8 characters.</small></div><div class="hope-field"><label for="confirm-password">Confirm password</label><input id="confirm-password" type="password" autocomplete="new-password" minlength="8" required></div><p class="hope-error" data-password-error role="alert"></p><button class="hope-button" type="submit">Preview password update</button></form></dialog>
+    <div class="min-h-screen bg-gray-50">
+        <div class="bg-white border-b border-gray-200 px-8 py-4">
+            <h1 class="text-2xl font-bold text-gray-900">Settings</h1>
+            <p class="text-sm text-gray-500">Manage your preferences and organization settings</p>
+        </div>
+
+        <div class="p-8 space-y-6 max-w-4xl">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Profile</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Last Name</label>
+                        <p class="block text-gray-900 text-lg font-semibold ">{{ Auth::user()->lname }} {{ Auth::user()->fname }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Contact Number</label>
+                        <p class="text-gray-900 text-lg font-semibold">{{ Auth::user()->phone }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                        <p class="text-gray-900 text-lg font-semibold">{{ Auth::user()->email }}</p>
+                        <a href="{{ route('user.edit') }}" class="inline-block mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200">Edit Profile</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Preferences</h2>
+                <form method="POST" action="{{ route('settings.update') }}" class="space-y-4">
+                    @csrf
+                    <label class="flex items-center justify-between">
+                        <span class="text-sm font-semibold text-gray-700">Email Notifications</span>
+                        <input
+                            type="checkbox"
+                            name="email_notifications"
+                            value="1"
+                            class="w-5 h-5"
+                            {{ filter_var(Auth::user()->email_notifications ?? true, FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}
+                        />
+                    </label>
+                    <label class="flex items-center justify-between">
+                        <span class="text-sm font-semibold text-gray-700">Dark Mode</span>
+                        <input
+                            type="checkbox"
+                            name="dark_mode"
+                            value="1"
+                            class="w-5 h-5"
+                            {{ filter_var(Auth::user()->dark_mode ?? false, FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}
+                        />
+                    </label>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        Save Preferences
+                    </button>
+                </form>
+                @if (session('status'))
+                    <p class="text-sm text-green-700 mt-4">{{ session('status') }}</p>
+                @endif
+            </div>
+        </div>
+    </div>
 @endsection
+

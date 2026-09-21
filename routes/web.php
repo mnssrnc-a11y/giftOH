@@ -7,8 +7,6 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ConfigController;
-use App\Services\FirebaseService;
-use Illuminate\Support\Facades\Auth;
 // Public routes
 Route::get('/config/firebase', [ConfigController::class, 'firebaseConfig'])->name('config.firebase');
 Route::get('/', [PageController::class, 'landing'])->name('landing');
@@ -24,9 +22,6 @@ Route::post('/logout', [PageController::class, 'logout'])->name('logout');
 Route::get('/login/verify', [AccountController::class, 'showLoginVerifyForm'])->name('login.verify-code.form');
 Route::post('/login/verify', [VerificationController::class, 'verifyLogin'])->name('login.verify-code');
 Route::post('/login/resend-code', [VerificationController::class, 'resendLoginCode'])->name('login.resend-code');
-
-//user profile routes
-Route::get('/user', [PageController::class, 'user'])->name('user');
 
 // Password Reset Flow
 Route::get('/forgot-password', [AccountController::class, 'forgotPassword'])->name('forgot-password');
@@ -49,7 +44,7 @@ Route::middleware('auth')->group(function(){
     }
     // UI preview: no production records or privileged mutations.
     Route::get('/superadmin', function () {
-        abort_unless(in_array(auth()->user()->role, ['admin', 'superadmin'], true), 403);
+        abort_unless(in_array(auth()->user()->role, ['admin', 'super_admin'], true), 403);
         return view('supperAdminPage.spAd_dashB');
     })->name('superadmin');
     Route::get('/user', [PageController::class, 'user'])->name('user');

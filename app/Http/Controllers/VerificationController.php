@@ -4,9 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Services\VerificationService;
+use App\Services\FundingService;
 use App\Models\User;
-use App\Models\Funding;
-use App\Models\FundingApproval;
 use App\Models\FirebaseUser;
 use App\Repositories\FirebaseUserRepository;
 use App\Services\NotificationService;
@@ -24,6 +23,7 @@ class VerificationController extends Controller
 
     public function __construct(
         VerificationService $verificationService,
+        private FundingService $fundingService,
         private FirebaseUserRepository $firebaseUsers,
         private NotificationService $notificationService
     )
@@ -227,34 +227,15 @@ class VerificationController extends Controller
         }
 
         $data = session('pending_approval');
-        $funding = Funding::findOrFail($data['request_id']);
-
-        if ($data['action'] === 'approved') {
-            $funding->status_id = 2;
-            $funding->approved_at = now();
-            $funding->approved_by = $user->id;
-        } else {
-            $funding->status_id = 3;
-            $funding->rejected_at = now();
-            $funding->approved_by = $user->id;
-        }
-        $funding->save();
-
-        // this is to create approval record
-        FundingApproval::create([
-            'request_id' => $funding->id,
-            'approved_by' => $user->id,
-            'approval_status' => $data['action'],
-            'approval_notes' => $data['notes'] ?? null,
-            'decision_at' => now(),
-        ]);
-
-        $this->notificationService->createFundingDecision(
-            $funding->user_id,
-            $funding->id,
+        $funding = $this->fundingService->decideRequest(
+            $data['request_id'],
             $data['action'],
-            $funding->org_name ?? 'your organization'
+            $user->getAuthIdentifier(),
+            $data['notes'] ?? null
         );
+        if ($funding === null) {
+            return redirect()->route('admin')->with('alert_error', 'Funding request could not be found.');
+        }
 
         // Clean up
         $this->verificationService->forget($user->email, 'approval_verification_codes');

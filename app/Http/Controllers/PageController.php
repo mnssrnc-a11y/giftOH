@@ -124,7 +124,8 @@ class PageController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $funding = \App\Models\Funding::findOrFail($id);
+        $funding = $this->fundingService->getRequestById($id);
+        abort_if($funding === null, 404);
         $user = Auth::user();
 
         if (! filter_var($user->email_notifications ?? true, FILTER_VALIDATE_BOOLEAN)) {
@@ -142,7 +143,7 @@ class PageController extends Controller
         // Save pending approval details to session
         session([
             'pending_approval' => [
-                'request_id' => $funding->id,
+                'request_id' => (string) $id,
                 'action' => $request->action,
                 'notes' => $request->notes,
             ]

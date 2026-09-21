@@ -3,12 +3,15 @@
 namespace App\Services;
 
 use App\Repositories\FirebaseFundingRepository;
+use App\Repositories\FirebaseApprovalRepository;
 use Carbon\Carbon;
 
 class FundingService
 {
     public function __construct(
-        private FirebaseFundingRepository $fundingRequests
+        private FirebaseFundingRepository $fundingRequests,
+        private FirebaseApprovalRepository $approvals,
+        private NotificationService $notifications
     ) {}
 
     public function createRequest(array $data): array
@@ -42,6 +45,57 @@ class FundingService
     public function getRequestsByUser(string|int $userId): array
     {
         return $this->fundingRequests->findByUserId($userId);
+    }
+
+    public function getPendingRequests(): array
+    {
+        return array_values(array_filter(
+            $this->fundingRequests->all(),
+            static fn (array $request): bool => strtolower((string) ($request['status_name'] ?? $request['status'] ?? 'pending')) === 'pending'
+                || (int) ($request['status_id'] ?? 0) === 1
+        ));
+    }
+
+    public function decideRequest(
+        string|int $requestId,
+        string $decision,
+        string|int $approverId,
+        ?string $notes = null
+    ): ?array {
+        $request = $this->getRequestById($requestId);
+        if ($request === null) {
+            return null;
+        }
+
+        $timestamp = now()->toIso8601String();
+        $updated = $this->fundingRequests->update($requestId, [
+            'status' => $decision,
+            'status_name' => $decision,
+            'approved_by' => (string) $approverId,
+            'admin_notes' => $notes,
+            $decision === 'approved' ? 'approved_at' : 'rejected_at' => $timestamp,
+        ]);
+
+        if ($updated === null) {
+            return null;
+        }
+
+        $this->approvals->create([
+            'request_id' => (string) $requestId,
+            'approved_by' => (string) $approverId,
+            'approval_status' => $decision,
+            'approval_notes' => $notes,
+            'decision_at' => $timestamp,
+        ]);
+
+        $this->notifications->createFundingDecision(
+            $request['user_id'] ?? '',
+            $requestId,
+            $decision,
+            $request['org_name'] ?? 'your organization'
+        );
+
+        return $updated;
     }
 
     public function getNotificationsByUser(string|int $userId): array

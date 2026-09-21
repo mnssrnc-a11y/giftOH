@@ -13,17 +13,17 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                     <div class="text-sm text-gray-500 mb-2">Active Boxes</div>
-                    <div class="text-3xl font-bold text-gray-900" id="stat-active-boxes">-</div>
+                    <div class="text-3xl font-bold text-gray-900">12</div>
                     <div class="text-sm text-green-600 mt-2">All systems operational</div>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                     <div class="text-sm text-gray-500 mb-2">Today's Total</div>
-                    <div class="text-3xl font-bold text-gray-900" id="stat-today-total">-</div>
+                    <div class="text-3xl font-bold text-gray-900">₱3,420</div>
                     <div class="text-sm text-gray-600 mt-2">Verified donations</div>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                     <div class="text-sm text-gray-500 mb-2">Alerts</div>
-                    <div class="text-3xl font-bold text-gray-900" id="stat-alerts">-</div>
+                    <div class="text-3xl font-bold text-gray-900">0</div>
                     <div class="text-sm text-gray-600 mt-2">No issues detected</div>
                 </div>
             </div>
@@ -41,14 +41,34 @@
                                 <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Total Collected</th>
                             </tr>
                         </thead>
-                        <tbody id="boxes-tbody" class="divide-y divide-gray-100">
-                            <tr><td colspan="5" class="px-6 py-4 text-sm text-gray-400">Loading live data…</td></tr>
+                        <tbody class="divide-y divide-gray-100">
+                            @php
+                                $boxes = [
+                                    ['id' => 'SB-001', 'location' => 'Main Lobby', 'status' => 'Online', 'seen' => 'Just now', 'total' => '₱18,430'],
+                                    ['id' => 'SB-002', 'location' => 'Entrance Gate', 'status' => 'Online', 'seen' => '2 min ago', 'total' => '₱12,115'],
+                                    ['id' => 'SB-003', 'location' => 'Community Center', 'status' => 'Online', 'seen' => '5 min ago', 'total' => '₱9,870'],
+                                ];
+                            @endphp
+
+                            @foreach ($boxes as $box)
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $box['id'] }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $box['location'] }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">{{ $box['status'] }}</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $box['seen'] }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{{ $box['total'] }}</td>
+                                </tr>
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
+                <p class="text-xs text-gray-500 mt-4">
+                    Note: This is currently a UI prototype (no Arduino/IoT feed wired yet).
+                </p>
             </div>
         </div>
     </div>
-
-    @vite('resources/js/iot-monitor.js')
 @endsection
+

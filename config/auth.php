@@ -63,7 +63,7 @@ return [
 
     'providers' => [
         'users' => [
-            'driver' => env('AUTH_USER_PROVIDER', 'sqlite'),
+            'driver' => env('AUTH_USER_PROVIDER', 'firebase'),
             'model' => env('AUTH_MODEL', User::class),
         ],
 
