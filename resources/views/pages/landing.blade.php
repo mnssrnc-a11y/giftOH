@@ -3,6 +3,13 @@
 @section('title', 'Gift of Hope')
 
 @section('content')
+    @if (session('alert_error'))
+        <div class="mx-auto max-w-6xl px-8 pt-6">
+            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+                {{ session('alert_error') }}
+            </div>
+        </div>
+    @endif
     <div class="min-h-screen bg-white">
         <section class="bg-gradient-to-br from-[#1E3A8A] to-[#3B82F6] text-white py-20 px-8">
             <div class="max-w-6xl mx-auto">

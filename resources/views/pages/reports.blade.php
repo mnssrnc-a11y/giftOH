@@ -1,4 +1,4 @@
-@extends('layouts.dashboard')
+@extends(\App\Support\Layout::forRole())
 
 @section('title', 'Reports - Gift of Hope')
 

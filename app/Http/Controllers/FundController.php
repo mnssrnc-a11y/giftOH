@@ -60,7 +60,6 @@ class FundController extends Controller
                 : null,
         ]);
 
-        return redirect()->route('admin')
-            ->with('success', 'Fund request created successfully and is now pending admin approval.');
+        return redirect()->route('user')->with('success', 'Fund request created successfully and is now pending admin approval.');
     }
 }

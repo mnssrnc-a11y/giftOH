@@ -1,7 +1,6 @@
 @extends('layouts.admin')
 
 @section('title', 'Admin Workspace - Gift of Hope')
-
 @section('content')
 @if (session('status'))
     <div class="admin-notice" style="margin-bottom:18px">{{ session('status') }}</div>
@@ -18,7 +17,7 @@
             <button class="admin-button" data-dashboard-state="error">Preview error</button>
             <button class="admin-button primary" data-admin-go="funding">Review requests</button>
         </div>
-        <form class="logout-form" method="POST" action="{{ route('logout') }}">
+        <form class="logout-form" method="POST" action="/logout">
             @csrf
             <button class="admin-button danger" type="submit">Log out</button>
         </form>
@@ -27,12 +26,12 @@
     <div class="admin-error" data-dashboard-error><div style="font-size:28px;margin-bottom:8px">!</div><strong>Dashboard data could not be loaded.</strong><p>This is a UI preview. Try again to restore the mock data.</p><button class="admin-button primary" data-dashboard-state="ready">Try again</button></div>
     <div data-dashboard-content>
         <div class="admin-grid admin-stat-grid">
-            <article class="admin-stat warn"><div class="admin-stat-top"><div class="admin-stat-icon">⌛</div><span class="admin-stat-change">Needs review</span></div><h3>{{ $pendingRequests->count() ?: 4 }}</h3><p>Pending requests</p></article>
-            <article class="admin-stat"><div class="admin-stat-top"><div class="admin-stat-icon">▣</div><span class="admin-stat-change">+2 this month</span></div><h3>18</h3><p>Smart boxes</p></article>
-            <article class="admin-stat green"><div class="admin-stat-top"><div class="admin-stat-icon">↗</div><span class="admin-stat-change">+12.5%</span></div><h3>₱124.6K</h3><p>Donation overview</p></article>
-            <article class="admin-stat purple"><div class="admin-stat-top"><div class="admin-stat-icon">▤</div><span class="admin-stat-change">36 total</span></div><h3>12</h3><p>Request fund count</p></article>
-            <article class="admin-stat green"><div class="admin-stat-top"><div class="admin-stat-icon">₱</div><span class="admin-stat-change">+8.2%</span></div><h3>₱2.48M</h3><p>Total funds</p></article>
-            <article class="admin-stat"><div class="admin-stat-top"><div class="admin-stat-icon">◉</div><span class="admin-stat-change">62% available</span></div><h3>₱1.54M</h3><p>Available funds</p></article>
+            <article class="admin-stat warn"><div class="admin-stat-top"><div class="admin-stat-icon">⌛</div><span class="admin-stat-change">Needs review</span></div><h3>{{ $pendingCount ?? $pendingRequests->count() }}</h3><p>Pending requests</p></article>
+            <article class="admin-stat"><div class="admin-stat-top"><div class="admin-stat-icon">▣</div><span class="admin-stat-change">@if(!is_null($onlineBoxCount ?? null)) {{ $onlineBoxCount }} online @else +2 this month @endif</span></div><h3>{{ !is_null($smartBoxCount ?? null) ? $smartBoxCount : 18 }}</h3><p>Smart boxes</p></article>
+            <article class="admin-stat green"><div class="admin-stat-top"><div class="admin-stat-icon">↗</div><span class="admin-stat-change">@if(!is_null($donationOverview ?? null)) Live verified @else +12.5% @endif</span></div><h3>{{ !is_null($donationOverview ?? null) ? '₱' . number_format($donationOverview, 2) : '₱124.6K' }}</h3><p>Donation overview</p></article>
+            <article class="admin-stat purple"><div class="admin-stat-top"><div class="admin-stat-icon">▤</div><span class="admin-stat-change">{{ $totalFundRequests ?? 0 }} total</span></div><h3>{{ $totalFundRequests ?? 0 }}</h3><p>Total fund requests</p></article>
+            <article class="admin-stat green"><div class="admin-stat-top"><div class="admin-stat-icon">₱</div><span class="admin-stat-change">@if(!is_null($totalFunds ?? null)) Live total @else +8.2% @endif</span></div><h3>{{ !is_null($totalFunds ?? null) ? '₱' . number_format($totalFunds, 2) : '₱2.48M' }}</h3><p>Total funds</p></article>
+            <article class="admin-stat"><div class="admin-stat-top"><div class="admin-stat-icon">◉</div><span class="admin-stat-change">@if(!is_null($availablePercentage ?? null)) {{ $availablePercentage }}% available @else 62% available @endif</span></div><h3>{{ !is_null($availableFunds ?? null) ? '₱' . number_format($availableFunds, 2) : '₱1.54M' }}</h3><p>Available funds</p></article>
         </div>
 
         <div class="admin-quick-actions" aria-label="Quick actions">

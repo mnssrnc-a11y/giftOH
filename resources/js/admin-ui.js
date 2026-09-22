@@ -87,8 +87,10 @@ function initAdminUI() {
         app.querySelector('[data-funding-range]').textContent = rows.length ? `Showing ${start + 1}–${Math.min(start + state.pageSize, rows.length)} of ${rows.length}` : 'Showing 0 requests';
         app.querySelector('[data-page-numbers]').innerHTML = Array.from({length: pages}, (_, index) => `<button class="${state.page === index + 1 ? 'is-active' : ''}" data-funding-page="${index + 1}">${index + 1}</button>`).join('');
         app.querySelector('[data-page-prev]').disabled = state.page === 1;
-        app.querySelector('[data-page-next]').disabled = state.page === pages;
-        app.querySelector('[data-pending-count]').textContent = fundingRequests.filter(item => item.status === 'pending').length;
+        const pendingBadge = app.querySelector('[data-pending-count]');
+        if (pendingBadge && !pendingBadge.textContent.trim()) {
+            pendingBadge.textContent = fundingRequests.filter(item => item.status === 'pending').length;
+        }
     }
 
     function openRequestDetails(id) {
@@ -220,13 +222,16 @@ function initAdminUI() {
     }
 
     document.addEventListener('keydown', event => { if (event.key === 'Escape') { closeModal(); app.classList.remove('sidebar-open'); } });
-    window.addEventListener('hashchange', () => navigate(location.hash.slice(1)));
     setDark(localStorage.getItem('giftOfHopeAdminTheme') === 'dark');
     const compactEnabled = localStorage.getItem('giftOfHopeAdminDensity') === 'compact';
     app.classList.toggle('is-compact', compactEnabled);
     app.querySelectorAll('[data-compact-switch]').forEach(toggle => toggle.checked = compactEnabled);
-    navigate(location.hash.slice(1) || 'dashboard');
-    renderFunding();
+    const hasSpaPages = app.querySelectorAll('[data-admin-page]').length > 0;
+    if (hasSpaPages) {
+        window.addEventListener('hashchange', () => navigate(location.hash.slice(1)));
+        navigate(location.hash.slice(1) || 'dashboard');
+        renderFunding();
+    }
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAdminUI);

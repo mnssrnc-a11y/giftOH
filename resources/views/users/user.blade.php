@@ -1,50 +1,54 @@
 @extends('layouts.dashboard')
-
-@section('title', 'User Profile - Gift of Hope')
-
-
-
-
+@section('title', 'My profile - Gift of Hope')
 @section('content')
-    <div class="min-h-screen bg-gray-50 p-8">
-        <div class="max-w-6xl mx-auto">
-            <!-- Header Section -->
-            <div class="bg-white border-b border-gray-200 px-8 py-4">
-            <div class="flex items-center justify-between">
-                <div>
-                                <h1 class="text-4xl font-bold text-gray-900 mb-2">Welcome, {{ Auth::user()->fname }} {{ Auth::user()->lname }}!</h1>
-                <p class="text-gray-600"></p>
-                </div>
-
-                <div class="flex items-center gap-4">
-                    <div class="relative hidden md:block">
-                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.3-4.3"/>
-                            <circle cx="11" cy="11" r="7"/>
-                        </svg>
-                        <input
-                            class="w-72 pl-10 pr-4 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                            aria-label="Search"
-                        />
-                    </div>
-                    <a href="{{ route('user') }}" class="w-10 h-10 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-center" aria-label="Profile">
-                        <svg class="w-5 h-5 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 21a8 8 0 1 0-16 0"/>
-                            <circle cx="12" cy="8" r="3"/>
-                        </svg>
-
-                    </a>
-                </div>
-            </div>
+<div class="hope-page">
+<div class="hope-heading">
+    <div>
+        <div class="hope-eyebrow">MY PROFILE</div>
+    <h1>A little about you.</h1>
+    <p>Your place in the Gift of Hope community.</p>
+    </div>
+    <a href="{{ route('settings') }}" class="hope-button">Edit profile</a>
+</div>
+<div class="hope-grid two">
+    <section class="hope-card">
+        <div class="hope-profile-cover"></div>
+        <span class="hope-avatar hope-profile-avatar">{{ mb_substr(auth()->user()->fname ?? 'U', 0, 1) }}</span>
+        <h2 style="margin-top:16px">{{ auth()->user()->name }}</h2>
+        <p>{{ auth()->user()->email }}</p>
+        <div class="hope-meta">
+            <span class="hope-badge">Community member</span>
+            <span>Member since {{ filled(auth()->user()->created_at) ? \Illuminate\Support\Carbon::parse(auth()->user()->created_at)->format('M Y') : '—' }}</span>
         </div>
-
-<a href="{{ route('logout') }}" onclick="event.preventDefault();
-       document.getElementById('logout-form').submit();" class="...">
-        Logout
-    </a>
-    <form id="logout-form" action="{{ route('logout') }}" method="POST" hidden>
-        @csrf
-    </form>
-
-
+        <p>Every act of kindness starts with someone like you.</p>
+        <div class="hope-actions">
+            <a class="hope-button secondary" href="{{ route('activity') }}">View my activity →</a>
+        </div>
+    </section>
+<section class="hope-card">
+    <h2>Personal information</h2>
+    <p>Keep your information current in Settings.</p>
+    <dl class="hope-detail">
+        @foreach(['Full name' => auth()->user()->name, 'Email address' => auth()->user()->email, 'Phone number' => auth()->user()->phone, 'Address' => auth()->user()->address, 'Birthdate' => auth()->user()->date_of_birth] as $label => $value)
+            <div>
+                <dt>{{ $label }}</dt>
+                <dd>{{ $value ?: 'Not provided' }}</dd>
+            </div>
+        @endforeach
+    </dl>
+</section>
+</div>
+<div class="hope-grid hope-section">
+    @foreach([['request-status','▤','Your requests','Track decisions, review feedback, and explore the appeal process.'],['notifications','◉','Your notifications','See request updates and community milestones.'],['groups','◎','Your community','Meet people who are making a difference together.']] as [$route,$icon,$title,$description])
+        <section class="hope-card">
+            <span class="hope-avatar" aria-hidden="true">{{ $icon }}</span>
+            <h2 style="margin-top:16px">{{ $title }}</h2>
+            <p>{{ $description }}</p>
+            <div class="hope-actions">
+                <a class="hope-text-button" href="{{ route($route) }}">Explore →</a>
+            </div>
+        </section>
+    @endforeach
+</div>
+</div>
 @endsection

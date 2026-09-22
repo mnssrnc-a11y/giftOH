@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use App\Models\User;
 use App\Models\FirebaseUser;
 use App\Services\VerificationService;
@@ -178,7 +179,10 @@ class AccountController extends Controller
             Auth::login(is_array($user) ? new FirebaseUser($user) : $user, $request->boolean('remember'));
             $request->session()->regenerate();
 
-            return redirect()->route(($user['role'] ?? null) === 'admin' ? 'admin' : 'dashboarduser');
+            $authenticatedUser = is_array($user) ? new FirebaseUser($user) : $user;
+            session()->forget('alert_error');
+
+            return redirect()->route($authenticatedUser->isAdmin() ? 'admin' : 'dashboarduser');
         }
 
         // Generate a random 6-digit code
@@ -300,18 +304,39 @@ class AccountController extends Controller
     public function updateProfilePicture(Request $request)
     {
         $request->validate([
-            'profile_picture' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'profile_picture' => ['required', 'file', 'image', 'mimes:jpeg,jpg,png', 'max:5120'],
+        ], [
+            'profile_picture.mimes' => 'The photo must be a JPG or PNG file.',
+            'profile_picture.image' => 'The selected file is not a valid image.',
+            'profile_picture.max' => 'The photo must not be larger than 5 MB.',
         ]);
 
         $user = Auth::user();
-        $file = $request->file('profile_picture');
-        $path = $file->store('profile_pictures', 'public');
+        $oldPath = $user->profile_picture;
 
-        // Update the user's profile picture in Firebase
-        $this->firebaseUsers->update($user->getAuthIdentifier(), [
+        // Laravel generates a random file name, so the original name is never trusted or reused.
+        $path = $request->file('profile_picture')->store('profile_pictures', 'public');
+
+        // Save the path on the signed-in user's own Firebase record (id comes from the session, not the request).
+        $updated = $this->firebaseUsers->update($user->getAuthIdentifier(), [
             'profile_picture' => $path,
         ]);
 
-        return redirect()->route('settings')->with('status', 'Your profile picture has been updated successfully.');
+        if ($updated === null) {
+            Storage::disk('public')->delete($path);
+
+            return back()->withErrors(['profile_picture' => 'We could not save your photo. Please try again.']);
+        }
+
+        // Remove the previous photo, but only if it is one of our own uploads.
+        if (is_string($oldPath)
+            && $oldPath !== $path
+            && str_starts_with($oldPath, 'profile_pictures/')
+            && ! str_contains($oldPath, '..')) {
+            Storage::disk('public')->delete($oldPath);
+        }
+
+        return redirect()->route('settings')
+            ->with('profile_picture_status', 'Your profile picture has been updated.');
     }
 }

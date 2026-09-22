@@ -47,6 +47,11 @@ class FundingService
         return $this->fundingRequests->findByUserId($userId);
     }
 
+    public function getAllRequests(): array
+    {
+        return $this->fundingRequests->all();
+    }
+
     public function getPendingRequests(): array
     {
         return array_values(array_filter(
@@ -54,6 +59,25 @@ class FundingService
             static fn (array $request): bool => strtolower((string) ($request['status_name'] ?? $request['status'] ?? 'pending')) === 'pending'
                 || (int) ($request['status_id'] ?? 0) === 1
         ));
+    }
+
+    public function getApprovedRequests(): array
+    {
+        return array_values(array_filter(
+            $this->fundingRequests->all(),
+            static fn (array $request): bool => strtolower((string) ($request['status_name'] ?? $request['status'] ?? '')) === 'approved'
+                || (int) ($request['status_id'] ?? 0) === 2
+        ));
+    }
+
+    public function getTotalApprovedAmount(): float
+    {
+        $total = 0.0;
+        foreach ($this->getApprovedRequests() as $request) {
+            $total += (float) ($request['amount_requested'] ?? $request['amount'] ?? 0);
+        }
+
+        return $total;
     }
 
     public function decideRequest(

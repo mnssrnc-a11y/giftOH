@@ -22,6 +22,11 @@ Route::post('/logout', [PageController::class, 'logout'])->name('logout');
 Route::get('/login/verify', [AccountController::class, 'showLoginVerifyForm'])->name('login.verify-code.form');
 Route::post('/login/verify', [VerificationController::class, 'verifyLogin'])->name('login.verify-code');
 Route::post('/login/resend-code', [VerificationController::class, 'resendLoginCode'])->name('login.resend-code');
+Route::post('/notifications/{id}/read', [PageController::class, 'markNotificationRead'])->name('notifications.read');
+Route::get('/notifications', [AccountController::class, 'notifications'])->name('notifications');
+Route::get('/settings', [PageController::class, 'settings'])->name('settings');
+Route::post('/settings', [PageController::class, 'updateSettings'])->name('settings.update');
+Route::post('/settings/profile-picture', [AccountController::class, 'updateProfilePicture'])->name('settings.profile-picture');
 
 // Password Reset Flow
 Route::get('/forgot-password', [AccountController::class, 'forgotPassword'])->name('forgot-password');
@@ -38,15 +43,10 @@ Route::get('/reports', [PageController::class, 'reports'])->name('reports');
 Route::get('/donations', [PageController::class, 'donations'])->name('donations');
 
 
-Route::middleware('auth')->group(function(){
+Route::middleware(['auth', 'role:user'])->group(function(){
     foreach (['groups', 'fundraisers', 'request-status', 'activity'] as $screen) {
         Route::view('/'.$screen, 'users.flow', ['screen' => $screen])->name($screen);
     }
-    // UI preview: no production records or privileged mutations.
-    Route::get('/superadmin', function () {
-        abort_unless(in_array(auth()->user()->role, ['admin', 'super_admin'], true), 403);
-        return view('supperAdminPage.spAd_dashB');
-    })->name('superadmin');
     Route::get('/user', [PageController::class, 'user'])->name('user');
 
     // Fund Requests & Transactions
@@ -57,7 +57,17 @@ Route::middleware('auth')->group(function(){
     Route::post('/fund-request/resend-code', [VerificationController::class, 'resendFundRequestCode'])->name('fund-request.resend-code');
     Route::get('/fund-request/{id}', [PageController::class, 'showFundRequest'])->name('fund-request.show');
 
-    // Admin Panel & Approvals
+    Route::get('/dashboarduser', [PageController::class, 'dashboardUser'])->name('dashboarduser');
+    Route::get('/user/update', fn () => view('users.update'))->name('user.edit');
+    Route::post('/user/update', [AccountController::class, 'updateUser'])->name('user.update');
+    Route::get('/change-password', [AccountController::class, 'showChangePasswordForm'])->name('change-password.form');
+    Route::post('/change-password', [AccountController::class, 'changePassword'])->name('change-password');
+});
+
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/iot-monitor', [PageController::class, 'iotMonitor'])->name('iot-monitor');
+    Route::get('/reports', [PageController::class, 'reports'])->name('reports');
+    Route::get('/donations', [PageController::class, 'donations'])->name('donations');
     Route::get('/admin', [AdminController::class, 'admin'])->name('admin');
     Route::get('/admin/fund-approval-verify', [AdminController::class, 'adminApproval'])->name('admin.fund-approval-verify');
     Route::post('/admin/fund-request/{id}/approve', [AdminController::class, 'adminFundApprove'])->name('admin.fund-request.approve');
@@ -67,14 +77,10 @@ Route::middleware('auth')->group(function(){
     Route::get('/admin/fund-request/verify', [AdminController::class, 'showApprovalVerifyForm'])->name('admin.fund-request.verify.form');
     Route::post('/admin/fund-request/verify', [VerificationController::class, 'verifyApprovalAction'])->name('admin.fund-request.verify');
     Route::post('/admin/fund-request/resend-code', [VerificationController::class, 'resendApprovalCode'])->name('admin.fund-request.resend-code');
+});
 
-    Route::get('/dashboarduser', [PageController::class, 'dashboardUser'])->name('dashboarduser');
-    Route::post('/notifications/{id}/read', [PageController::class, 'markNotificationRead'])->name('notifications.read');
-    Route::get('/notifications', [AccountController::class, 'notifications'])->name('notifications');
-    Route::get('/settings', [PageController::class, 'settings'])->name('settings');
-    Route::post('/settings', [PageController::class, 'updateSettings'])->name('settings.update');
-    Route::get('/user/update', fn () => view('users.update'))->name('user.edit');
-    Route::post('/user/update', [AccountController::class, 'updateUser'])->name('user.update');
-    Route::get('/change-password', [AccountController::class, 'showChangePasswordForm'])->name('change-password.form');
-    Route::post('/change-password', [AccountController::class, 'changePassword'])->name('change-password');
+Route::middleware(['auth', 'role:super_admin'])->group(function () {
+    Route::get('/superadmin', function () {
+        return view('supperAdminPage.spAd_dashB');
+    })->name('superadmin');
 });

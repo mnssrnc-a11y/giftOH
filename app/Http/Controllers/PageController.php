@@ -53,6 +53,13 @@ class PageController extends Controller
     }
     public function user()
     {
+        if (! Auth::user()->isUser()) {
+            return redirect()->route('landing')->with(
+                'alert_error',
+                'That profile page is available only to regular users.'
+            );
+        }
+
         return view('users.user');
     }
     public function iotMonitor()
@@ -71,9 +78,9 @@ class PageController extends Controller
     {
         if (Auth::check()) {
             $user = Auth::user();
-            if ($user->role === 'admin') {
+            if ($user->isAdmin()) {
                 return redirect()->route('admin');
-            } elseif ($user->role === 'user') {
+            } elseif ($user->isUser()) {
                 return redirect()->route('dashboarduser');
             }
         }
@@ -168,9 +175,12 @@ class PageController extends Controller
 
     public function updateSettings(Request $request)
     {
-        $currentUser = Auth::user();
+        $request->validate([
+            'email_notifications' => 'nullable|boolean',
+            'dark_mode' => 'nullable|boolean',
+        ]);
 
-        $this->firebaseUsers->update($currentUser->getAuthIdentifier(), [
+        $this->firebaseUsers->update(Auth::user()->getAuthIdentifier(), [
             'email_notifications' => $request->boolean('email_notifications'),
             'dark_mode' => $request->boolean('dark_mode'),
         ]);

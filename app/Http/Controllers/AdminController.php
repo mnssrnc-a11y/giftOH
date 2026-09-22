@@ -6,35 +6,45 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Repositories\FirebaseUserRepository;
 use App\Services\FundingService;
+use App\Services\IotService;
 
 class AdminController extends Controller
 {
     public function __construct(
         private FundingService $fundingService,
-        private FirebaseUserRepository $firebaseUsers
+        private FirebaseUserRepository $firebaseUsers,
+        private IotService $iotService
     ) {
     }
 
     public function admin()
     {
-        if (Auth::user()->role !== 'admin') {
+        if (! Auth::user()->isAdmin()) {
             return redirect()->route('login');
         }
 
         $pendingRequests = $this->pendingRequestsForView();
+        $pendingCount = $pendingRequests->count();
+        $totalFundRequests = count($this->fundingService->getAllRequests());
 
-        return view('adminPage.admin', compact('pendingRequests'));
+        $iotMetrics = $this->iotService->getDashboardMetrics();
+
+        return view('adminPage.admin', array_merge(
+            compact('pendingRequests', 'pendingCount', 'totalFundRequests'),
+            $iotMetrics
+        ));
     }
 
     public function adminApproval()
     {
-        if (Auth::user()->role !== 'admin') {
+        if (! Auth::user()->isAdmin()) {
             return redirect()->route('login');
         }
 
         $pendingRequests = $this->pendingRequestsForView();
+        $pendingCount = $pendingRequests->count();
 
-        return view('adminPage.admin-approval-verify', compact('pendingRequests'));
+        return view('adminPage.admin-approval-verify', compact('pendingRequests', 'pendingCount'));
     }
 
     public function adminFundApprove(Request $request, string $id)

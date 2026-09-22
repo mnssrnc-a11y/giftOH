@@ -90,9 +90,13 @@ class VerificationController extends Controller
         $request->session()->regenerate();
         session()->forget(['login_2fa_email', 'login_2fa_remember']);
 
-        if ($user->role == 'admin') {
+        session()->forget('alert_error');
+
+        if ($user->isAdmin()) {
             return redirect()->route('admin');
-        } else {
+        }elseif($user->isSuperAdmin()){
+            return redirect()->route('superadmin');
+        }else {
             return redirect()->route('dashboarduser');
         }
     }
@@ -173,7 +177,7 @@ class VerificationController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        if ($user->role == 'admin') {
+        if ($user->isAdmin()) {
             return redirect()->route('admin');
         } else {
             return redirect()->route('dashboarduser');

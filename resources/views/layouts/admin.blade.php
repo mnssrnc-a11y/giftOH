@@ -20,18 +20,19 @@
         </div>
         <nav class="admin-nav" aria-label="Admin navigation">
             <p>Workspace</p>
-            <a href="#dashboard" data-admin-nav="dashboard" class="is-active"><span>⌂</span>Dashboard</a>
-            <a href="#funding" data-admin-nav="funding"><span>₱</span>Funding <b data-pending-count>{{ $pendingRequests->count() ?: 4 }}</b></a>
-            <a href="#reports" data-admin-nav="reports"><span>▥</span>Reports</a>
-            <a href="#settings" data-admin-nav="settings"><span>⚙</span>Settings</a>
+            <a href="{{ route('admin') }}#dashboard" data-admin-nav="dashboard" class="{{ request()->routeIs('admin') ? 'is-active' : '' }}"><span>⌂</span>Dashboard</a>
+            <a href="{{ route('admin') }}#funding" data-admin-nav="funding"><span>₱</span>Funding <b data-pending-count>{{ $pendingCount ?? 0 }}</b></a>
+            <a href="{{ route('admin') }}#reports" data-admin-nav="reports"><span>▥</span>Reports</a>
+            <a href="{{ route('admin') }}#settings" data-admin-nav="settings"><span>⚙</span>Settings</a>
             <p>Monitoring</p>
-            <a href="{{ route('iot-monitor') }}"><span>◫</span>IoT Box Monitor</a>
-            <a href="{{ route('donations') }}"><span>♡</span>Donations</a>
+            <a href="{{ route('iot-monitor') }}" class="{{ request()->routeIs('iot-monitor') ? 'is-active' : '' }}"><span>◫</span>IoT Box Monitor</a>
+            <a href="{{ route('donations') }}" class="{{ request()->routeIs('donations') ? 'is-active' : '' }}"><span>♡</span>Donations</a>
+
         </nav>
         <div class="admin-user-card">
             <div class="admin-avatar">{{ strtoupper(substr(Auth::user()->fname ?? Auth::user()->name ?? 'A', 0, 1)) }}</div>
             <div><strong>{{ Auth::user()->name ?? trim((Auth::user()->fname ?? 'Admin').' '.(Auth::user()->lname ?? '')) }}</strong><span>Administrator</span></div>
-            <a href="{{ route('user') }}" aria-label="Open profile">›</a>
+            <a href="{{ route('admin') }}" aria-label="Back to admin dashboard">›</a>
         </div>
         <div class="admin-sidebar-footer">© 2026 Gift of Hope</div>
     </aside>
@@ -39,7 +40,7 @@
 
     <main class="admin-main">
         <header class="admin-topbar">
-            <div><p data-page-kicker>Overview</p><h1 data-page-title>Dashboard</h1></div>
+            <div><p data-page-kicker>@yield('page-kicker', 'Overview')</p><h1 data-page-title>@yield('page-title', 'Dashboard')</h1></div>
             <div class="admin-top-actions">
                 <label class="admin-global-search"><span>⌕</span><input type="search" placeholder="Search workspace" data-global-search></label>
                 <button type="button" class="admin-icon-button admin-desktop-theme" data-theme-toggle title="Toggle dark mode">

@@ -63,17 +63,29 @@ class FirebaseUser implements Authenticatable
 
     public function isAdmin(): bool
     {
-        return ($this->attributes['role'] ?? null) === 'admin';
+        return strtolower(trim((string) ($this->attributes['role'] ?? ''))) === 'admin';
     }
 
     public function isUser(): bool
     {
-        return ($this->attributes['role'] ?? null) === 'user';
+        return in_array(strtolower(trim((string) ($this->attributes['role'] ?? ''))), [
+            'user',
+            'normal user',
+            'normal_user',
+            'regular user',
+            'regular_user',
+            'member',
+        ], true);
     }
 
     public function isSuperAdmin(): bool
     {
-        return ($this->attributes['role'] ?? null) === 'super_admin';
+        return in_array(strtolower(trim((string) ($this->attributes['role'] ?? ''))), [
+            'super_admin',
+            'superadmin',
+            'super admin',
+            'super-admin',
+        ], true);
     }
 
     public function isActive(): bool
