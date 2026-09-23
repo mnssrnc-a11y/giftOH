@@ -69,6 +69,7 @@ class FirebaseUser implements Authenticatable
     public function isUser(): bool
     {
         return in_array(strtolower(trim((string) ($this->attributes['role'] ?? ''))), [
+            'normaluser',
             'user',
             'normal user',
             'normal_user',
@@ -81,6 +82,7 @@ class FirebaseUser implements Authenticatable
     public function isSuperAdmin(): bool
     {
         return in_array(strtolower(trim((string) ($this->attributes['role'] ?? ''))), [
+            'supper_admin',
             'super_admin',
             'superadmin',
             'super admin',

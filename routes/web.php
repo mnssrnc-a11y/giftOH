@@ -44,9 +44,11 @@ Route::get('/donations', [PageController::class, 'donations'])->name('donations'
 
 
 Route::middleware(['auth', 'role:user'])->group(function(){
-    foreach (['groups', 'fundraisers', 'request-status', 'activity'] as $screen) {
+    foreach (['groups', 'fundraisers'] as $screen) {
         Route::view('/'.$screen, 'users.flow', ['screen' => $screen])->name($screen);
     }
+    Route::get('/request-status', [PageController::class, 'requestStatus'])->name('request-status');
+    Route::get('/activity', [PageController::class, 'activity'])->name('activity');
     Route::get('/user', [PageController::class, 'user'])->name('user');
 
     // Fund Requests & Transactions

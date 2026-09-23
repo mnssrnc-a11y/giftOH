@@ -7,7 +7,7 @@
         ['name' => 'Community Care Circle', 'category' => 'Healthcare', 'icon' => '♡', 'color' => 'green', 'members' => 86, 'about' => 'Helping families access essential healthcare and building a healthier, kinder community.', 'leaders' => 'Ana Reyes · Coordinator; Carlo Garcia · Volunteer lead', 'fund' => 'Care for every family', 'raised' => 18000, 'target' => 40000],
         ['name' => 'Neighbors Giving Hope', 'category' => 'Food & Shelter', 'icon' => '⌂', 'color' => 'gold', 'members' => 204, 'about' => 'Bringing food, essential supplies, and a helping hand to neighbors who need them most.', 'leaders' => 'Patricia Cruz · Coordinator; Miguel Ramos · Volunteer lead', 'fund' => 'A meal, a little hope', 'raised' => 25000, 'target' => 25000],
     ];
-    $requests = [
+    $requests = $requests ?? [
         ['id' => 'GOH-2026-014', 'title' => 'School supplies for the new term', 'category' => 'Education', 'amount' => 15000, 'status' => 'Pending', 'color' => 'gold', 'date' => '2026-09-10', 'appeals' => 0],
         ['id' => 'GOH-2026-012', 'title' => 'Community medical assistance', 'category' => 'Healthcare', 'amount' => 20000, 'status' => 'Approved', 'color' => 'green', 'date' => '2026-09-08', 'appeals' => 0],
         ['id' => 'GOH-2026-009', 'title' => 'Emergency home repairs', 'category' => 'Food & Shelter', 'amount' => 12000, 'status' => 'Denied', 'color' => 'red', 'date' => '2026-09-05', 'appeals' => 1],
@@ -19,7 +19,6 @@
 @section('content')
 <div class="hope-page">
     <div class="hope-heading"><div><div class="hope-eyebrow">{{ strtoupper($labels[$screen]) }}</div><h1>{{ $titles[$screen][0] }}</h1><p>{{ $titles[$screen][1] }}</p></div><a class="hope-button" href="{{ route('fund-request') }}">＋ Create fund request</a></div>
-    <div class="hope-preview"><strong>UI preview</strong> · The records on this page are examples. Preview actions do not send requests or change account records.</div>
 
     @if(in_array($screen, ['groups', 'fundraisers']))
         <div class="hope-toolbar"><input type="search" data-filter-search aria-label="Search {{ $labels[$screen] }}" placeholder="Search {{ strtolower($labels[$screen]) }}…"><select data-filter-select aria-label="Filter category"><option value="">All categories</option><option>Education</option><option>Healthcare</option><option>Food &amp; Shelter</option></select></div>
@@ -49,7 +48,7 @@
         @endforeach
 
     @elseif($screen === 'request-status')
-        <div class="hope-grid four">@foreach(['Total requests' => '5', 'Pending review' => '1', 'Approved / completed' => '2', 'Denied' => '2'] as $label => $value)<div class="hope-card hope-stat"><span>{{ $label }}</span><strong>{{ $value }}</strong><span>Example requests</span></div>@endforeach</div>
+        <div class="hope-grid four">@foreach($requestCounts ?? ['Total requests' => count($requests), 'Pending review' => 0, 'Approved / completed' => 0, 'Denied' => 0] as $label => $value)<div class="hope-card hope-stat"><span>{{ $label }}</span><strong>{{ $value }}</strong><span>Your requests</span></div>@endforeach</div>
         <section class="hope-card hope-section"><div class="hope-toolbar"><input type="search" data-filter-search aria-label="Search requests" placeholder="Search title or request ID…"><select data-filter-select aria-label="Filter request status"><option value="">All statuses</option>@foreach(['Pending', 'Approved', 'Denied', 'Completed'] as $status)<option>{{ $status }}</option>@endforeach</select></div><div class="hope-table-wrap"><table class="hope-table"><thead><tr><th>Request</th><th>Amount</th><th>Last update</th><th>Status</th><th>Details</th></tr></thead><tbody>
         @foreach($requests as $i => $item)<tr data-filter-item data-category="{{ $item['status'] }}"><td><strong>{{ $item['title'] }}</strong><small>{{ $item['id'] }} · {{ $item['category'] }}</small></td><td>₱{{ number_format($item['amount']) }}</td><td><time datetime="{{ $item['date'] }}">{{ date('M d, Y', strtotime($item['date'])) }}</time></td><td><span class="hope-badge {{ $item['color'] }}">{{ $item['status'] }}</span></td><td><button class="hope-text-button" data-open-dialog="request-{{ $i }}">View timeline →</button></td></tr>@endforeach
         </tbody></table></div><p class="hope-empty" data-filter-empty hidden>No requests match your filters.</p></section>
@@ -69,11 +68,20 @@
         @endforeach</section>
 
     @elseif($screen === 'activity')
-        <div class="hope-grid four">@foreach(['Funds received' => '₱8,000', 'Total requests' => '5', 'Denied requests' => '2', 'Success rate' => '40%'] as $label => $value)<div class="hope-card hope-stat"><span>{{ $label }}</span><strong>{{ $value }}</strong><span>{{ $label === 'Success rate' ? '2 approved or completed / 5 requests' : 'Example activity' }}</span></div>@endforeach</div>
-        <section class="hope-card hope-section"><div class="hope-heading"><div><h2>Funds received</h2><p>Monthly totals · Philippine peso (₱)</p></div><span class="hope-badge">Apr – Sep 2026</span></div>
-        <svg class="hope-chart" viewBox="0 0 840 260" role="img" aria-labelledby="chart-title chart-description"><title id="chart-title">Monthly funds received</title><desc id="chart-description">Example data: April through July zero pesos, August 8,000 pesos, September zero pesos. Total 8,000 pesos.</desc><defs><linearGradient id="chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3c6ddc" stop-opacity=".22"/><stop offset="100%" stop-color="#3c6ddc" stop-opacity="0"/></linearGradient></defs>@foreach([40, 90, 140, 190] as $y)<line x1="65" y1="{{ $y }}" x2="810" y2="{{ $y }}" stroke="currentColor" opacity=".09"/>@endforeach<text x="0" y="44">₱8,000</text><text x="0" y="94">₱5,333</text><text x="0" y="144">₱2,667</text><text x="25" y="194">₱0</text><path d="M75 190 L220 190 L365 190 L510 190 L655 40 L800 190 L800 210 L75 210 Z" fill="url(#chart-fill)"/><path d="M75 190 L220 190 L365 190 L510 190 L655 40 L800 190" fill="none" stroke="#3c6ddc" stroke-width="3" stroke-linejoin="round"/>@foreach(['Apr','May','Jun','Jul','Aug','Sep'] as $i => $month)<circle cx="{{ 75 + $i * 145 }}" cy="{{ $i === 4 ? 40 : 190 }}" r="5" fill="#3c6ddc" stroke="white" stroke-width="2"/><text x="{{ 65 + $i * 145 }}" y="239">{{ $month }}</text>@endforeach</svg>
-        <details><summary class="hope-text-button">View chart data</summary><div class="hope-table-wrap"><table class="hope-table"><caption class="sr-only">Monthly funds received in 2026</caption><thead><tr><th>Month</th><th>Received</th></tr></thead><tbody>@foreach(['April','May','June','July','August','September'] as $month)<tr><td>{{ $month }}</td><td>{{ $month === 'August' ? '₱8,000' : '₱0' }}</td></tr>@endforeach</tbody></table></div></details></section>
-        <div class="hope-grid two hope-section"><section class="hope-card"><h2>Your request journey</h2><p>One request is awaiting review, two have been approved or completed, and two were denied.</p><div class="hope-actions"><a class="hope-button secondary" href="{{ route('request-status') }}">Explore request history →</a></div></section><section class="hope-card"><h2>Keep the hope going</h2><p>Find a community, support a cause, or start your next funding request.</p><div class="hope-actions"><a class="hope-button secondary" href="{{ route('groups') }}">Discover groups →</a></div></section></div>
+        @php($activityData = $activityData ?? ['totalRequests' => 0, 'receivedAmount' => 0, 'deniedRequests' => 0, 'successRate' => 0, 'months' => [], 'maxChartAmount' => 1])
+        <div class="hope-grid four">
+            <div class="hope-card hope-stat"><span>Funds received</span><strong>₱{{ number_format($activityData['receivedAmount']) }}</strong><span>Approved or completed requests</span></div>
+            <div class="hope-card hope-stat"><span>Total requests</span><strong>{{ $activityData['totalRequests'] }}</strong><span>Your Firebase requests</span></div>
+            <div class="hope-card hope-stat"><span>Denied requests</span><strong>{{ $activityData['deniedRequests'] }}</strong><span>Your Firebase requests</span></div>
+            <div class="hope-card hope-stat"><span>Success rate</span><strong>{{ $activityData['successRate'] }}%</strong><span>Approved or completed requests</span></div>
+        </div>
+        <section class="hope-card hope-section">
+            <div class="hope-heading"><div><h2>Funds received</h2><p>Monthly totals from your approved or completed requests</p></div><span class="hope-badge">Last 6 months</span></div>
+            <div class="hope-table-wrap"><table class="hope-table"><caption class="sr-only">Monthly funds received</caption><thead><tr><th>Month</th><th>Received</th></tr></thead><tbody>
+                @forelse($activityData['months'] as $month)<tr><td>{{ $month['label'] }}</td><td>₱{{ number_format($month['amount']) }}</td></tr>@empty<tr><td colspan="2">No completed request activity yet.</td></tr>@endforelse
+            </tbody></table></div>
+        </section>
+        <div class="hope-grid two hope-section"><section class="hope-card"><h2>Your request journey</h2><p>{{ $activityData['totalRequests'] }} request(s), including {{ $activityData['deniedRequests'] }} denied.</p><div class="hope-actions"><a class="hope-button secondary" href="{{ route('request-status') }}">Explore request history →</a></div></section><section class="hope-card"><h2>Keep the hope going</h2><p>Start another funding request when you are eligible.</p><div class="hope-actions"><a class="hope-button secondary" href="{{ route('fund-request') }}">Create fund request →</a></div></section></div>
     @endif
 </div>
 @endsection

@@ -34,14 +34,28 @@
 
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Organization Name</label>
-                            <input
+                            <select
                                 name="org_name"
-                                type="text"
                                 required
-                                value="{{ old('org_name') }}"
-                                placeholder="Organization Name"
-                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-                            />
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] bg-white"
+                            >
+                                <option value="" disabled {{ old('org_name') ? '' : 'selected' }}>Select an organization</option>
+                                @foreach ([
+                                    "The Children's Home of Eucharistic Love and Kindness.",
+                                    "Children's Home of the Immaculate Heart of Mary.",
+                                    "Children's Joy Foundation Inc. - Pampanga.",
+                                    'Charity Home for the Elderly.',
+                                    'Tuloy Pampanga.',
+                                    'Bahay Pag-Ibig Home for the Aged.',
+                                    "Ima's Home for Children.",
+                                    'Munting Tahanan ng Nazareth.',
+                                    'Send The Light Ministries for the Filipino.',
+                                    'Domus Pastorum Foundation Incorporated.',
+                                    'Duyan Ni Maria Children\'s Home.',
+                                ] as $organization)
+                                    <option value="{{ $organization }}" {{ old('org_name') === $organization ? 'selected' : '' }}>{{ $organization }}</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
 

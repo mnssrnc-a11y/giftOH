@@ -9,13 +9,17 @@ class FirebaseFundingRepository extends FirebaseRepository
     public function findByUserId(string|int $userId): array
     {
         try {
-            return $this->queryBy('user_id', $userId);
+            $requests = $this->queryBy('user_id', $userId);
+            if ($requests !== []) {
+                return $requests;
+            }
         } catch (UnsupportedQuery) {
-            return array_values(array_filter(
-                $this->all(),
-                static fn (array $request): bool => (string) ($request['user_id'] ?? '') === (string) $userId
-            ));
         }
+
+        return array_values(array_filter(
+            $this->all(),
+            static fn (array $request): bool => (string) ($request['user_id'] ?? '') === (string) $userId
+        ));
     }
 
     public function findByStatus(string|int $statusId): array

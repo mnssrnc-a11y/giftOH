@@ -1,3 +1,6 @@
+import { initializeApp } from "firebase/app";
+import { getDatabase, onValue, ref } from "firebase/database";
+
 const fundingRequests = [
     { id: 'FR-2026-036', project: 'Community Learning Hub', organization: 'Bayanihan Foundation', category: 'Education', requester: 'Maria Santos', amount: 85000, status: 'pending', date: 'Jul 29, 2026', description: 'Equip a shared learning center with books, computers, and reliable connectivity for 180 students.', reason: 'Students in the area travel over eight kilometers to access digital learning resources.' },
     { id: 'FR-2026-035', project: 'Rural Medical Mission', organization: 'CareBridge PH', category: 'Healthcare', requester: 'Dr. Paolo Reyes', amount: 120000, status: 'approved', date: 'Jul 27, 2026', description: 'A three-day medical mission providing consultations, medicine, and diagnostic screening.', reason: 'Two remote communities have limited access to primary healthcare.' },
@@ -232,6 +235,84 @@ function initAdminUI() {
         navigate(location.hash.slice(1) || 'dashboard');
         renderFunding();
     }
+
+    initAdminIotMonitor(app);
+}
+
+function initAdminIotMonitor(app) {
+    const monitor = app.querySelector('[data-admin-iot-monitor]');
+    if (!monitor) return;
+
+    const onlineLabel = monitor.querySelector('[data-admin-iot-online-label]');
+    const totalLabel = monitor.querySelector('[data-admin-iot-total]');
+    const trackedBoxes = new Map();
+    const missedChecksBeforeOffline = 4;
+    let latestBoxes = null;
+
+    const renderLiveCount = boxes => {
+        const boxIds = Object.keys(boxes || {});
+        let onlineCount = 0;
+
+        boxIds.forEach(boxId => {
+            const box = boxes[boxId] || {};
+            const heartbeat = Number(box.heartbeat || 0);
+            const previous = trackedBoxes.get(boxId);
+
+            if (heartbeat === 0) {
+                trackedBoxes.set(boxId, { heartbeat: 0, missedChecks: 0, online: false });
+                return;
+            }
+
+            if (!previous) {
+                const lastSeen = Number(box.lastSeen || 0);
+                const recentlySeen = lastSeen > 0 && (Date.now() - lastSeen) <= 12000;
+                trackedBoxes.set(boxId, {
+                    heartbeat,
+                    missedChecks: recentlySeen ? 0 : missedChecksBeforeOffline,
+                    online: recentlySeen,
+                });
+                if (recentlySeen) onlineCount++;
+                return;
+            }
+
+            const heartbeatChanged = heartbeat !== previous.heartbeat;
+            const missedChecks = heartbeatChanged ? 0 : previous.missedChecks + 1;
+            const online = heartbeatChanged || (previous.online && missedChecks < missedChecksBeforeOffline);
+            trackedBoxes.set(boxId, { heartbeat, missedChecks, online });
+            if (online) onlineCount++;
+        });
+
+        trackedBoxes.forEach((_, boxId) => {
+            if (!Object.prototype.hasOwnProperty.call(boxes || {}, boxId)) trackedBoxes.delete(boxId);
+        });
+
+        onlineLabel.textContent = `${onlineCount} online`;
+        totalLabel.textContent = boxIds.length;
+    };
+
+    const refresh = () => renderLiveCount(latestBoxes);
+
+    fetch('/config/firebase')
+        .then(response => {
+            if (!response.ok) throw new Error(`Firebase configuration request failed (${response.status})`);
+            return response.json();
+        })
+        .then(firebaseConfig => {
+            const database = getDatabase(initializeApp(firebaseConfig, 'admin-iot-monitor'));
+            onValue(ref(database, '/boxes'), snapshot => {
+                latestBoxes = snapshot.val();
+                refresh();
+            }, error => {
+                console.error('Admin Firebase read failed:', error);
+                onlineLabel.textContent = 'Live status unavailable';
+            });
+        })
+        .catch(error => {
+            console.error('Admin Firebase monitor initialization failed:', error);
+            onlineLabel.textContent = 'Live status unavailable';
+        });
+
+    setInterval(refresh, 3000);
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAdminUI);

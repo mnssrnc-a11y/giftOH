@@ -8,6 +8,9 @@ use App\Services\FundingService;
 
 class IotService
 {
+    private const MISSED_CHECKS_BEFORE_OFFLINE = 4;
+    private const HEARTBEAT_INTERVAL_SECONDS = 5;
+
     public function __construct(
         private FirebaseIotBoxRepository $boxRepository,
         private FirebaseDonationRepository $donationRepository,
@@ -44,8 +47,18 @@ class IotService
             return null;
         }
 
-        return count(array_filter($boxes, static function (array $box): bool {
-            return strtolower((string) ($box['status'] ?? '')) === 'online';
+        $offlineAfterSeconds = self::MISSED_CHECKS_BEFORE_OFFLINE * self::HEARTBEAT_INTERVAL_SECONDS;
+        $now = now()->timestamp * 1000;
+
+        return count(array_filter($boxes, static function (array $box) use ($now, $offlineAfterSeconds): bool {
+            $lastHeartbeat = (int) ($box['heartbeat'] ?? 0);
+            $lastSeen = (int) ($box['lastSeen'] ?? 0);
+
+            if ($lastHeartbeat === 0 || $lastSeen === 0) {
+                return false;
+            }
+
+            return ($now - $lastSeen) <= ($offlineAfterSeconds * 1000);
         }));
     }
 

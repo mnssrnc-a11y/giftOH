@@ -73,8 +73,8 @@ class EnsureRole
     private static function normalizeRole(mixed $role): string
     {
         return match (strtolower(trim((string) $role))) {
-            'normal user', 'normal_user', 'regular user', 'regular_user', 'member', 'user' => 'user',
-            'superadmin', 'super admin', 'super-admin', 'super_admin' => 'super_admin',
+            'normaluser', 'normal user', 'normal_user', 'regular user', 'regular_user', 'member', 'user' => 'user',
+            'supper_admin', 'superadmin', 'super admin', 'super-admin', 'super_admin' => 'super_admin',
             'admin', 'administrator' => 'admin',
             default => strtolower(trim((string) $role)),
         };

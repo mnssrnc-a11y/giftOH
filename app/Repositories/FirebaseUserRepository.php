@@ -13,12 +13,15 @@ class FirebaseUserRepository extends FirebaseRepository
         try {
             $users = $this->queryBy('email', $normalizedEmail);
 
-            return $users[0] ?? null;
+            if (isset($users[0])) {
+                return $users[0];
+            }
         } catch (UnsupportedQuery) {
-            foreach ($this->all() as $user) {
-                if (strtolower(trim((string) ($user['email'] ?? ''))) === $normalizedEmail) {
-                    return $user;
-                }
+        }
+
+        foreach ($this->all() as $user) {
+            if (strtolower(trim((string) ($user['email'] ?? ''))) === $normalizedEmail) {
+                return $user;
             }
         }
 
@@ -31,9 +34,9 @@ class FirebaseUserRepository extends FirebaseRepository
         $role = $user['role'];
         if ($role === "admin") {
             return "admin";
-        } elseif ($role === "user") {
+        } elseif (in_array($role, ["user", "normaluser"], true)) {
             return "user";
-        } elseif ($role === "super_admin") {
+        } elseif (in_array($role, ["super_admin", "supper_admin"], true)) {
             return "super_admin";
         } else {
             return null;

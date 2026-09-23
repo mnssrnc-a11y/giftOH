@@ -1,8 +1,6 @@
 @extends(\App\Support\Layout::forRole())
 
 @section('title', 'IoT Box Monitor - Gift of Hope')
-@section('page-kicker', 'Monitoring')
-@section('page-title', 'IoT Box Monitor')
 
 @section('content')
     <div class="min-h-screen bg-gray-50">

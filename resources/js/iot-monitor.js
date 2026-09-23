@@ -37,18 +37,7 @@ import { getDatabase, ref, onValue, update, push } from "firebase/database";
 // ==========================================
 // FIREBASE CONFIG
 // ==========================================
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+let db;
 
 // How often we re-check for a heartbeat change.
 const CHECK_INTERVAL_MS = 3000;
@@ -335,25 +324,40 @@ function render(boxesObj) {
 // ==========================================
 // LIVE SUBSCRIPTION
 // ==========================================
-const boxesRef = ref(db, "/boxes");
-
 // Keep the latest snapshot around so the periodic re-check (below) can
 // re-run the comparison logic even when Firebase hasn't pushed new data -
 // that's actually the important case, since "no new push" for too long
 // is exactly what should eventually flip a box to offline.
 let latestBoxesData = null;
 
-onValue(
-  boxesRef,
-  (snapshot) => {
-    latestBoxesData = snapshot.val();
-    render(latestBoxesData);
-  },
-  (error) => {
-    console.error("Firebase read failed:", error);
-    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-sm text-red-500">Failed to load live data: ${error.message}</td></tr>`;
+async function startMonitor() {
+  try {
+    const response = await fetch("/config/firebase");
+    if (!response.ok) {
+      throw new Error(`Firebase configuration request failed (${response.status})`);
+    }
+
+    const firebaseConfig = await response.json();
+    db = getDatabase(initializeApp(firebaseConfig));
+
+    onValue(
+      ref(db, "/boxes"),
+      (snapshot) => {
+        latestBoxesData = snapshot.val();
+        render(latestBoxesData);
+      },
+      (error) => {
+        console.error("Firebase read failed:", error);
+        tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-sm text-red-500">Failed to load live data: ${error.message}</td></tr>`;
+      }
+    );
+  } catch (error) {
+    console.error("Firebase monitor initialization failed:", error);
+    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-sm text-red-500">Failed to initialize live data: ${error.message}</td></tr>`;
   }
-);
+}
+
+startMonitor();
 
 // Re-run the comparison on a fixed clock, independent of whether Firebase
 // pushed new data - this is what actually drives the "missed checks"

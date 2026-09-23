@@ -6,7 +6,7 @@
 <a class="hope-brand" href="{{ route('dashboarduser') }}">♡ Gift of Hope<small>A little kindness. A lasting impact.</small></a>
 <p class="hope-nav-label">YOUR COMMUNITY</p>
 <nav aria-label="Main navigation">
-@foreach (['dashboarduser' => ['⌂', 'Home feed'], 'groups' => ['◎', 'Groups'], 'fundraisers' => ['♡', 'Fundraisers'], 'fund-request' => ['＋', 'Fund request'], 'request-status' => ['▤', 'Request status'], 'activity' => ['↗', 'My activity'], 'notifications' => ['◉', 'Notifications'], 'user' => ['○', 'My profile'], 'settings' => ['⚙', 'Settings']] as $name => [$icon, $label])
+@foreach (['dashboarduser' => ['⌂', 'Home feed'], 'fund-request' => ['＋', 'Fund request'], 'request-status' => ['▤', 'Request status'], 'activity' => ['↗', 'My activity'], 'notifications' => ['◉', 'Notifications'], 'user' => ['○', 'My profile'], 'settings' => ['⚙', 'Settings']] as $name => [$icon, $label])
 <a href="{{ route($name) }}" @if(request()->routeIs($name, $name.'.*')) aria-current="page" @endif><span aria-hidden="true">{{ $icon }}</span>{{ $label }}</a>
 @endforeach
 <a href="{{ route('about') }}"><span aria-hidden="true">ⓘ</span>About Gift of Hope</a>

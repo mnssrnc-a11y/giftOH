@@ -27,13 +27,13 @@
     <div data-dashboard-content>
         <div class="admin-grid admin-stat-grid">
             <article class="admin-stat warn"><div class="admin-stat-top"><div class="admin-stat-icon">⌛</div><span class="admin-stat-change">Needs review</span></div><h3>{{ $pendingCount ?? $pendingRequests->count() }}</h3><p>Pending requests</p></article>
-            <article class="admin-stat"><div class="admin-stat-top"><div class="admin-stat-icon">▣</div><span class="admin-stat-change">@if(!is_null($onlineBoxCount ?? null)) {{ $onlineBoxCount }} online @else +2 this month @endif</span></div><h3>{{ !is_null($smartBoxCount ?? null) ? $smartBoxCount : 18 }}</h3><p>Smart boxes</p></article>
+            <article class="admin-stat" data-admin-iot-monitor><div class="admin-stat-top"><div class="admin-stat-icon">▣</div><span class="admin-stat-change" data-admin-iot-online-label>{{ !is_null($onlineBoxCount ?? null) ? $onlineBoxCount . ' online' : 'Live status unavailable' }}</span></div><h3 data-admin-iot-total>{{ !is_null($smartBoxCount ?? null) ? $smartBoxCount : '-' }}</h3><p>Smart boxes</p></article>
             <article class="admin-stat green"><div class="admin-stat-top"><div class="admin-stat-icon">↗</div><span class="admin-stat-change">@if(!is_null($donationOverview ?? null)) Live verified @else +12.5% @endif</span></div><h3>{{ !is_null($donationOverview ?? null) ? '₱' . number_format($donationOverview, 2) : '₱124.6K' }}</h3><p>Donation overview</p></article>
             <article class="admin-stat purple"><div class="admin-stat-top"><div class="admin-stat-icon">▤</div><span class="admin-stat-change">{{ $totalFundRequests ?? 0 }} total</span></div><h3>{{ $totalFundRequests ?? 0 }}</h3><p>Total fund requests</p></article>
             <article class="admin-stat green"><div class="admin-stat-top"><div class="admin-stat-icon">₱</div><span class="admin-stat-change">@if(!is_null($totalFunds ?? null)) Live total @else +8.2% @endif</span></div><h3>{{ !is_null($totalFunds ?? null) ? '₱' . number_format($totalFunds, 2) : '₱2.48M' }}</h3><p>Total funds</p></article>
             <article class="admin-stat"><div class="admin-stat-top"><div class="admin-stat-icon">◉</div><span class="admin-stat-change">@if(!is_null($availablePercentage ?? null)) {{ $availablePercentage }}% available @else 62% available @endif</span></div><h3>{{ !is_null($availableFunds ?? null) ? '₱' . number_format($availableFunds, 2) : '₱1.54M' }}</h3><p>Available funds</p></article>
         </div>
-
+        
         <div class="admin-quick-actions" aria-label="Quick actions">
             <div class="admin-quick-copy"><strong>Quick actions</strong><span>Common admin tasks</span></div>
             <button data-admin-go="funding"><i>✓</i><span>Review pending</span></button>

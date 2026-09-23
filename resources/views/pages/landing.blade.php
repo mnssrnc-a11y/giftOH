@@ -19,16 +19,11 @@
                         <p class="text-xl text-blue-100 mb-8">
                             A transparent charity donation platform with smart IoT monitoring.
                             Every donation is tracked, verified, and makes a real difference.
-                        </p>
-                        <div class="flex gap-4">
-                            <a href="{{ route('login') }}"
-                                class="bg-transparent border-2 border-white px-8 py-3 rounded-lg font-semibold hover:bg-white/10 transition-colors">
-                                Sign In
-                            </a>
-                            <a href="{{ route('register') }}"
+                        </p>                        <div class="flex flex-col items-start gap-4">
+                            <button type="button" id="start-button" aria-controls="account-choice" aria-haspopup="dialog"
                                 class="bg-white text-[#1E3A8A] px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors">
-                                Sign Up
-                            </a>
+                                Start
+                            </button>
                         </div>
                     </div>
 
@@ -108,12 +103,44 @@
                 <p class="text-xl text-blue-100 mb-8">
                     Join thousands of donors who trust our platform to deliver hope to those in need.
                 </p>
-                <a href="{{ route('login') }}"
+                <a href="#top" id="start-button" aria-controls="account-choice" aria-haspopup="dialog"
                     class="inline-block bg-white text-[#1E3A8A] px-12 py-4 rounded-lg font-semibold text-lg hover:bg-blue-50 transition-colors">
-                    Start Donating Today
+                    join us now
                 </a>
             </div>
         </section>
     </div>
-@endsection
+    
+    <div id="account-choice" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/50 px-6" role="dialog" aria-modal="true" aria-labelledby="account-choice-title">
+        <div class="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
+            <h2 id="account-choice-title" class="mb-3 text-2xl font-bold text-gray-900">Do you have an account?</h2>
+            <p class="mb-6 text-gray-600">Choose how you would like to continue.</p>
+            <div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
+                <a href="{{ route('login') }}" class="rounded-lg bg-[#1E3A8A] px-6 py-3 font-semibold text-white hover:bg-[#2d4a9e]">Yes</a>
+                <a href="{{ route('register') }}" class="rounded-lg border border-[#1E3A8A] px-6 py-3 font-semibold text-[#1E3A8A] hover:bg-blue-50">No</a>
+            </div>
+            <button type="button" id="close-account-choice" class="mt-5 text-sm text-gray-500 underline hover:text-gray-700">Cancel</button>
+        </div>
+    </div>
+    <script>
+        const accountChoice = document.getElementById('account-choice');
+        const startButton = document.getElementById('start-button');
+        const closeAccountChoice = document.getElementById('close-account-choice');
 
+        startButton?.addEventListener('click', function () {
+            accountChoice?.classList.remove('hidden');
+            accountChoice?.classList.add('flex');
+        });
+
+        closeAccountChoice?.addEventListener('click', function () {
+            accountChoice?.classList.add('hidden');
+            accountChoice?.classList.remove('flex');
+        });
+
+        accountChoice?.addEventListener('click', function (event) {
+            if (event.target === accountChoice) {
+                closeAccountChoice?.click();
+            }
+        });
+    </script>
+@endsection

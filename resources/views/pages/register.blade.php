@@ -6,7 +6,7 @@
     <div class="min-h-screen flex items-center justify-center bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6]">
         <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
             <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">Create Your Account</h2>
-            <form method="POST" action="{{ route('register.store') }}" class="space-y-6">
+            <form method="POST" action="{{ route('register.store') }}" enctype="multipart/form-data" class="space-y-6">
                 @csrf
 
                 @if ($errors->any())
@@ -40,9 +40,13 @@
 
                 <div>
                     <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
-                    <input id="email" name="email" type="email" required
-                        value="{{ old('email') }}"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <div class="mt-1 flex rounded-md shadow-sm">
+                        <input id="email_username" name="email_username" type="text" required placeholder="youremail"
+                            value="{{ old('email_username', str_ends_with(old('email'), '@gmail.com') ? substr(old('email'), 0, -10) : '') }}"
+                            class="block w-full rounded-l-md border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+                        <span class="inline-flex items-center rounded-r-md border border-l-0 border-gray-300 bg-gray-100 px-3 text-gray-600">@gmail.com</span>
+                    </div>
+                    <input id="email" name="email" type="hidden" value="{{ old('email') }}">
                 </div>
 
                 <div>
@@ -150,6 +154,8 @@
             return true; // Allow form submission
         }
         document.querySelector('form').addEventListener('submit', function(event) {
+            const emailUsername = document.getElementById('email_username').value.trim();
+            document.getElementById('email').value = `${emailUsername}@gmail.com`;
             if (!validatePasswordMatch()) {
                 event.preventDefault(); // Prevent form submission if passwords don't match
             }

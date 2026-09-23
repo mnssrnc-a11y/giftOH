@@ -42,6 +42,110 @@ class PageController extends Controller
         return view('users.dashboarduser', compact('fundRequestCount', 'fundRequests', 'notificationCount', 'notifications'));
     }
 
+    public function requestStatus()
+    {
+        $requests = array_map(function (array $request): array {
+            $status = match ((int) ($request['status_id'] ?? 0)) {
+                2 => 'Approved',
+                3 => 'Denied',
+                default => ucfirst(strtolower((string) ($request['status_name'] ?? $request['status'] ?? 'Pending'))),
+            };
+            $status = $status === 'Rejected' ? 'Denied' : $status;
+            $color = match ($status) {
+                'Approved', 'Completed' => 'green',
+                'Denied' => 'red',
+                default => 'gold',
+            };
+
+            return [
+                'id' => (string) ($request['id'] ?? ''),
+                'title' => $request['title'] ?? $request['org_name'] ?? 'Funding request',
+                'category' => $request['category_name'] ?? $request['category'] ?? 'General',
+                'amount' => (float) ($request['amount_requested'] ?? $request['amount'] ?? 0),
+                'status' => $status,
+                'color' => $color,
+                'date' => $request['updated_at'] ?? $request['created_at'] ?? now()->toIso8601String(),
+                'appeals' => (int) ($request['appeals'] ?? 0),
+            ];
+        }, $this->fundingService->getRequestsByUser(Auth::id()));
+
+        usort($requests, static fn (array $first, array $second): int => strcmp($second['date'], $first['date']));
+
+        $requestCounts = [
+            'Total requests' => count($requests),
+            'Pending review' => count(array_filter($requests, static fn (array $request): bool => $request['status'] === 'Pending')),
+            'Approved / completed' => count(array_filter($requests, static fn (array $request): bool => in_array($request['status'], ['Approved', 'Completed'], true))),
+            'Denied' => count(array_filter($requests, static fn (array $request): bool => $request['status'] === 'Denied')),
+        ];
+
+        return view('users.flow', [
+            'screen' => 'request-status',
+            'requests' => $requests,
+            'requestCounts' => $requestCounts,
+        ]);
+    }
+
+    public function activity()
+    {
+        $requests = $this->fundingService->getRequestsByUser(Auth::id());
+        $getStatus = static function (array $request): string {
+            $status = match ((int) ($request['status_id'] ?? 0)) {
+                2 => 'Approved',
+                3 => 'Denied',
+                default => ucfirst(strtolower((string) ($request['status_name'] ?? $request['status'] ?? 'Pending'))),
+            };
+
+            return $status === 'Rejected' ? 'Denied' : $status;
+        };
+
+        $successfulRequests = array_filter($requests, fn (array $request): bool => in_array($getStatus($request), ['Approved', 'Completed'], true));
+        $totalRequests = count($requests);
+        $receivedAmount = array_sum(array_map(static fn (array $request): float => (float) ($request['amount_requested'] ?? $request['amount'] ?? 0), $successfulRequests));
+        $deniedRequests = count(array_filter($requests, fn (array $request): bool => $getStatus($request) === 'Denied'));
+
+        $months = [];
+        $monthCursor = now()->startOfMonth()->subMonths(5);
+        for ($index = 0; $index < 6; $index++) {
+            $key = $monthCursor->format('Y-m');
+            $months[$key] = [
+                'label' => $monthCursor->format('M'),
+                'amount' => 0,
+            ];
+            $monthCursor->addMonth();
+        }
+
+        foreach ($successfulRequests as $request) {
+            $date = $request['updated_at'] ?? $request['created_at'] ?? null;
+            if ($date === null) {
+                continue;
+            }
+
+            try {
+                $key = \Carbon\Carbon::parse($date)->format('Y-m');
+            } catch (\Exception) {
+                continue;
+            }
+
+            if (isset($months[$key])) {
+                $months[$key]['amount'] += (float) ($request['amount_requested'] ?? $request['amount'] ?? 0);
+            }
+        }
+
+        $maxChartAmount = max(1, ...array_column($months, 'amount'));
+
+        return view('users.flow', [
+            'screen' => 'activity',
+            'activityData' => [
+                'totalRequests' => $totalRequests,
+                'receivedAmount' => $receivedAmount,
+                'deniedRequests' => $deniedRequests,
+                'successRate' => $totalRequests > 0 ? round(count($successfulRequests) / $totalRequests * 100) : 0,
+                'months' => $months,
+                'maxChartAmount' => $maxChartAmount,
+            ],
+        ]);
+    }
+
     public function markNotificationRead(string $id)
     {
         $marked = $this->notificationService->markAsRead($id, Auth::id());
@@ -80,6 +184,8 @@ class PageController extends Controller
             $user = Auth::user();
             if ($user->isAdmin()) {
                 return redirect()->route('admin');
+            } elseif ($user->isSuperAdmin()) {
+                return redirect()->route('superadmin');
             } elseif ($user->isUser()) {
                 return redirect()->route('dashboarduser');
             }

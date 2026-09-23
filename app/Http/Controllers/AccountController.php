@@ -37,11 +37,20 @@ class AccountController extends Controller
 
     public function storeRegister(Request $request)
     {
+        $emailUsername = trim((string) $request->input('email_username'));
+        $emailUsername = preg_replace('/@gmail\.com$/i', '', $emailUsername) ?? $emailUsername;
+        $email = $emailUsername !== ''
+            ? $emailUsername.'@gmail.com'
+            : trim((string) $request->input('email'));
+        if ($email !== '') {
+            $request->merge(['email' => strtolower($email)]);
+        }
+
         $validated = $request->validate([
             'fname' => 'required|string|max:255',
             'lname' => 'required|string|max:255',
             'mname' => 'nullable|string|max:255',
-            'email' => ['required', 'email:rfc,dns', 'max:255', 'unique:users', new RealEmail],
+            'email' => ['required', 'email:rfc,dns', 'max:255', new RealEmail],
             'password' => 'required|confirmed|min:8',
             'contact_number' => 'required|string|max:15',
             'gender' => 'nullable|in:male,female',
@@ -52,6 +61,12 @@ class AccountController extends Controller
             'province' => 'nullable|string|max:255',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
+
+        if ($this->firebaseUsers->findByEmail($validated['email']) !== null) {
+            return back()
+                ->withInput()
+                ->withErrors(['email' => 'An account with this email address already exists.']);
+        }
 
         // Concatenate address parts into a single address string
         $address = $validated['street_address'] . ', '
@@ -78,6 +93,13 @@ class AccountController extends Controller
                     'The email address you provided is not eligible. Please use a valid email to register.');
         }
 
+        $profilePicture = $validated['profile_picture'] ?? null;
+        if ($profilePicture !== null) {
+            $profilePicture = $profilePicture->store('profile_pictures', 'public');
+        } else {
+            $profilePicture = null;
+        }
+
         // Store pending registration data in session
         session([
             'pending_registration' => [
@@ -90,7 +112,7 @@ class AccountController extends Controller
                 'address' => $address,
                 'gender' => $validated['gender'],
                 'date_of_birth' => $validated['date_of_birth'],
-                'profile_picture' => $validated['profile_picture'] ?? null,
+                'profile_picture' => $profilePicture,
             ],
         ]);
 

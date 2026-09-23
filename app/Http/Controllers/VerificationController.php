@@ -155,6 +155,15 @@ class VerificationController extends Controller
         // Code is valid — retrieve pending registration data and create the user
         $data = session('pending_registration');
 
+        if ($this->firebaseUsers->findByEmail($data['email']) !== null) {
+            $this->verificationService->forget($request->email, 'register_verification_codes');
+            session()->forget('pending_registration');
+
+            return redirect()->route('register')->withErrors([
+                'email' => 'An account with this email address already exists.',
+            ]);
+        }
+
         $userData = [
             'fname' => $data['fname'],
             'lname' => $data['lname'],
@@ -166,6 +175,7 @@ class VerificationController extends Controller
             'gender' => $data['gender'],
             'date_of_birth' => $data['date_of_birth'],
             'profile_picture' => $data['profile_picture'],
+            'role' => 'normaluser',
         ];
 
         $user = new FirebaseUser($this->firebaseUsers->create($userData));
@@ -179,6 +189,8 @@ class VerificationController extends Controller
 
         if ($user->isAdmin()) {
             return redirect()->route('admin');
+        } elseif($user->isSuperAdmin()){
+            return redirect()->route('superadmin');
         } else {
             return redirect()->route('dashboarduser');
         }
