@@ -53,6 +53,10 @@ class IotService
         return count(array_filter($boxes, static function (array $box) use ($now, $offlineAfterSeconds): bool {
             $lastHeartbeat = (int) ($box['heartbeat'] ?? 0);
             $lastSeen = (int) ($box['lastSeen'] ?? 0);
+            // Boxes report lastSeen in epoch seconds; compare in milliseconds.
+            if ($lastSeen > 0 && $lastSeen < 1_000_000_000_000) {
+                $lastSeen *= 1000;
+            }
 
             if ($lastHeartbeat === 0 || $lastSeen === 0) {
                 return false;

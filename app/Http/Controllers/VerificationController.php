@@ -242,22 +242,28 @@ class VerificationController extends Controller
             return back()->withErrors(['code' => $result['error']])->withInput();
         }
 
+        // The admin's decision is a recommendation; the super admin finalizes it.
         $data = session('pending_approval');
-        $funding = $this->fundingService->decideRequest(
+        $funding = $this->fundingService->submitAdminReview(
             $data['request_id'],
             $data['action'],
             $user->getAuthIdentifier(),
-            $data['notes'] ?? null
+            $data['amount'] ?? null,
+            $data['notes'] ?? null,
+            $data['ai_amount'] ?? null
         );
-        if ($funding === null) {
-            return redirect()->route('admin')->with('alert_error', 'Funding request could not be found.');
-        }
 
         // Clean up
         $this->verificationService->forget($user->email, 'approval_verification_codes');
         session()->forget('pending_approval');
 
-        return redirect()->route('admin')->with('status', 'Funding request updated successfully.');
+        if ($funding === null) {
+            return AdminController::toSection('funding')->with('alert_error', 'This request is no longer awaiting admin review.');
+        }
+
+        $verb = $data['action'] === 'approved' ? 'Approval' : 'Rejection';
+
+        return AdminController::toSection('funding')->with('status', "{$verb} recorded and sent to the super admin for finalization.");
     }
 
     /**

@@ -13,8 +13,8 @@
 <div class="hope-grid two">
     <section class="hope-card">
         <div class="hope-profile-cover"></div>
-        <span class="hope-avatar hope-profile-avatar">{{ mb_substr(auth()->user()->fname ?? 'U', 0, 1) }}</span>
-        <h2 style="margin-top:16px">{{ auth()->user()->name }}</h2>
+        <x-avatar class="hope-avatar hope-profile-avatar" />
+        <h2 style="margin-top:16px">{{ trim((auth()->user()->fname ?? '').' '.(auth()->user()->lname ?? '')) ?: 'Community member' }}</h2>
         <p>{{ auth()->user()->email }}</p>
         <div class="hope-meta">
             <span class="hope-badge">Community member</span>
@@ -29,15 +29,33 @@
     <h2>Personal information</h2>
     <p>Keep your information current in Settings.</p>
     <dl class="hope-detail">
-        @foreach(['Full name' => auth()->user()->name, 'Email address' => auth()->user()->email, 'Phone number' => auth()->user()->phone, 'Address' => auth()->user()->address, 'Birthdate' => auth()->user()->date_of_birth] as $label => $value)
+        @foreach(['fname' => 'First name', 'lname' => 'Last name', 'email' => 'Email address', 'phone' => 'Phone number', 'address' => 'Address', 'date_of_birth' => 'Birthdate'] as $field => $label)
             <div>
                 <dt>{{ $label }}</dt>
-                <dd>{{ $value ?: 'Not provided' }}</dd>
+            <dd>{{ auth()->user()->$field ?: 'Not provided' }}</dd>
             </div>
         @endforeach
     </dl>
 </section>
 </div>
+<section class="hope-card hope-section" aria-labelledby="admin-updates-title">
+    <h2 id="admin-updates-title">Updates from Gift of Hope</h2>
+    <p>News and funding updates from the administrators.</p>
+    @forelse($posts ?? [] as $post)
+        <article class="hope-admin-post">
+            <div class="hope-admin-post-head">
+                <strong>{{ $post['title'] ?? 'Update' }}</strong>
+                <span class="hope-badge">{{ ucwords(str_replace('_', ' ', $post['type'] ?? 'announcement')) }}</span>
+            </div>
+            <p>{{ $post['body'] ?? '' }}</p>
+            @if(!empty($post['created_at']))
+                <time datetime="{{ $post['created_at'] }}">{{ \Illuminate\Support\Carbon::parse($post['created_at'])->diffForHumans() }}</time>
+            @endif
+        </article>
+    @empty
+        <p class="hope-admin-post-empty">No updates yet. Check back soon.</p>
+    @endforelse
+</section>
 <div class="hope-grid hope-section">
     @foreach([['request-status','▤','Your requests','Track decisions, review feedback, and explore the appeal process.'],['notifications','◉','Your notifications','See request updates and community milestones.'],['groups','◎','Your community','Meet people who are making a difference together.']] as [$route,$icon,$title,$description])
         <section class="hope-card">

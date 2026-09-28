@@ -12,13 +12,24 @@ if (root) {
         {id:5,name:'Sofia Garcia',email:'sofia@example.test',role:'User',status:'Disabled',activity:'Sep 12, 14:05'},
         {id:6,name:'Luis Mendoza',email:'luis@example.test',role:'User',status:'Enabled',activity:'Sep 14, 10:12'},
     ];
-    const requests = [
-        {id:'FR-001',name:'Maria Santos',title:'Back-to-school essentials',category:'Education',amount:15000,status:'Pending',date:'2026-09-15',reason:'School supplies and learning materials for 30 community students.'},
-        {id:'FR-002',name:'Daniel Reyes',title:'Community health assistance',category:'Medical',amount:20000,status:'Pending',date:'2026-09-14',reason:'Medical consultations and essential medicines for families in need.'},
-        {id:'FR-003',name:'Maria Santos',title:'A meal for every family',category:'Food',amount:8000,status:'Pending',date:'2026-09-14',reason:'Food packages for 40 households through our community pantry.'},
-        {id:'FR-004',name:'Daniel Reyes',title:'Emergency home repairs',category:'Shelter',amount:25000,status:'Approved',date:'2026-09-10',reason:'Repair materials for storm-damaged homes.'},
-        {id:'FR-005',name:'Maria Santos',title:'Learning center equipment',category:'Education',amount:12000,status:'Denied',date:'2026-09-08',reason:'Replacement equipment for a community learning center.'},
-    ];
+    // Live requests an administrator has reviewed; "Pending" here means awaiting your final decision.
+    const saConfig = window.giftOfHopeSuperadmin ?? {};
+    const requests = (window.giftOfHopeFinalizationQueue ?? []).map(row => ({
+        id: row.id,
+        shortId: row.id.slice(0, 8),
+        name: row.review?.[0]?.by ?? 'Administrator',
+        title: row.organization !== '—' ? row.organization : row.project,
+        category: row.category,
+        amount: row.amount,
+        granted: row.granted,
+        status: row.status === 'awaiting' ? 'Pending' : row.status === 'rejected' ? 'Denied' : 'Approved',
+        date: (row.date ?? '').slice(0, 10),
+        reason: row.description || '—',
+        adminDecision: row.admin_decision,
+        adminAmount: row.admin_amount,
+        aiAmount: row.ai_amount,
+        adminNotes: row.admin_notes,
+    }));
     const devices = [['BOX-001','Community center, Quezon City','Online','Today, 09:42'],['BOX-002','Parish hall, Manila','Online','Today, 09:41'],['BOX-003','Public market, Pasig','Online','Today, 09:40'],['BOX-004','Barangay hall, Makati','Offline','Yesterday, 18:20']];
     let scores = {Education:85,Food:75,Medical:95,Shelter:80};
     const logs = [{action:'Fund request FR-001 submitted',actor:'Maria Santos',time:'Sep 15, 2026, 09:42',source:'Sample'}, {action:'Donation box BOX-004 went offline',actor:'System',time:'Sep 14, 2026, 18:20',source:'Sample'}, {action:'Fund request FR-004 approved',actor:'Superadmin',time:'Sep 10, 2026, 14:05',source:'Sample'}];
@@ -52,7 +63,7 @@ if (root) {
         $('[data-sa-accounts]').innerHTML=accounts.filter(a=>(a.name+' '+a.email).toLowerCase().includes(query)&&(!role||role===a.role)&&(!status||status===a.status)).map(a=>`<tr><td><strong>${escape(a.name)}</strong><small>${escape(a.email)}</small></td><td>${escape(a.role)}</td><td>${badge(a.status)}</td><td>${escape(a.activity)}</td><td><button class="sa-link" data-sa-account="${a.id}">Manage ↗</button></td></tr>`).join('')||empty(5);
         $('[data-sa-request-preview]').innerHTML=pending.slice(0,3).map(r=>`<tr><td><strong>${escape(r.name)}</strong><small>${escape(r.title)}</small></td><td>${money(r.amount)}</td><td><button class="sa-link" data-sa-request="${r.id}">Review ↗</button></td></tr>`).join('')||'<tr><td colspan="3" class="sa-empty">All requests have been reviewed.</td></tr>';
         const rq=$('[data-sa-request-search]').value.toLowerCase(); const rs=$('[data-sa-request-filter]').value;
-        $('[data-sa-requests]').innerHTML=requests.filter(r=>(r.name+' '+r.title+' '+r.id+' '+r.category).toLowerCase().includes(rq)&&(!rs||rs===r.status)).map(r=>`<tr><td><strong>${escape(r.title)}</strong><small>${r.id} · ${escape(r.name)}</small></td><td>${r.category}</td><td>${money(r.amount)}</td><td>${badge(r.status)}</td><td><button class="sa-link" data-sa-request="${r.id}">${r.status==='Pending'?'Review':'View'} ↗</button></td></tr>`).join('')||empty(5);
+        $('[data-sa-requests]').innerHTML=requests.filter(r=>(r.name+' '+r.title+' '+r.id+' '+r.category).toLowerCase().includes(rq)&&(!rs||rs===r.status)).map(r=>`<tr><td><strong>${escape(r.title)}</strong><small>${escape(r.shortId)} · ${escape(r.name)} ${r.adminDecision==='approved'?'recommends approval':'recommends rejection'}</small></td><td>${escape(r.category)}</td><td>${money(r.amount)}${r.adminAmount!=null&&r.status==='Pending'?`<small>${money(r.adminAmount)} recommended</small>`:''}${r.granted!=null?`<small>${money(r.granted)} granted</small>`:''}</td><td>${badge(r.status)}</td><td><button class="sa-link" data-sa-request="${escape(r.id)}">${r.status==='Pending'?'Review':'View'} ↗</button></td></tr>`).join('')||empty(5);
         $$('[data-sa-devices]').forEach(el=>el.innerHTML=devices.map(([id,location,status,seen])=>`<div class="sa-device"><div><strong>${id}</strong><small>${location}</small><small>Last seen: ${seen} · sample</small></div>${badge(status)}</div>`).join(''));
         const events=logs.slice(0,4).map(l=>`<div class="sa-event"><span class="sa-event-icon" aria-hidden="true">↗</span><div><strong>${escape(l.action)}</strong><small>${escape(l.actor)} · ${escape(l.time)}</small></div></div>`).join('');
         $('[data-sa-recent]').innerHTML=events; $('[data-sa-audit]').innerHTML=events;
@@ -98,11 +109,16 @@ if (root) {
         $('[data-verify]',content).addEventListener('submit',e=>{e.preventDefault();if(Date.now()>expires||new FormData(e.target).get('code')!=='123456'){$('[data-code-error]',content).textContent='Code is incorrect or expired. Generate a new demo code and try again.';return;}accounts.push(draft);log(`Administrator created: ${draft.name}`);dialog.close();location.hash='accounts';toast('Preview administrator created. No real account was added.');});
     }
     function reviewRequest(request) {
-        open(`<h2 id="sa-dialog-title">${escape(request.title)}</h2><p>${request.id} · Submitted ${request.date}</p><dl><dt>Administrator</dt><dd>${escape(request.name)}</dd><dt>Category</dt><dd>${request.category}</dd><dt>Requested amount</dt><dd>${money(request.amount)}</dd><dt>Status</dt><dd>${badge(request.status)}</dd><dt>Purpose</dt><dd>${escape(request.reason)}</dd></dl>${request.status==='Pending'?'<div class="sa-actions"><button class="sa-button secondary" data-decision="Denied">Deny request</button><button class="sa-button" data-decision="Approved">Approve request</button></div>':'<div class="sa-note">This sample request has already been reviewed.</div>'}`);
+        const adminView = `<dt>Admin decision</dt><dd>${request.adminDecision==='approved'?'Approve':'Reject'}${request.adminAmount!=null?` · ${money(request.adminAmount)}`:''}</dd>${request.aiAmount!=null?`<dt>AI recommendation</dt><dd>${money(request.aiAmount)}</dd>`:''}${request.adminNotes?`<dt>Admin note</dt><dd>${escape(request.adminNotes)}</dd>`:''}`;
+        const funds = saConfig.availableFunds!=null ? `<div class="sa-note" style="margin-top:0">Unallocated funds right now: <strong>${money(saConfig.availableFunds)}</strong></div>` : '';
+        open(`<h2 id="sa-dialog-title">${escape(request.title)}</h2><p>${escape(request.shortId)} · Submitted ${escape(request.date)}</p><dl><dt>Reviewed by</dt><dd>${escape(request.name)}</dd><dt>Category</dt><dd>${escape(request.category)}</dd><dt>Requested amount</dt><dd>${money(request.amount)}</dd>${adminView}<dt>Status</dt><dd>${badge(request.status)}</dd><dt>Purpose</dt><dd>${escape(request.reason)}</dd></dl>${request.status==='Pending'?`${funds}<div class="sa-actions"><button class="sa-button secondary" data-decision="rejected">Reject request</button><button class="sa-button" data-decision="approved">Approve request</button></div>`:'<div class="sa-note">This request has already been finalized.</div>'}`);
         content.querySelectorAll('[data-decision]').forEach(button=>button.addEventListener('click',()=>{
-            const status=button.dataset.decision;
-            open(`<h2 id="sa-dialog-title">${status==='Approved'?'Approve':'Deny'} ${request.id}?</h2><p>${escape(request.title)} · ${money(request.amount)}<br>This records a preview decision. No funds move and no notice is emailed.</p><form data-decision-form>${status==='Approved'?'<div class="sa-note">Agreement: I have reviewed the request details and agree to approve this funding request.</div><label class="sa-field" style="margin-top:18px">Type Agree to confirm<input name="agreement" required pattern="Agree" placeholder="Agree" autocomplete="off"></label>':'<label class="sa-check"><input type="checkbox" required> I confirm this request should be denied.</label>'}${actions(status==='Approved'?'Confirm approval':'Confirm denial')}</form>`);
-            $('[data-decision-form]',content).addEventListener('submit',e=>{e.preventDefault();request.status=status;log(`${request.id} ${status.toLowerCase()} — notice simulated, not sent`);dialog.close();toast(`Request ${status.toLowerCase()} in preview. Email notice simulated.`);});
+            const decision=button.dataset.decision, approving=decision==='approved';
+            const defaultAmount=request.adminAmount ?? request.amount;
+            const token=document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+            open(`<h2 id="sa-dialog-title">${approving?'Approve':'Reject'} this request?</h2><p>${escape(request.title)} · ${money(request.amount)} requested<br>This is the final decision. The requester is notified immediately.</p><form method="POST" action="${escape((saConfig.finalizeUrl ?? '').replace('__ID__', encodeURIComponent(request.id)))}" data-decision-form><input type="hidden" name="_token" value="${escape(token)}"><input type="hidden" name="decision" value="${decision}">${approving?`<label class="sa-field">Amount to grant (₱)<input type="number" name="amount" min="1" max="${request.amount}" step="0.01" value="${defaultAmount}" required><small>Prefilled with the administrator's recommendation.</small></label><label class="sa-field" style="margin-top:14px">Type Agree to confirm<input name="agreement" required pattern="Agree" placeholder="Agree" autocomplete="off"></label>`:'<label class="sa-check"><input type="checkbox" required> I confirm this request should be rejected.</label>'}<label class="sa-field" style="margin-top:14px">Note (optional)<textarea name="notes" maxlength="1000"></textarea></label>${actions(approving?'Confirm approval':'Confirm rejection')}</form>`);
+            const form=$('[data-decision-form]',content);
+            form.addEventListener('submit',()=>{form.querySelector('[type=submit]').disabled=true;});
         }));
     }
     $$('[data-sa-settings]').forEach(form=>form.addEventListener('submit',e=>{

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -197,14 +198,20 @@ class AccountController extends Controller
             ])->onlyInput('email');
         }
 
-        if (! filter_var($user['email_notifications'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
-            Auth::login(is_array($user) ? new FirebaseUser($user) : $user, $request->boolean('remember'));
-            $request->session()->regenerate();
+        // "Remember me" keeps the user signed in (Laravel's remember cookie) and pre-fills their email next time.
+        if ($request->boolean('remember')) {
+            Cookie::queue('remembered_email', strtolower(trim($request->email)), 60 * 24 * 30);
+        } else {
+            Cookie::queue(Cookie::forget('remembered_email'));
+        }
 
+        if (! filter_var($user['email_notifications'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
             $authenticatedUser = is_array($user) ? new FirebaseUser($user) : $user;
+            Auth::login($authenticatedUser, $request->boolean('remember'));
+            $request->session()->regenerate();
             session()->forget('alert_error');
 
-            return redirect()->route($authenticatedUser->isAdmin() ? 'admin' : 'dashboarduser');
+            return redirect()->route($authenticatedUser->homeRoute());
         }
 
         // Generate a random 6-digit code
@@ -358,7 +365,7 @@ class AccountController extends Controller
             Storage::disk('public')->delete($oldPath);
         }
 
-        return redirect()->route('settings')
-            ->with('profile_picture_status', 'Your profile picture has been updated.');
+        // Return to the page the upload came from (user settings or the admin workspace).
+        return back()->with('profile_picture_status', 'Your profile picture has been updated.');
     }
 }

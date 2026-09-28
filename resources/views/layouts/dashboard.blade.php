@@ -11,9 +11,9 @@
 @endforeach
 <a href="{{ route('about') }}"><span aria-hidden="true">ⓘ</span>About Gift of Hope</a>
 </nav>
-<div class="hope-sidebar-bottom"><div class="hope-account"><span class="hope-avatar">{{ mb_substr(auth()->user()->fname ?? 'U', 0, 1) }}</span><div><strong>{{ auth()->user()->name ?? 'Guest' }}</strong><small>Community member</small></div></div><button type="button" class="hope-signout" data-open-dialog="logout-dialog">Sign out ↗</button></div>
+<div class="hope-sidebar-bottom"><div class="hope-account"><x-avatar class="hope-avatar" /><div><strong>{{ auth()->user()->name ?? 'Guest' }}</strong><small>Community member</small></div></div><button type="button" class="hope-signout" data-open-dialog="logout-dialog">Sign out ↗</button></div>
 </aside>
-<div class="hope-main"><header class="hope-topbar"><button class="hope-menu" aria-label="Toggle navigation" aria-controls="hope-navigation" aria-expanded="false">☰</button><span>Small acts. <strong>Extraordinary change.</strong></span><a href="{{ route('notifications') }}">Notifications</a><a class="hope-avatar" href="{{ route('user') }}" aria-label="My profile">{{ mb_substr(auth()->user()->fname ?? 'U', 0, 1) }}</a></header><main id="main-content">@yield('content')</main></div>
+<div class="hope-main"><header class="hope-topbar"><button class="hope-menu" aria-label="Toggle navigation" aria-controls="hope-navigation" aria-expanded="false">☰</button><span>Small acts. <strong>Extraordinary change.</strong></span><a href="{{ route('notifications') }}">Notifications</a><x-avatar tag="a" class="hope-avatar" href="{{ route('user') }}" aria-label="My profile" /></header><main id="main-content">@yield('content')</main></div>
 <dialog id="logout-dialog" class="hope-dialog" aria-labelledby="logout-title"><button class="hope-close" data-close-dialog aria-label="Close">×</button><h2 id="logout-title">Ready to sign out?</h2><p>You can sign back in whenever you’re ready to make a difference.</p><div class="hope-actions"><button class="hope-button secondary" data-close-dialog>Stay signed in</button><form method="POST" action="/logout">@csrf<button class="hope-button" type="submit">Sign out</button></form></div></dialog>
 <div class="hope-toast" role="status" aria-live="polite" hidden></div>
 </div>

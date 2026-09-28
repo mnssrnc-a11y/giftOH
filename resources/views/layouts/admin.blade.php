@@ -22,6 +22,7 @@
             <p>Workspace</p>
             <a href="{{ route('admin') }}#dashboard" data-admin-nav="dashboard" class="{{ request()->routeIs('admin') ? 'is-active' : '' }}"><span>⌂</span>Dashboard</a>
             <a href="{{ route('admin') }}#funding" data-admin-nav="funding"><span>₱</span>Funding <b data-pending-count>{{ $pendingCount ?? 0 }}</b></a>
+            <a href="{{ route('admin') }}#updates" data-admin-nav="updates"><span>✎</span>Updates</a>
             <a href="{{ route('admin') }}#reports" data-admin-nav="reports"><span>▥</span>Reports</a>
             <a href="{{ route('admin') }}#settings" data-admin-nav="settings"><span>⚙</span>Settings</a>
             <p>Monitoring</p>
@@ -30,7 +31,7 @@
 
         </nav>
         <div class="admin-user-card">
-            <div class="admin-avatar">{{ strtoupper(substr(Auth::user()->fname ?? Auth::user()->name ?? 'A', 0, 1)) }}</div>
+            <x-avatar tag="div" class="admin-avatar" fallback="A" />
             <div><strong>{{ Auth::user()->name ?? trim((Auth::user()->fname ?? 'Admin').' '.(Auth::user()->lname ?? '')) }}</strong><span>Administrator</span></div>
             <a href="{{ route('admin') }}" aria-label="Back to admin dashboard">›</a>
         </div>
@@ -46,7 +47,7 @@
                 <button type="button" class="admin-icon-button admin-desktop-theme" data-theme-toggle title="Toggle dark mode">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
                 </button>
-                <button type="button" class="admin-icon-button has-dot" data-notification-open title="Notifications" aria-label="Open notifications">♢</button>
+                <button type="button" class="admin-icon-button" data-notification-open title="Notifications" aria-label="Open notifications">♢</button>
             </div>
         </header>
         <div class="admin-content">@yield('content')</div>

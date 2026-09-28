@@ -11,6 +11,7 @@ use App\Services\FundingService;
 use App\Services\NotificationService;
 use App\Services\VerificationService;
 use App\Repositories\FirebaseUserRepository;
+use App\Repositories\FirebaseAdminPostRepository;
 use Illuminate\Support\Str;
 use app\Services\FirebaseService;
 class PageController extends Controller
@@ -21,12 +22,13 @@ class PageController extends Controller
         private VerificationService $verificationService,
         private FundingService $fundingService,
         private NotificationService $notificationService,
-        private FirebaseUserRepository $firebaseUsers
+        private FirebaseUserRepository $firebaseUsers,
+        private FirebaseAdminPostRepository $adminPosts
     ) {
     }
     public function landing()
     {
-        return view('pages.landing');
+        return view('pages.landing', ['posts' => $this->adminPostsFor(3, publicOnly: true)]);
     }
     public function dashboard()
     {
@@ -39,7 +41,9 @@ class PageController extends Controller
         $fundRequests = $this->fundingService->getRequestsByUser(Auth::id());
         $fundRequestCount = count($fundRequests);
 
-        return view('users.dashboarduser', compact('fundRequestCount', 'fundRequests', 'notificationCount', 'notifications'));
+        $posts = $this->adminPostsFor(5);
+
+        return view('users.dashboarduser', compact('fundRequestCount', 'fundRequests', 'notificationCount', 'notifications', 'posts'));
     }
 
     public function requestStatus()
@@ -164,7 +168,19 @@ class PageController extends Controller
             );
         }
 
-        return view('users.user');
+        return view('users.user', ['posts' => $this->adminPostsFor(5)]);
+    }
+
+    /**
+     * Latest admin updates; an unreachable Firebase must not break the page.
+     */
+    private function adminPostsFor(int $limit, bool $publicOnly = false): array
+    {
+        try {
+            return $this->adminPosts->latest($limit, $publicOnly);
+        } catch (\Throwable) {
+            return [];
+        }
     }
     public function iotMonitor()
     {
@@ -291,6 +307,6 @@ class PageController extends Controller
             'dark_mode' => $request->boolean('dark_mode'),
         ]);
 
-        return redirect()->route('settings')->with('status', 'Preferences updated successfully.');
+        return back()->with('status', 'Preferences updated successfully.');
     }
 }

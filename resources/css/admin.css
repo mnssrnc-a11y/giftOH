@@ -53,3 +53,20 @@
 @media (max-width:900px){.admin-quick-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.admin-quick-copy{grid-column:1/-1;padding:2px}.admin-report-insight .admin-card-body{align-items:flex-start;flex-direction:column}.admin-insight-metrics{width:100%}.admin-insight-metrics span{flex:1}}
 @media (max-width:620px){.admin-quick-actions{grid-template-columns:1fr}.admin-quick-copy{grid-column:auto}.admin-funding-summary{grid-template-columns:1fr}.admin-insight-metrics{flex-direction:column}.admin-insight-metrics span{width:100%}}
 @media print{.admin-sidebar,.admin-mobile-bar,.admin-topbar,.admin-page-head,.admin-report-tabs,.admin-toolbar,.admin-tabs,.admin-actions,.admin-pagination,.admin-snackbar,.admin-quick-actions{display:none!important}.admin-main{margin:0;padding:0}.admin-content{padding:0}.admin-page{display:none!important}.admin-page.is-active{display:block!important}.admin-card{box-shadow:none;break-inside:avoid}.admin-table-action{display:none}}
+
+/* Two-stage review, AI recommendation, and system updates */
+.admin-status.awaiting{background:#ede9fe;color:#6d28d9}.is-dark .admin-status.awaiting{background:#3b2a66;color:#c4b5fd}
+.admin-notice-error{border-color:#fecaca;background:#fef2f2;color:#991b1b}.is-dark .admin-notice-error{border-color:#7f1d1d;background:#3b1717;color:#fecaca}
+.admin-textarea{width:100%;min-height:140px;padding:10px 12px;border:1px solid var(--admin-border);border-radius:10px;background:var(--admin-surface);color:var(--admin-text);font:inherit;font-size:12px;line-height:1.5;resize:vertical;outline:0}.admin-textarea:focus{border-color:var(--admin-accent);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.admin-legend{display:inline-flex;align-items:center;gap:5px;margin-right:8px}.admin-legend:before{content:'';width:10px;height:3px;border-radius:2px;background:var(--c)}
+.admin-document-thumb{width:100%;max-height:220px;object-fit:contain;border:1px solid var(--admin-border);border-radius:8px;background:var(--admin-surface);padding:8px}
+.admin-ai-panel{margin-top:16px;padding:14px;border:1px solid color-mix(in srgb,var(--admin-accent) 35%,var(--admin-border));border-radius:12px;background:color-mix(in srgb,var(--admin-accent) 6%,var(--admin-surface))}
+.admin-ai-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}.admin-ai-head .admin-eyebrow{flex-basis:100%}.admin-ai-head strong{font-size:18px}.admin-ai-head strong small{color:var(--admin-muted);font-size:11px;font-weight:600}
+.admin-ai-figures{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:12px 0}.admin-ai-figures span{padding:8px;border:1px solid var(--admin-border);border-radius:9px;background:var(--admin-surface);color:var(--admin-muted);font-size:9px;text-align:center}.admin-ai-figures b{display:block;margin-bottom:2px;color:var(--admin-text);font-size:11px}
+.admin-ai-panel ul{margin:0 0 12px;padding-left:18px;color:var(--admin-muted);font-size:11px;line-height:1.55}.admin-ai-panel p{margin:8px 0 0}
+.admin-updates-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.admin-post-form{display:flex;flex-direction:column;gap:14px}.admin-post-form .admin-field label{display:block;margin-bottom:7px;color:var(--admin-muted);font-size:11px;font-weight:750}.admin-compile-options small{display:block;margin-top:6px;color:var(--admin-muted);font-size:10px}
+.admin-post-list{display:flex;flex-direction:column;gap:12px;max-height:720px;overflow:auto}.admin-post{padding:14px;border:1px solid var(--admin-border);border-radius:12px;background:var(--admin-surface-2)}.admin-post-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.admin-post-head strong,.admin-post-head small{display:block}.admin-post-head strong{font-size:13px}.admin-post-head small{margin-top:3px;color:var(--admin-muted);font-size:10px}.admin-post p{margin:10px 0;color:var(--admin-text);font-size:12px;line-height:1.55;white-space:pre-line;overflow-wrap:anywhere}
+@media (max-width:900px){.admin-updates-grid{grid-template-columns:1fr}.admin-ai-figures{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.admin-field-hint{margin:8px 0 0;color:var(--admin-muted);font-size:11px}

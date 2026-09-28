@@ -28,7 +28,7 @@ class FundController extends Controller
             'tax_id' => 'required|string|max:255',
             'mission' => 'required|string',
             'category' => 'required|string',
-            'amount_requested' => 'required|numeric|min:1',
+            'amount_requested' => 'required|numeric|min:1500|max:30000',
             'barangay_clr' => 'nullable|file|mimes:pdf,png,jpeg,jpg|max:5000',
             'financial_rprt' => 'nullable|file|mimes:jpg,png,jpeg,pdf|max:5000',
             'doc_image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5000',

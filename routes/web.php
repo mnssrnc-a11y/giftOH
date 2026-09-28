@@ -7,6 +7,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ConfigController;
+use App\Http\Controllers\SuperAdminController;
 // Public routes
 Route::get('/config/firebase', [ConfigController::class, 'firebaseConfig'])->name('config.firebase');
 Route::get('/', [PageController::class, 'landing'])->name('landing');
@@ -71,18 +72,17 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/reports', [PageController::class, 'reports'])->name('reports');
     Route::get('/donations', [PageController::class, 'donations'])->name('donations');
     Route::get('/admin', [AdminController::class, 'admin'])->name('admin');
-    Route::get('/admin/fund-approval-verify', [AdminController::class, 'adminApproval'])->name('admin.fund-approval-verify');
-    Route::post('/admin/fund-request/{id}/approve', [AdminController::class, 'adminFundApprove'])->name('admin.fund-request.approve');
-    Route::post('/admin/fund-request/{id}/reject', [AdminController::class, 'adminFundReject'])->name('admin.fund-request.reject');
-    Route::get('/admin/approval-verify', [AdminController::class, 'adminApproval'])->name('admin.approval-verify');
-    Route::post('/admin/fund-request/{id}/action', [AdminController::class, 'initiateApprovalAction'])->name('admin.fund-request.action');
+    // Admin decisions are recommendations; the super admin finalizes them.
     Route::get('/admin/fund-request/verify', [AdminController::class, 'showApprovalVerifyForm'])->name('admin.fund-request.verify.form');
     Route::post('/admin/fund-request/verify', [VerificationController::class, 'verifyApprovalAction'])->name('admin.fund-request.verify');
     Route::post('/admin/fund-request/resend-code', [VerificationController::class, 'resendApprovalCode'])->name('admin.fund-request.resend-code');
+    Route::get('/admin/fund-request/{id}/recommendation', [AdminController::class, 'recommendation'])->name('admin.fund-request.recommendation');
+    Route::post('/admin/fund-request/{id}/action', [AdminController::class, 'initiateApprovalAction'])->name('admin.fund-request.action');
+    Route::post('/admin/posts', [AdminController::class, 'storePost'])->name('admin.posts.store');
+    Route::delete('/admin/posts/{id}', [AdminController::class, 'destroyPost'])->name('admin.posts.destroy');
 });
 
 Route::middleware(['auth', 'role:super_admin'])->group(function () {
-    Route::get('/superadmin', function () {
-        return view('supperAdminPage.spAd_dashB');
-    })->name('superadmin');
+    Route::get('/superadmin', [SuperAdminController::class, 'index'])->name('superadmin');
+    Route::post('/superadmin/fund-request/{id}/finalize', [SuperAdminController::class, 'finalize'])->name('superadmin.fund-request.finalize');
 });

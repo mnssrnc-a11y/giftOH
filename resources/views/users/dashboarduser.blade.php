@@ -141,6 +141,30 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <!-- Left Column - Recent Activity -->
                 <div class="lg:col-span-2">
+                    <!-- Updates posted by admins -->
+                    @if (!empty($posts))
+                        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                            <div class="mb-4">
+                                <h2 class="text-2xl font-bold text-gray-900">Updates from Gift of Hope</h2>
+                                <p class="text-sm text-gray-500">News and funding updates from the administrators.</p>
+                            </div>
+                            <div class="space-y-4">
+                                @foreach ($posts as $post)
+                                    <article class="rounded-lg border border-gray-200 p-4">
+                                        <div class="flex flex-wrap items-center justify-between gap-2">
+                                            <h3 class="font-semibold text-gray-900">{{ $post['title'] ?? 'Update' }}</h3>
+                                            <span class="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">{{ ucwords(str_replace('_', ' ', $post['type'] ?? 'announcement')) }}</span>
+                                        </div>
+                                        <p class="mt-2 whitespace-pre-line text-sm text-gray-600">{{ $post['body'] ?? '' }}</p>
+                                        @if (!empty($post['created_at']))
+                                            <p class="mt-2 text-xs text-gray-400">{{ \Carbon\Carbon::parse($post['created_at'])->diffForHumans() }}</p>
+                                        @endif
+                                    </article>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
                     <!-- User Account Section -->
                     <div class="bg-white rounded-lg shadow-md p-6 mb-8">
                         <div class="flex items-center justify-between mb-6">
@@ -261,20 +285,6 @@
                                 </svg>
                                 <span class="font-semibold">Settings</span>
                             </a>
-                        </div>
-                    </div>
-
-                    Statistics Card
-                    <div class="bg-gradient-to-br from-[#3B82F6] to-[#1E3A8A] rounded-lg shadow-md p-6 text-white">
-                        <h2 class="text-xl font-bold mb-4">Your Impact</h2>
-                        <div class="space-y-4">
-                            <div class="flex items-center justify-between">
-                                <span class="text-blue-100">Total Donated</span>
-                                <span class="text-2xl font-bold">$5,340</span>
-                            </div>
-                            <div class="border-t border-blue-400 pt-4">
-                                <p class="text-blue-100 text-sm">Thank you for making a difference in people's lives!</p>
-                            </div>
                         </div>
                     </div>
                 </div>

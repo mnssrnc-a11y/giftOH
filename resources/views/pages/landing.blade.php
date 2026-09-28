@@ -60,6 +60,29 @@
             </div>
         </section>
 
+        @if (!empty($posts))
+            <section class="py-16 px-8 bg-white" aria-labelledby="latest-updates-title">
+                <div class="max-w-6xl mx-auto">
+                    <div class="text-center mb-10">
+                        <h2 id="latest-updates-title" class="text-3xl font-bold text-gray-900 mb-3">Latest Updates</h2>
+                        <p class="text-lg text-gray-600">News and funding updates from the Gift of Hope team</p>
+                    </div>
+                    <div class="grid gap-6 {{ [1 => "md:grid-cols-1", 2 => "md:grid-cols-2"][count($posts)] ?? "md:grid-cols-3" }}">
+                        @foreach ($posts as $post)
+                            <article class="flex flex-col rounded-xl border border-gray-200 bg-gray-50 p-6">
+                                <span class="mb-3 self-start rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-[#1E3A8A]">{{ ucwords(str_replace('_', ' ', $post['type'] ?? 'announcement')) }}</span>
+                                <h3 class="mb-2 text-xl font-bold text-gray-900">{{ $post['title'] ?? 'Update' }}</h3>
+                                <p class="mb-4 flex-1 whitespace-pre-line break-words text-gray-600">{{ \Illuminate\Support\Str::limit($post['body'] ?? '', 420) }}</p>
+                                @if (!empty($post['created_at']))
+                                    <time class="text-sm text-gray-400" datetime="{{ $post['created_at'] }}">{{ \Carbon\Carbon::parse($post['created_at'])->format('M d, Y') }}</time>
+                                @endif
+                            </article>
+                        @endforeach
+                    </div>
+                </div>
+            </section>
+        @endif
+
         <section class="py-20 px-8 bg-gray-50">
             <div class="max-w-6xl mx-auto">
                 <div class="text-center mb-16">

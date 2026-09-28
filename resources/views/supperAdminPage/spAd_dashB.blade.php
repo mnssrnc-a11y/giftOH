@@ -2,8 +2,15 @@
 @section('title', 'Superadmin - Gift of Hope')
 @section('content')
 @php
-    $pages = ['dashboard' => ['YOUR COMMUNITY, AT A GLANCE', 'A little oversight. A bigger impact.', 'Keep your community, funding, and connected devices moving forward.'], 'accounts' => ['PEOPLE & PERMISSIONS', 'Account management', 'Find community members, create administrators, and manage access.'], 'settings' => ['PLATFORM CONTROLS', 'System settings', 'Manage scoring, request limits, and verification email settings.'], 'monitor' => ['CONNECTED & INFORMED', 'System monitor', 'An overview of device health, funding outcomes, and audit events.'], 'requests' => ['MAKE HOPE HAPPEN', 'Fund requests', 'Review administrator requests and make informed funding decisions.'], 'activity' => ['EVERY ACTION, ACCOUNTED FOR', 'Activity log', 'Follow account, configuration, and funding changes in one place.']];
+    $pages = ['dashboard' => ['YOUR COMMUNITY, AT A GLANCE', 'A little oversight. A bigger impact.', 'Keep your community, funding, and connected devices moving forward.'], 'accounts' => ['PEOPLE & PERMISSIONS', 'Account management', 'Find community members, create administrators, and manage access.'], 'settings' => ['PLATFORM CONTROLS', 'System settings', 'Manage scoring, request limits, and verification email settings.'], 'monitor' => ['CONNECTED & INFORMED', 'System monitor', 'An overview of device health, funding outcomes, and audit events.'], 'requests' => ['MAKE HOPE HAPPEN', 'Fund requests', 'Finalize the approvals and rejections your administrators have submitted.'], 'activity' => ['EVERY ACTION, ACCOUNTED FOR', 'Activity log', 'Follow account, configuration, and funding changes in one place.']];
+    $saConfig = ["availableFunds" => $availableFunds ?? null, "finalizeUrl" => route("superadmin.fund-request.finalize", ["id" => "__ID__"])];
 @endphp
+<script>
+    window.giftOfHopeFinalizationQueue = @json($fundRequests ?? []);
+    window.giftOfHopeSuperadmin = @json($saConfig);
+</script>
+@if (session('status'))<div class="sa-note" role="status" style="margin:0 0 18px">{{ session('status') }}</div>@endif
+@if (session('alert_error') || $errors->any())<div class="sa-note sa-note-error" role="alert" style="margin:0 0 18px">{{ session('alert_error') ?? $errors->first() }}</div>@endif
 @foreach($pages as $key => [$eyebrow, $title, $description])
 <section data-sa-page="{{ $key }}" @if($key !== 'dashboard') hidden @endif>
     <div class="sa-heading"><div><span class="sa-eyebrow">{{ $eyebrow }}</span><h1>{{ $title }}</h1><p>{{ $description }}</p></div>@if(in_array($key, ['dashboard', 'accounts']))<button class="sa-button" data-sa-create>＋ Create admin</button>@elseif($key === 'monitor')<span class="sa-badge gray">Sample snapshot · not live</span>@endif</div>
@@ -26,7 +33,7 @@
                     <table class="sa-table">
                         <thead>
                             <tr>
-                                <th>Administrator / purpose</th>
+                                <th>Organization / reviewed by</th>
                                 <th>Amount</th>
                                 <th>Review</th>
                             </tr>
@@ -34,7 +41,7 @@
                         <tbody data-sa-request-preview></tbody>
                     </table>
                 </div>
-                <div class="sa-section-footer">Sample requests · review actions are simulated</div>
+                <div class="sa-section-footer">Live requests reviewed by administrators · your decision is final</div>
             </article><article class="sa-card">
                 <div class="sa-card-head">
                     <h2>AI scoring mechanics</h2>
@@ -57,7 +64,7 @@
     <div class="sa-grid equal"><article class="sa-card"><div class="sa-card-head"><h2>IoT devices</h2><span class="sa-badge gray">4 devices</span></div><div class="sa-card-body" data-sa-devices></div></article><article class="sa-card"><div class="sa-card-head"><h2>Funding outcomes</h2><a class="sa-link" href="#requests">Review requests ↗</a></div><div class="sa-card-body"><div class="sa-big-number" data-sa-approved-amount>₱25,000</div><p>Total approved in sample requests</p><div class="sa-outcomes"><span><b data-sa-approved>1</b>Approved</span><span><b data-sa-denied>1</b>Denied</span><span><b data-sa-pending>3</b>Pending</span></div><progress data-sa-outcome-progress max="100" value="50" aria-label="Approval percentage"></progress><div class="sa-note">Approval percentage excludes requests awaiting review.</div></div></article></div>
     <article class="sa-card"><div class="sa-card-head"><h2>Audit events</h2><span class="sa-badge gray">Updates with preview actions</span></div><div class="sa-card-body" data-sa-audit></div></article>
     @elseif($key === 'requests')
-    <article class="sa-card"><div class="sa-card-head"><h2>Administrator fund requests</h2><span class="sa-badge amber"><span data-sa-pending>3</span>&nbsp; pending</span></div><div class="sa-toolbar"><input type="search" data-sa-request-search placeholder="Search request, administrator, or category" aria-label="Search fund requests"><select data-sa-request-filter aria-label="Filter request status"><option value="">All statuses</option><option>Pending</option><option>Approved</option><option>Denied</option></select></div><div class="sa-table-wrap"><table class="sa-table"><thead><tr><th>Request / administrator</th><th>Category</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody data-sa-requests></tbody></table></div></article>
+    <article class="sa-card"><div class="sa-card-head"><h2>Administrator fund requests</h2><span class="sa-badge amber"><span data-sa-pending>3</span>&nbsp; pending</span></div><div class="sa-toolbar"><input type="search" data-sa-request-search placeholder="Search request, administrator, or category" aria-label="Search fund requests"><select data-sa-request-filter aria-label="Filter request status"><option value="">All statuses</option><option>Pending</option><option>Approved</option><option>Denied</option></select></div><div class="sa-table-wrap"><table class="sa-table"><thead><tr><th>Request / reviewed by</th><th>Category</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody data-sa-requests></tbody></table></div></article>
     @elseif($key === 'activity')
     <article class="sa-card"><div class="sa-card-head"><h2>Workspace activity</h2><span class="sa-badge gray">This preview session</span></div><div class="sa-toolbar"><input type="search" data-sa-log-search placeholder="Search actions or accounts" aria-label="Search activity log"></div><div class="sa-table-wrap"><table class="sa-table"><thead><tr><th>Action</th><th>Actor</th><th>Timestamp</th><th>Source</th></tr></thead><tbody data-sa-logs></tbody></table></div></article>
     @endif

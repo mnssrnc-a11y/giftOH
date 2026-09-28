@@ -16,14 +16,14 @@
     <section class="hope-card">
         <h2>Profile picture</h2>
         <p>Give your community a familiar face.</p>
-@php($currentPicture = auth()->user()->profile_picture)
+@php($currentPicture = auth()->user()?->profilePhotoUrl())
 @if(session('profile_picture_status'))
 <div class="hope-preview" role="status">{{ session('profile_picture_status') }}</div>
 @endif
 <form method="POST" action="{{ route('settings.profile-picture') }}" enctype="multipart/form-data" data-picture-form>@csrf
     <div class="hope-actions">
         <span class="hope-avatar" id="profile-initial" @if($currentPicture) hidden @endif>{{ mb_substr(auth()->user()->fname ?? 'U', 0, 1) }}</span>
-        <img id="profile-photo-preview" class="hope-avatar" style="object-fit:cover" alt="Your profile photo" @if($currentPicture) src="{{ asset('storage/'.$currentPicture) }}" @else hidden @endif><div>
+        <img id="profile-photo-preview" class="hope-avatar" style="object-fit:cover" alt="Your profile photo" @if($currentPicture) src="{{ $currentPicture }}" @else hidden @endif><div>
             <label for="profile-photo" class="hope-text-button">Choose a photo</label>
             <input id="profile-photo" name="profile_picture" type="file" accept=".jpg,.jpeg,.png" data-profile-photo data-validate-file data-max-mb="5">
             <p>JPG or PNG, up to 5 MB.</p>

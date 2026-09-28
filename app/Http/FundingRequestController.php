@@ -15,7 +15,7 @@ class FundingRequestController {
     public function store(Request $request) {
             $validated = $request->validate([
         'org_name' => ['required', 'string', 'max:255'],
-        'amount_requested' => ['required', 'numeric', 'min:1'],
+        'amount_requested' => ['required', 'numeric', 'min:1', 'max:15000'],
         'category' => ['required', 'string', 'max:255'],
         'mission' => ['required', 'string'],
         'contact_person' => ['required', 'string', 'max:255'],

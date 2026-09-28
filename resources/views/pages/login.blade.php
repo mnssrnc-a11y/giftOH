@@ -34,7 +34,7 @@
                         <input
                             name="email"
                             type="email"
-                            value="{{ old('email') }}"
+                            value="{{ old('email', request()->cookie('remembered_email')) }}"
                             placeholder="username@gmail.com"
                             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
                         />
@@ -52,7 +52,7 @@
 
                     <div class="flex items-center justify-between mb-6">
                         <label class="flex items-center">
-                            <input name="remember" type="checkbox" class="w-4 h-4 text-[#3B82F6] border-gray-300 rounded focus:ring-[#3B82F6]" />
+                            <input name="remember" type="checkbox" @checked(request()->cookie('remembered_email')) class="w-4 h-4 text-[#3B82F6] border-gray-300 rounded focus:ring-[#3B82F6]" />
                             <span class="ml-2 text-sm text-gray-600">Remember me</span>
                         </label>
                         <a href="{{ route('forgot-password') }}" class="text-sm text-[#3B82F6] hover:underline">Forgot password?</a>

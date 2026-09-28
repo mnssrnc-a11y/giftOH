@@ -17,7 +17,7 @@
                     <p class="text-gray-600">Enter the verification code sent to <strong class="text-gray-900">{{ Auth::user()->email }}</strong> to verify your decision.</p>
                 </div>
 
-                <form method="POST" action="{{ route('admin.fund-approval-verify') }}">
+                <form method="POST" action="{{ route('admin.fund-request.verify') }}">
                     @csrf
 
                     @if (session('status'))

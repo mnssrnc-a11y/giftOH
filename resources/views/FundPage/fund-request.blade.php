@@ -66,7 +66,8 @@
                                 name="amount_requested"
                                 type="number"
                                 required
-                                min="1"
+                                min="1500"
+                                max="30000"
                                 value="{{ old('amount_requested') }}"
                                 placeholder="100"
                                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
