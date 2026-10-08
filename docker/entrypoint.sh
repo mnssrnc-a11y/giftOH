@@ -20,6 +20,10 @@ if [ "$ALLOW_DEBUG_IN_PRODUCTION" != "true" ]; then
     fi
 fi
 
+# Errors must reach the host's log viewer (a log file inside the container is never seen and is
+# wiped on restart), whatever LOG_CHANNEL a copied local .env says.
+export LOG_CHANNEL=stderr
+
 if [ -z "$APP_KEY" ]; then
     echo "ERROR: APP_KEY is not set. Generate one with: php artisan key:generate --show" >&2
     exit 1
@@ -28,6 +32,9 @@ fi
 # Runtime folders (the disk is fresh on every start on Render's free plan).
 mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views \
          storage/logs storage/app/private storage/app/public bootstrap/cache
+
+# Plain-language settings check in the log (never prints secrets); it does not stop the start.
+php artisan deploy:check || true
 
 # Cache config, routes and views with this environment's variables.
 php artisan config:cache
