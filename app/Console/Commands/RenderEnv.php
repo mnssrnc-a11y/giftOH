@@ -98,7 +98,7 @@ class RenderEnv extends Command
 
         $this->info("Wrote {$output}");
         if ($production['BREVO_API_KEY'] === '') {
-            $this->warn('BREVO_API_KEY is empty: add it (--brevo-key=...) or no emails will be sent.');
+            $this->warn('BREVO_API_KEY is empty: that is fine if the super admin saves the Brevo key in System settings → Verification email settings (stored in Firebase). Otherwise pass --brevo-key=... or no emails are sent.');
         }
         $this->line('Paste the file into Render → your service → Environment → Add from .env, then delete it.');
 
