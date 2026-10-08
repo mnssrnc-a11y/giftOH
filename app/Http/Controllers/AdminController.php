@@ -6,12 +6,18 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use App\Mail\ApprovalVerificationCode;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use App\Repositories\FirebaseAdminPostRepository;
+use App\Repositories\FirebaseDonationRepository;
+use App\Repositories\FirebaseUserRepository;
 use App\Services\AdminDashboardService;
+use App\Services\Ai\AiClient;
 use App\Services\FundAllocationAdvisor;
 use App\Services\FundingService;
 use App\Services\IotService;
+use App\Services\NotificationService;
 use App\Services\VerificationService;
 
 class AdminController extends Controller
@@ -36,8 +42,57 @@ class AdminController extends Controller
         $data = $this->dashboard->build($iotMetrics);
         $pendingCount = $data['fundingSummary']['pendingCount'];
         $totalFundRequests = count($data['fundingRequests']);
+        $aiProviders = app(AiClient::class)->status();
+        $prices = app(\App\Services\PriceListService::class);
+        $priceGroups = $prices->grouped();
+        $priceRun = $prices->lastRun();
 
-        return view('adminPage.admin', array_merge($iotMetrics, $data, compact('pendingCount', 'totalFundRequests')));
+        return view('adminPage.admin', array_merge($iotMetrics, $data, compact('pendingCount', 'totalFundRequests', 'aiProviders', 'priceGroups', 'priceRun')));
+    }
+
+    /**
+     * Donations ledger: recorded donations plus each smart box's running total, from Firebase.
+     */
+    public function donations(FirebaseDonationRepository $donationRepository, FirebaseUserRepository $users)
+    {
+        try {
+            $records = $donationRepository->all();
+        } catch (\Throwable) {
+            $records = null;
+        }
+
+        $donations = collect($records ?? [])->map(function (array $donation) use ($users): array {
+            $donor = ! empty($donation['user_id']) ? ($users->findById($donation['user_id']) ?? []) : [];
+
+            return [
+                'id' => (string) ($donation['id'] ?? ''),
+                'date' => $donation['created_at'] ?? $donation['donated_at'] ?? $donation['detected_at'] ?? null,
+                'amount' => (float) ($donation['amount'] ?? 0),
+                'box' => $donation['iot_box_id'] ?? $donation['box_id'] ?? null,
+                'type' => $donation['type'] ?? $donation['payment_method'] ?? $donation['method'] ?? 'Donation',
+                'status' => strtolower((string) ($donation['status'] ?? 'verified')),
+                'donor' => trim(($donor['fname'] ?? '') . ' ' . ($donor['lname'] ?? '')) ?: ($donation['donor_name'] ?? null),
+            ];
+        })->sortByDesc('date')->values()->all();
+
+        $boxes = collect($this->iotService->getBoxes() ?? [])->map(fn (array $box): array => [
+            'id' => $box['id'],
+            'location' => $box['location'] ?? '—',
+            'total' => (float) ($box['total'] ?? 0),
+            'coins' => (int) ($box['totalCoins'] ?? 0),
+            'status' => $box['status'] ?? null,
+        ])->sortBy('id')->values()->all();
+
+        return view('adminPage.donations', [
+            'donations' => $donations,
+            'donationsAvailable' => $records !== null,
+            'boxes' => $boxes,
+            'boxTotal' => array_sum(array_column($boxes, 'total')),
+            'directTotal' => array_sum(array_column($donations, 'amount')),
+            'totalFunds' => $this->iotService->getTotalFunds(),
+            'availableFunds' => $this->iotService->getAvailableFunds(),
+            'pendingCount' => count($this->fundingService->getPendingRequests()),
+        ]);
     }
 
     /**
@@ -72,6 +127,21 @@ class AdminController extends Controller
             return $this->toSection('funding')->with('alert_error', 'This request is no longer awaiting admin review.');
         }
 
+        // Social workers interview and assess every request before it can be approved.
+        $assessment = (array) ($fundingRequest['assessment'] ?? []);
+        if ($validated['action'] === 'approved' && (empty($assessment['assessed_at']) || ($assessment['outcome'] ?? '') !== 'recommended')) {
+            return redirect()->route('admin.fund-request.show', $id)
+                ->with('alert_error', 'A request can be approved only after the social worker\'s assessment recommends it.');
+        }
+        if ($validated['action'] === 'approved' && ! $this->fundingService->documentsVerified($fundingRequest)) {
+            return redirect()->route('admin.fund-request.show', $id)
+                ->with('alert_error', 'Verify every required document before approving.');
+        }
+        if ($validated['action'] === 'approved' && empty($fundingRequest['budget']['per_person'])) {
+            return redirect()->route('admin.fund-request.show', $id)
+                ->with('alert_error', 'Set the budget per person before approving.');
+        }
+
         $requested = (float) ($fundingRequest['amount_requested'] ?? $fundingRequest['amount'] ?? 0);
         if ($validated['action'] === 'approved' && (float) $validated['amount'] > $requested) {
             return back()->with('alert_error', 'The recommended amount cannot be more than the amount requested.');
@@ -91,8 +161,14 @@ class AdminController extends Controller
         }
 
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        try {
+            Mail::to($user->email)->send(new ApprovalVerificationCode($code, $user->fname ?? 'Admin', $validated['action']));
+        } catch (TransportExceptionInterface $exception) {
+            report($exception);
+
+            return back()->with('alert_error', 'We could not email your approval code. Try again later, or turn off email verification in Settings to submit without a code.');
+        }
         $this->verificationService->store($user->email, $code, 'approval_verification_codes');
-        Mail::to($user->email)->send(new ApprovalVerificationCode($code, $user->fname ?? 'Admin', $validated['action']));
         session(['pending_approval' => $pending]);
 
         return redirect()->route('admin.fund-request.verify.form')
@@ -127,6 +203,12 @@ class AdminController extends Controller
         }
 
         $verb = $pending['action'] === 'approved' ? 'Approval' : 'Rejection';
+        app(\App\Services\AuditLogger::class)->record('funding', "Admin recommended {$pending['action']}"
+            . ($pending['amount'] ? ' of ₱' . number_format($pending['amount'], 2) : ''), $pending['request_id']);
+        app(NotificationService::class)->notifySuperAdmins($pending['request_id'], 'awaiting_final', 'Request ready for your final decision',
+            (Auth::user()->fullName() ?: 'An admin') . ' recommends ' . ($pending['action'] === 'approved'
+                ? 'approving ₱' . number_format((float) $pending['amount'], 2)
+                : 'rejecting') . ' the request from ' . ($updated['org_name'] ?? 'an organization') . '.');
 
         return $this->toSection('funding')
             ->with('status', "{$verb} recorded and sent to the super admin for finalization.");
@@ -139,9 +221,16 @@ class AdminController extends Controller
             'body' => 'required|string|max:10000',
             'type' => 'required|in:announcement,funding_update,compiled_report',
             'audience' => 'required|in:' . FirebaseAdminPostRepository::AUDIENCE_PUBLIC . ',' . FirebaseAdminPostRepository::AUDIENCE_USERS,
+            // Optional photo shown with the update (scanned for malware like every upload).
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+        ], [
+            'image.image' => 'The photo must be a JPG, PNG or WebP image.',
+            'image.max' => 'The photo must not be larger than 5 MB.',
         ]);
 
-        $this->posts->create(array_merge($validated, [
+        $image = $request->hasFile('image') ? $request->file('image')->store('announcements', 'public') : null;
+        $this->posts->create(array_merge(collect($validated)->except('image')->all(), [
+            'image' => $image ?: null,
             'author_id' => (string) Auth::id(),
             'author_role' => 'admin',
         ]));
@@ -160,6 +249,9 @@ class AdminController extends Controller
         abort_unless((string) ($post['author_id'] ?? '') === (string) Auth::id(), 403, 'You can only delete your own updates.');
 
         $this->posts->delete($id);
+        if (! empty($post['image'])) {
+            Storage::disk('public')->delete($post['image']);
+        }
 
         return $this->toSection('updates')->with('status', 'Update deleted.');
     }

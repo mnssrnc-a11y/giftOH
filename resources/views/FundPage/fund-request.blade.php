@@ -3,300 +3,134 @@
 @section('title', 'Fund Request - Gift of Hope')
 
 @section('content')
+@php
+    $limits = config('funding.beneficiaries');
+    $assessmentDays = config('funding.assessment_days');
+    $liquidationDays = config('funding.liquidation_days');
+    $formData = [
+        'categories' => $categories,
+        'limits' => $limits,
+    ];
+    $input = 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1976D2] bg-white';
+    $label = 'block text-sm font-semibold text-gray-700 mb-2';
+@endphp
+<script>window.giftOfHopeFundForm = @json($formData);</script>
 
-
-    <div class="min-h-screen bg-gray-50">
-        <div class="bg-white border-b border-gray-200 px-8 py-4">
-            <h1 class="text-2xl font-bold text-gray-900">Fund Request</h1>
-            <p class="text-sm text-gray-500">Create a funding request / campaign</p>
+<div class="hope-page">
+    <div class="hope-heading">
+        <div>
+            <div class="hope-eyebrow">FUND REQUEST</div>
+            <h1>Ask for help for your community.</h1>
+            <p>Any organization may request assistance for {{ $limits['min'] }}–{{ $limits['max'] }} people.</p>
         </div>
+    </div>
 
-        <div class="p-8">
-            <div class="max-w-3xl bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6">Request Details</h2>
+    <div>
+        <div class="max-w-4xl space-y-6">
+            <ol class="grid grid-cols-2 gap-3 rounded-xl border border-gray-100 bg-white p-5 text-xs text-gray-600 shadow-sm md:grid-cols-5">
+                @foreach ([['1', 'Submit request', 'With the required documents'], ['2', 'Interview & assessment', "By a social worker within {$assessmentDays} days"], ['3', 'Approval', 'Admin review, then final approval'], ['4', 'Release of funds', 'Bank transfer to your account'], ['5', 'Liquidation', "Receipts + list of recipients within {$liquidationDays} days"]] as [$n, $title, $text])
+                    <li class="flex gap-2"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0D47A1] text-white font-bold">{{ $n }}</span><span><strong class="block text-gray-900">{{ $title }}</strong>{{ $text }}</span></li>
+                @endforeach
+            </ol>
 
-                <form method="POST" action="{{ route('fund-request.store') }}" enctype="multipart/form-data">
-                    @csrf
+            @if ($denialReason)
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800" role="alert">
+                    <strong class="block">You can't submit a new request right now.</strong>{{ $denialReason }}
+                </div>
+            @endif
 
-                    @if (session('status'))
-                        <div class="mb-5 p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <p class="text-sm text-green-700">{{ session('status') }}</p>
+            @if ($errors->any())
+                <div class="rounded-xl border border-red-200 bg-red-50 p-5" role="alert">
+                    <p class="mb-2 text-sm font-semibold text-red-800">Please fix the following:</p>
+                    <ul class="list-disc space-y-1 pl-5 text-sm text-red-700">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('fund-request.store') }}" enctype="multipart/form-data" data-fund-form novalidate>
+                @csrf
+                <fieldset class="space-y-6" @disabled($denialReason)>
+
+                {{-- Organization --}}
+                <section class="rounded-xl border border-gray-100 bg-white p-8 shadow-sm">
+                    <h2 class="mb-1 text-xl font-bold text-gray-900">1. Organization & contact</h2>
+                    <p class="mb-6 text-sm text-gray-500">All organizations are welcome: charity homes, schools, parishes, community groups, and others.</p>
+                    <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <div class="md:col-span-2">
+                            <label class="{{ $label }}" for="org_name">Organization name</label>
+                            <input id="org_name" name="org_name" list="known-orgs" required maxlength="255" value="{{ old('org_name') }}" class="{{ $input }}" placeholder="Type your organization's name" data-receiver-name>
+                            <datalist id="known-orgs">@foreach (config('funding.known_organizations') as $organization)<option value="{{ $organization }}">@endforeach</datalist>
                         </div>
-                    @endif
+                        <div><label class="{{ $label }}" for="contact_person">Contact person</label><input id="contact_person" name="contact_person" required maxlength="255" value="{{ old('contact_person') }}" class="{{ $input }}" data-receiver-name></div>
+                        <div><label class="{{ $label }}" for="contact_email">Contact email</label><input id="contact_email" name="contact_email" type="email" required value="{{ old('contact_email', auth()->user()->email) }}" class="{{ $input }}"></div>
+                        <div><label class="{{ $label }}" for="phone">Contact number</label><input id="phone" name="phone" required maxlength="30" value="{{ old('phone', auth()->user()->phone) }}" class="{{ $input }}" placeholder="09123456789"></div>
+                        <div><label class="{{ $label }}" for="tax_id">Tax ID / registration no. <span class="font-normal text-gray-400">(optional)</span></label><input id="tax_id" name="tax_id" maxlength="255" value="{{ old('tax_id') }}" class="{{ $input }}"></div>
+                        <div class="md:col-span-2"><label class="{{ $label }}" for="address">Address</label><input id="address" name="address" required maxlength="255" value="{{ old('address') }}" class="{{ $input }}" placeholder="Street, barangay, city, province"></div>
+                    </div>
+                </section>
 
-                    @if ($errors->any())
-                        <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-lg">
-                            @foreach ($errors->all() as $error)
-                                <p class="text-sm text-red-700">{{ $error }}</p>
+                {{-- Category & purpose --}}
+                <section class="rounded-xl border border-gray-100 bg-white p-8 shadow-sm">
+                    <h2 class="mb-1 text-xl font-bold text-gray-900">2. What is the request for?</h2>
+                    <p class="mb-6 text-sm text-gray-500">Choose what the help is for. Every request needs a formal letter and a Certificate of Indigency.</p>
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2" role="radiogroup" aria-label="Category">
+                        @foreach ($categories as $category)
+                            <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-4 hover:border-[#1976D2] has-[:checked]:border-[#1976D2] has-[:checked]:bg-blue-50">
+                                <input type="radio" name="category" value="{{ $category['key'] }}" required class="mt-1" @checked(old('category') === $category['key']) data-category-input>
+                                <span><strong class="block text-sm text-gray-900">{{ $category['label'] }}</strong></span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <div class="mt-6">
+                        <label class="{{ $label }}" for="purpose">Purpose of the request</label>
+                        <textarea id="purpose" name="purpose" required rows="5" maxlength="5000" class="{{ $input }}" placeholder="As stated in your formal letter: what the money will buy, for whom, and why it is needed.">{{ old('purpose') }}</textarea>
+                        <p class="mt-2 text-xs text-gray-500">The foundation decides the budget per person after the social worker's assessment, based on your letter and its price reference.</p>
+                    </div>
+                </section>
+
+                {{-- Beneficiaries --}}
+                <section class="rounded-xl border border-gray-100 bg-white p-8 shadow-sm">
+                    <h2 class="mb-1 text-xl font-bold text-gray-900">3. People who will receive the help</h2>
+                    <p class="mb-4 text-sm text-gray-500">List each person who will receive the assistance. One full name per line, between {{ $limits['min'] }} and {{ $limits['max'] }} people.</p>
+                    <textarea id="beneficiaries" name="beneficiaries" required rows="10" class="{{ $input }} font-mono text-sm" placeholder="Juan Dela Cruz&#10;Maria Santos&#10;…" data-beneficiaries>{{ old('beneficiaries') }}</textarea>
+                    <p class="mt-2 text-sm" data-beneficiary-count aria-live="polite"></p>
+                </section>
+
+                {{-- Bank --}}
+                <section class="rounded-xl border border-gray-100 bg-white p-8 shadow-sm">
+                    <h2 class="mb-1 text-xl font-bold text-gray-900">4. Where to send the funds</h2>
+                    <p class="mb-6 text-sm text-gray-500">Funds are sent by bank-to-bank transfer to any bank, as long as the account is in the receiver's name: the organization or the contact person above.</p>
+                    <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
+                        <div><label class="{{ $label }}" for="bank_name">Bank</label><input id="bank_name" name="bank_name" maxlength="120" value="{{ old('bank_name') }}" class="{{ $input }}" placeholder="e.g. BDO, Landbank, GCash" required></div>
+                        <div><label class="{{ $label }}" for="account_name">Account name</label><input id="account_name" name="account_name" maxlength="255" value="{{ old('account_name') }}" class="{{ $input }}" required data-account-name></div>
+                        <div><label class="{{ $label }}" for="account_number">Account number</label><input id="account_number" name="account_number" inputmode="numeric" maxlength="30" value="{{ old('account_number') }}" class="{{ $input }}" required></div>
+                    </div>
+                    <p class="mt-2 text-xs" data-account-hint aria-live="polite"></p>
+                </section>
+
+                {{-- Requirements --}}
+                <section class="rounded-xl border border-gray-100 bg-white p-8 shadow-sm">
+                    <h2 class="mb-1 text-xl font-bold text-gray-900">5. Requirements</h2>
+                    <p class="mb-6 text-sm text-gray-500">JPG, PNG or PDF, up to 10 MB each. Every file is scanned for malware before it is accepted.</p>
+                        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                            @foreach (config('funding.requirements') as $field => $document)
+                                <div>
+                                    <label class="mb-1 block text-sm font-semibold text-gray-700" for="{{ $field }}">{{ $document['label'] }} <span class="text-red-500">*</span></label>
+                                    <p class="mb-2 text-xs text-gray-400">{{ $document['hint'] }}</p>
+                                    <label for="{{ $field }}" class="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-5 transition-colors hover:border-[#1976D2] hover:bg-blue-50">
+                                        <span class="text-sm text-gray-400" data-file-name>Click to upload</span>
+                                    </label>
+                                    <input type="file" id="{{ $field }}" name="{{ $field }}" accept=".jpg,.jpeg,.png,.pdf" required class="sr-only" data-file-input>
+                                    @error($field)<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+                                </div>
                             @endforeach
                         </div>
-                    @endif
+                </section>
 
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Organization Name</label>
-                            <select
-                                name="org_name"
-                                required
-                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] bg-white"
-                            >
-                                <option value="" disabled {{ old('org_name') ? '' : 'selected' }}>Select an organization</option>
-                                @foreach ([
-                                    "The Children's Home of Eucharistic Love and Kindness.",
-                                    "Children's Home of the Immaculate Heart of Mary.",
-                                    "Children's Joy Foundation Inc. - Pampanga.",
-                                    'Charity Home for the Elderly.',
-                                    'Tuloy Pampanga.',
-                                    'Bahay Pag-Ibig Home for the Aged.',
-                                    "Ima's Home for Children.",
-                                    'Munting Tahanan ng Nazareth.',
-                                    'Send The Light Ministries for the Filipino.',
-                                    'Domus Pastorum Foundation Incorporated.',
-                                    'Duyan Ni Maria Children\'s Home.',
-                                ] as $organization)
-                                    <option value="{{ $organization }}" {{ old('org_name') === $organization ? 'selected' : '' }}>{{ $organization }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Amount Requested (₱)</label>
-                            <input
-                                name="amount_requested"
-                                type="number"
-                                required
-                                min="1500"
-                                max="30000"
-                                value="{{ old('amount_requested') }}"
-                                placeholder="100"
-                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-                            />
-                        </div>
-                    </div>
-
-                    <div class="mb-6">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Category</label>
-                        <select name="category" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] bg-white placeholder-gray-400= SELECT   ">
-                            <option value="" {{ old('category') == '' ? 'selected' : '' }}>Select a category</option>
-                            <option value="Education" {{ old('category') == 'Education' ? 'selected' : '' }}>Education</option>
-                            <option value="Healthcare" {{ old('category') == 'Healthcare' ? 'selected' : '' }}>Healthcare</option>
-                            <option value="Food & Shelter" {{ old('category') == 'Food & Shelter' ? 'selected' : '' }}>Food & Shelter</option>
-                            <option value="Emergency Relief" {{ old('category') == 'Emergency Relief' ? 'selected' : '' }}>Emergency Relief</option>
-                            <option value="Community Development" {{ old('category') == 'Community Development' ? 'selected' : '' }}>Community Development</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-6">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Contact Person</label>
-                        <input
-                            name="contact_person"
-                            type="text"
-                            required
-                            value="{{ old('contact_person') }}"
-                            placeholder="contact person name"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-                        />
-                    </div>
-
-                    <div class="mb-6">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Contact Email</label>
-                        <input
-                            name="contact_email"
-                            type="email"
-                            required
-                            value="{{ old('contact_email') }}"
-                            placeholder="contact@example.com"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-                        />
-                    </div>
-
-                    <div class="mb-6">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Contact Number</label>
-                        <input
-                            name="phone"
-                            type="text"
-                            required
-                            value="{{ old('phone') }}"
-                            placeholder="09123456789"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-                        />
-                    </div>
-
-                    <div class="mb-6">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Tax ID</label>
-                        <input
-                            name="tax_id"
-                            type="text"
-                            required
-                            value="{{ old('tax_id') }}"
-                            placeholder="TAX-123456789"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-                        />
-                    </div>
-
-                    <div class="mb-6">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Address</label>
-                        <input
-                            name="address"
-                            type="text"
-                            required
-                            value="{{ old('address') }}"
-                            placeholder="123 Main St, City, Province"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-                        />
-                    </div>
-
-                    <div class="mb-6">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Mission</label>
-                        <textarea
-                            name="mission"
-                            required
-                            placeholder="Describe your organization's mission and how the requested funds will be used."
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-                        >{{ old('mission') }}</textarea>
-                    </div>
-
-<div class="border-t border-gray-200 pt-7 mb-7">
-                    <h3 class="text-base font-bold text-gray-900 mb-1">Supporting Documents</h3>
-                    <p class="text-xs text-gray-500 mb-5">
-                        Upload the three documents below. Accepted formats: JPG, PNG, PDF. Max 5MB each.
-                    </p>
-                    <!-- <<-- Document Uploads -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">
-                                Supporting Document <span class="text-red-500">*</span>
-                            </label>
-                            <p class="text-xs text-gray-400 mb-2">e.g. organization/foundation BIR registration and relevant tax documents Mayor’s/Business Permit, if applicable</p>
-                            <label
-                                for="doc_image"
-                                id="doc_image_label"
-                                class="flex flex-col items-center gap-2 px-4 py-5 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#3B82F6] hover:bg-blue-50 transition-colors"
-                            >
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                                </svg>
-                                <span class="text-sm text-gray-400" id="doc_image_name">Click to upload</span>
-                            </label>
-                            <input
-                                type="file"
-                                id="doc_image"
-                                name="doc_image"
-                                accept="image/*,.pdf"
-                                required
-                                class="sr-only"
-                                onchange="previewFileName(this, 'doc_image_name')"/>
-                            @error('doc_image')
-                                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        <!-- Valid ID -->
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Valid ID <span class="text-red-500">*</span></label>
-                            <p class="text-xs text-gray-400 mb-2">Any government-issued photo ID</p>
-                            <label
-                                for="id_image"
-                                class="flex flex-col items-center gap-2 px-4 py-5 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#3B82F6] hover:bg-blue-50 transition-colors">
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                                </svg>
-                                <span class="text-sm text-gray-400" id="id_image_name">Click to upload</span>
-                            </label>
-                            <input
-                                type="file"
-                                id="id_image"
-                                name="id_image"
-                                accept="image/*,.pdf"
-                                required
-                                class="sr-only"
-                                onchange="previewFileName(this, 'id_image_name')"/>
-                            @error('id_image')
-                                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        <!-- Financial Report -->
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Financial Report <span class="text-red-500">*</span></label>
-                            <p class="text-xs text-gray-400 mb-2">Annual financial report</p>
-                            <label
-                                for="financial_rprt"
-                                class="flex flex-col items-center gap-2 px-4 py-5 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#3B82F6] hover:bg-blue-50 transition-colors">
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                                </svg>
-                                <span class="text-sm text-gray-400" id="financial_rprt_name">Click to upload</span>
-                            </label>
-                            <input
-                                type="file"
-                                id="financial_rprt"
-                                name="financial_rprt"
-                                accept="image/*,.pdf"
-                                required
-                                class="sr-only"
-                                onchange="previewFileName(this, 'financial_rprt_name')"/>
-                            @error('financial_rprt')
-                                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        <!-- Government Document -->
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">
-                                Barangay Clearance <span class="text-red-500">*</span>
-                            </label>
-                            <p class="text-xs text-gray-400 mb-2">Latest Barangay Clearance</p>
-                            <label
-                                for="barangay_clr"
-                                class="flex flex-col items-center gap-2 px-4 py-5 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#3B82F6] hover:bg-blue-50 transition-colors">
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                                </svg>
-                                <span class="text-sm text-gray-400" id="barangay_clr_name">Click to upload</span>
-                            </label>
-                            <input
-                                type="file"
-                                id="barangay_clr"
-                                name="barangay_clr"
-                                accept="image/*,.pdf"
-                                required
-                                class="sr-only"
-                                onchange="previewFileName(this, 'barangay_clr_name')"
-                            />
-                            @error('barangay_clr')
-                                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                    </div>
-                </div>
-                <button
-                    type="submit"
-                    class="w-full bg-[#1E3A8A] text-white py-3.5 rounded-xl font-bold hover:bg-[#2d4a9e] transition-colors">
-                    Submit Request
-                </button>
-
-                <p class="text-xs text-gray-500 text-center mt-5">
-                    Submitted requests are reviewed by our team within 3–5 business days.
-                    You will receive a notification once a decision has been made.
-                </p>
+                <button type="submit" class="w-full rounded-xl bg-[#0D47A1] py-3.5 font-bold text-white transition-colors hover:bg-[#1565C0] disabled:opacity-50">Submit request</button>
+                <p class="text-center text-xs text-gray-500">After you submit, a social worker will contact you to schedule an interview and assessment within {{ $assessmentDays }} days.</p>
+                </fieldset>
             </form>
         </div>
     </div>
 </div>
-
-<script>
-    // Shows the selected filename inside the upload box instead of "Click to upload"
-    function previewFileName(input, labelId) {
-        const label = document.getElementById(labelId);
-        if (input.files && input.files[0]) {
-            const name = input.files[0].name;
-            // Truncate long filenames
-            label.textContent = name.length > 22 ? name.substring(0, 20) + '…' : name;
-            label.classList.remove('text-gray-400');
-            label.classList.add('text-[#1E3A8A]', 'font-semibold');
-        }
-    }
-</script>
 @endsection
-

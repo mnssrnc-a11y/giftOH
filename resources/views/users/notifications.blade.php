@@ -1,41 +1,39 @@
-@extends('layouts.dashboard')
+@extends(\App\Support\Layout::forRole())
 
 @section('title', 'Notifications - Gift of Hope')
+@section('page-kicker', 'Account')
+@section('page-title', 'Notifications')
 
 @section('content')
-    <div class="min-h-screen bg-gray-50 p-8">
-        <div class="mx-auto max-w-3xl">
-            <div class="mb-6 flex items-center justify-between">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Notifications</h1>
-                    <p class="text-sm text-gray-500">Your latest fund request updates.</p>
-                </div>
-                <a href="{{ route('dashboarduser') }}" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                    Back to dashboard
-                </a>
-            </div>
-
-            <div class="space-y-3">
-                @forelse ($notifications as $notification)
-                    @php($isApproved = in_array($notification['type'] ?? '', ['approved', 'funding_approved'], true))
-                    <form method="POST" action="{{ route('notifications.read', $notification['id']) }}">
-                        @csrf
-                        <button type="submit" class="flex w-full items-start gap-4 rounded-lg border-l-4 p-4 text-left {{ $isApproved ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-500' }} hover:shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                            <div class="flex-1">
-                                <p class="font-semibold text-gray-900">{{ $notification['label'] ?? 'Notification' }}</p>
-                                <p class="text-sm text-gray-600">{{ $notification['message'] ?? '' }}</p>
-                                @if (!empty($notification['created_at']))
-                                    <p class="mt-1 text-xs text-gray-500">{{ \Carbon\Carbon::parse($notification['created_at'])->diffForHumans() }}</p>
-                                @endif
-                            </div>
-                        </button>
-                    </form>
-                @empty
-                    <div class="rounded-lg bg-white p-8 text-center text-sm text-gray-500 shadow-sm">
-                        No notifications yet.
-                    </div>
-                @endforelse
-            </div>
+@php($warnTypes = ['denied', 'funding_denied', 'liquidation_returned', 'document_resubmit', 'price_update_failed'])
+<div class="hope-page">
+    <div class="hope-heading">
+        <div>
+            <div class="hope-eyebrow">NOTIFICATIONS</div>
+            <h1>What needs your attention</h1>
+            <p>{{ auth()->user()->isUser() ? 'Updates on your fund requests.' : 'New requests, replies, decisions and system updates. Open one to go straight to it.' }}</p>
         </div>
+        @if ($notifications)
+            <form method="POST" action="{{ route('notifications.read-all') }}">@csrf<button class="hope-button secondary" type="submit">Mark all as read</button></form>
+        @endif
     </div>
+
+    @if (session('status'))<div class="hope-preview" role="status">{{ session('status') }}</div>@endif
+    @if (session('alert_error'))<div class="hope-preview hope-preview-error" role="alert">{{ session('alert_error') }}</div>@endif
+
+    <section class="hope-panel">
+        @forelse ($notifications as $notification)
+            <form method="POST" action="{{ route('notifications.read', $notification['id']) }}">
+                @csrf
+                <button type="submit" class="hope-notice-row {{ in_array($notification['type'] ?? '', $warnTypes, true) || str_contains(strtolower($notification['label'] ?? ''), 'fail') ? 'is-warn' : '' }}">
+                    <strong>{{ $notification['label'] ?? 'Notification' }}</strong>
+                    <span>{{ $notification['message'] ?? '' }}</span>
+                    @if (! empty($notification['created_at']))<time datetime="{{ $notification['created_at'] }}">{{ \Carbon\Carbon::parse($notification['created_at'])->diffForHumans() }}</time>@endif
+                </button>
+            </form>
+        @empty
+            <p class="hope-empty">You're all caught up. New notifications appear here.</p>
+        @endforelse
+    </section>
+</div>
 @endsection

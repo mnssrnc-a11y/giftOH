@@ -2,90 +2,91 @@
 
 namespace App\Services;
 
-use App\Models\Funding;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use App\Repositories\FirebaseFundingRepository;
+use App\Services\Ai\AiClient;
 
+/**
+ * Scores how critical a funding request is (0-100) with whichever free AI provider is available,
+ * and stores the result on the request in Firebase (ai_score, ai_breakdown, ai_reasoning...).
+ */
 class AiScoringService
 {
-    public function scoreFundingRequest(Funding $fundingRequest): ?array
+    private const CRITERIA = ['urgency', 'impact', 'need_severity', 'feasibility', 'category_fit'];
+
+    public function __construct(
+        private AiClient $ai,
+        private FirebaseFundingRepository $requests,
+        private FundingRules $rules
+    ) {
+    }
+
+    /**
+     * Score a request and save the result. Returns the stored fields, or null when no AI answered.
+     */
+    public function scoreAndStore(string $requestId): ?array
     {
-        try {
-            $fundingRequest->loadMissing(['category', 'user']);
-
-            $categoryWeight = $fundingRequest->category->weight_in_scoring ?? 1.00;
-            $categoryPriority = $fundingRequest->category->approval_priority ?? 0;
-            $categoryName = $fundingRequest->category->category_name ?? 'General';
-
-            $systemPrompt = <<<PROMPT
-You are an AI funding request evaluator for "Gift of Hope", a charity platform.
-Your job is to analyze each funding request and produce a criticality score from 0 to 100.
-
-A HIGHER score means the request is MORE CRITICAL and MUST receive funding.
-A LOWER score means the request is LESS urgent or less necessary to fund.
-
-Evaluate the request across urgency (25%), impact (25%), need severity (20%), feasibility (15%), and category fit (15%).
-The category is "{$categoryName}", with organizational priority weight {$categoryWeight} and approval priority {$categoryPriority}.
-
-Return ONLY valid JSON in this exact structure:
-{
-    "total_score": <number 0-100>,
-    "breakdown": {
-        "urgency": <number 0-100>,
-        "impact": <number 0-100>,
-        "need_severity": <number 0-100>,
-        "feasibility": <number 0-100>,
-        "category_fit": <number 0-100>
-    },
-    "recommendation": "<critical|high|moderate|low>",
-    "reasoning": "<1-2 sentence explanation of why this score was given>"
-}
-PROMPT;
-
-            $userMessage = <<<MSG
-Please evaluate this funding request:
-
-Title: {$fundingRequest->title}
-Category: {$categoryName}
-Amount Requested: {$fundingRequest->amount_requested}
-Description: {$fundingRequest->description}
-Submitted by: {$fundingRequest->user->fname} {$fundingRequest->user->lname}
-Date Submitted: {$fundingRequest->created_at}
-MSG;
-
-            $response = Http::withHeaders(['Content-Type' => 'application/json'])
-                ->timeout(30)
-                ->post(
-                    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . config('services.gemini.api_key'),
-                    [
-                        'system_instruction' => ['parts' => [['text' => $systemPrompt]]],
-                        'contents' => [['role' => 'user', 'parts' => [['text' => $userMessage]]]],
-                        'generationConfig' => ['responseMimeType' => 'application/json'],
-                    ]
-                );
-
-            $result = json_decode((string) $response->json('candidates.0.content.parts.0.text'), true);
-
-            if (!is_array($result) || !isset($result['total_score'], $result['breakdown'], $result['recommendation'], $result['reasoning'])) {
-                Log::warning('AI scoring returned an invalid structure', ['request_id' => $fundingRequest->id]);
-                return null;
-            }
-
-            $result['total_score'] = max(0, min(100, round((float) $result['total_score'], 2)));
-            foreach (['urgency', 'impact', 'need_severity', 'feasibility', 'category_fit'] as $key) {
-                if (isset($result['breakdown'][$key])) {
-                    $result['breakdown'][$key] = max(0, min(100, round((float) $result['breakdown'][$key], 2)));
-                }
-            }
-
-            return $result;
-        } catch (\Throwable $exception) {
-            Log::error('AI scoring failed', [
-                'request_id' => $fundingRequest->id,
-                'error' => $exception->getMessage(),
-            ]);
-
+        $request = $this->requests->findById($requestId);
+        if ($request === null) {
             return null;
         }
+
+        $result = $this->score($request);
+        if ($result === null) {
+            return null;
+        }
+
+        $this->requests->update($requestId, $result);
+
+        return $result;
+    }
+
+    public function score(array $request): ?array
+    {
+        $category = $request['category_name'] ?? $request['category'] ?? 'General';
+        $budget = (array) ($request['budget'] ?? []);
+        $items = collect($budget['items'] ?? [])->map(fn (array $item): string => "{$item['name']} × {$item['qty']} @ ₱{$item['unit_price']}")->implode('; ');
+
+        $system = <<<PROMPT
+You evaluate funding requests for "Gift of Hope", a Philippine foundation that helps charity homes and communities.
+Score how critical the request is from 0 to 100 (higher = more critical, must be funded) using:
+urgency 25%, impact 25%, need severity 20%, feasibility 15%, category fit 15%.
+Requests cover 20 to 40 beneficiaries with a per-person budget of goods (food, medicine, cleaning materials).
+Return JSON: {"total_score": number, "breakdown": {"urgency": number, "impact": number, "need_severity": number,
+"feasibility": number, "category_fit": number}, "recommendation": "critical|high|moderate|low",
+"reasoning": "1-2 sentences", "red_flags": ["short notes on anything to verify during the social worker interview"]}
+PROMPT;
+
+        $prompt = implode("\n", array_filter([
+            "Organization: " . ($request['org_name'] ?? 'Unknown'),
+            "Category: {$category}",
+            'Purpose: ' . ($request['purpose'] ?? $request['mission'] ?? ''),
+            'Beneficiaries: ' . ($request['beneficiary_count'] ?? 'not stated'),
+            isset($budget['per_person']) ? "Per-person budget: ₱{$budget['per_person']}" : null,
+            $items !== '' ? "Budget items per person: {$items}" : null,
+            (float) ($request['amount_requested'] ?? 0) > 0
+                ? 'Budget set by the foundation: ₱' . $request['amount_requested']
+                : 'Budget: not yet decided (the foundation sets it after the assessment)',
+        ]));
+
+        $answer = $this->ai->json($system, $prompt);
+        $data = $answer['data'] ?? null;
+        if (! is_array($data) || ! is_numeric($data['total_score'] ?? null)) {
+            return null;
+        }
+
+        $breakdown = [];
+        foreach (self::CRITERIA as $key) {
+            $breakdown[$key] = max(0, min(100, round((float) ($data['breakdown'][$key] ?? 0), 1)));
+        }
+
+        return [
+            'ai_score' => max(0, min(100, round((float) $data['total_score'], 1))),
+            'ai_breakdown' => $breakdown,
+            'ai_recommendation' => in_array($data['recommendation'] ?? '', ['critical', 'high', 'moderate', 'low'], true) ? $data['recommendation'] : null,
+            'ai_reasoning' => mb_substr((string) ($data['reasoning'] ?? ''), 0, 600),
+            'ai_red_flags' => array_slice(array_values(array_filter(array_map('strval', (array) ($data['red_flags'] ?? [])))), 0, 5),
+            'ai_provider' => "{$answer['provider']} · {$answer['model']}",
+            'ai_scored_at' => now()->toIso8601String(),
+        ];
     }
 }

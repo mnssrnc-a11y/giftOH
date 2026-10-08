@@ -1,56 +1,48 @@
 @extends('app')
 
 @section('body')
-<div id="adminApp" class="admin-shell" data-admin-app>
-    <div class="admin-mobile-bar">
-        <button type="button" class="admin-icon-button" data-sidebar-toggle aria-label="Open navigation">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-        </button>
-        <a href="#dashboard" class="admin-mobile-brand">Gift of Hope</a>
-        <button type="button" class="admin-icon-button" data-theme-toggle aria-label="Toggle dark mode">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
-        </button>
-    </div>
-
-    <aside class="admin-sidebar" data-sidebar>
-        <div class="admin-brand">
-            <div class="admin-brand-mark">GH</div>
-            <div><strong>Gift of Hope</strong><span>Admin workspace</span></div>
+@php($navCount = count($navNotifications ?? []))
+<div id="adminApp" class="admin-shell ws-shell" data-admin-app>
+    <aside class="ws-sidebar" data-sidebar id="admin-navigation">
+        <div class="ws-brand-row">
+            <a class="ws-brand" href="{{ route('admin') }}#dashboard"><span class="brand-tile"><img src="{{ asset('images/logo-mark.png') }}" alt="" width="466" height="322"></span><span>Gift of Hope<small>Admin</small></span></a>
             <button type="button" class="admin-sidebar-close" data-sidebar-toggle aria-label="Close navigation">&times;</button>
         </div>
-        <nav class="admin-nav" aria-label="Admin navigation">
-            <p>Workspace</p>
-            <a href="{{ route('admin') }}#dashboard" data-admin-nav="dashboard" class="{{ request()->routeIs('admin') ? 'is-active' : '' }}"><span>⌂</span>Dashboard</a>
-            <a href="{{ route('admin') }}#funding" data-admin-nav="funding"><span>₱</span>Funding <b data-pending-count>{{ $pendingCount ?? 0 }}</b></a>
-            <a href="{{ route('admin') }}#updates" data-admin-nav="updates"><span>✎</span>Updates</a>
-            <a href="{{ route('admin') }}#reports" data-admin-nav="reports"><span>▥</span>Reports</a>
-            <a href="{{ route('admin') }}#settings" data-admin-nav="settings"><span>⚙</span>Settings</a>
-            <p>Monitoring</p>
-            <a href="{{ route('iot-monitor') }}" class="{{ request()->routeIs('iot-monitor') ? 'is-active' : '' }}"><span>◫</span>IoT Box Monitor</a>
-            <a href="{{ route('donations') }}" class="{{ request()->routeIs('donations') ? 'is-active' : '' }}"><span>♡</span>Donations</a>
-
+        <nav class="ws-nav" aria-label="Admin navigation">
+            <p class="ws-nav-label">WORKSPACE</p>
+            <a href="{{ route('admin') }}#dashboard" data-admin-nav="dashboard" class="{{ request()->routeIs('admin') ? 'is-active' : '' }}"><span aria-hidden="true">⌂</span>Dashboard</a>
+            <a href="{{ route('admin') }}#funding" data-admin-nav="funding" class="{{ request()->routeIs('admin.fund-request.*') ? 'is-active' : '' }}"><span aria-hidden="true">₱</span>Funding @if ($pendingCount ?? 0)<b data-pending-count>{{ $pendingCount }}</b>@endif</a>
+            <a href="{{ route('admin') }}#updates" data-admin-nav="updates"><span aria-hidden="true">✎</span>Updates</a>
+            <a href="{{ route('admin') }}#reports" data-admin-nav="reports"><span aria-hidden="true">▥</span>Reports</a>
+            <p class="ws-nav-label">MONITORING</p>
+            <a href="{{ route('iot-monitor') }}" class="{{ request()->routeIs('iot-monitor') ? 'is-active' : '' }}"><span aria-hidden="true">◫</span>IoT box monitor</a>
+            <a href="{{ route('donations') }}" class="{{ request()->routeIs('donations') ? 'is-active' : '' }}"><span aria-hidden="true">♡</span>Donations</a>
+            <p class="ws-nav-label">ACCOUNT</p>
+            <a href="{{ route('notifications') }}" class="{{ request()->routeIs('notifications') ? 'is-active' : '' }}"><span aria-hidden="true">◔</span>Notifications @if ($navCount)<b>{{ $navCount }}</b>@endif</a>
+            <a href="{{ route('admin') }}#settings" data-admin-nav="settings"><span aria-hidden="true">⚙</span>Settings</a>
         </nav>
-        <div class="admin-user-card">
-            <x-avatar tag="div" class="admin-avatar" fallback="A" />
-            <div><strong>{{ Auth::user()->name ?? trim((Auth::user()->fname ?? 'Admin').' '.(Auth::user()->lname ?? '')) }}</strong><span>Administrator</span></div>
-            <a href="{{ route('admin') }}" aria-label="Back to admin dashboard">›</a>
+        <div class="ws-person">
+            <x-avatar class="ws-avatar" fallback="A" />
+            <div><strong>{{ Auth::user()->fullName() ?: 'Admin' }}</strong><small>Administrator</small></div>
         </div>
-        <div class="admin-sidebar-footer">© 2026 Gift of Hope</div>
+        <form class="ws-signout" method="POST" action="{{ route('logout') }}">@csrf<button type="submit">Sign out ↗</button></form>
     </aside>
     <button type="button" class="admin-sidebar-scrim" data-sidebar-toggle aria-label="Close navigation"></button>
 
-    <main class="admin-main">
-        <header class="admin-topbar">
-            <div><p data-page-kicker>@yield('page-kicker', 'Overview')</p><h1 data-page-title>@yield('page-title', 'Dashboard')</h1></div>
-            <div class="admin-top-actions">
-                <label class="admin-global-search"><span>⌕</span><input type="search" placeholder="Search workspace" data-global-search></label>
-                <button type="button" class="admin-icon-button admin-desktop-theme" data-theme-toggle title="Toggle dark mode">
+    <main class="admin-main ws-main">
+        <header class="ws-topbar">
+            <button type="button" class="ws-menu" data-sidebar-toggle aria-label="Open navigation" aria-controls="admin-navigation">☰</button>
+            <div class="ws-title"><small data-page-kicker>@yield('page-kicker', 'Overview')</small><strong data-page-title>@yield('page-title', 'Dashboard')</strong></div>
+            <div class="ws-top-actions">
+                <label class="admin-global-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Search workspace" aria-label="Search workspace" data-global-search></label>
+                <button type="button" class="ws-icon-button" data-theme-toggle title="Dark mode" aria-label="Toggle dark mode">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
                 </button>
-                <button type="button" class="admin-icon-button" data-notification-open title="Notifications" aria-label="Open notifications">♢</button>
+                @include('partials.notification-bell')
+                <a href="{{ route('admin') }}#settings" class="ws-top-avatar" aria-label="My account"><x-avatar class="ws-avatar" fallback="A" /></a>
             </div>
         </header>
-        <div class="admin-content">@yield('content')</div>
+        <div class="admin-content ws-content">@yield('content')</div>
     </main>
 
     <div class="admin-snackbar" data-snackbar-box role="status" aria-live="polite"></div>

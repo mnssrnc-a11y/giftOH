@@ -38,26 +38,8 @@
     </dl>
 </section>
 </div>
-<section class="hope-card hope-section" aria-labelledby="admin-updates-title">
-    <h2 id="admin-updates-title">Updates from Gift of Hope</h2>
-    <p>News and funding updates from the administrators.</p>
-    @forelse($posts ?? [] as $post)
-        <article class="hope-admin-post">
-            <div class="hope-admin-post-head">
-                <strong>{{ $post['title'] ?? 'Update' }}</strong>
-                <span class="hope-badge">{{ ucwords(str_replace('_', ' ', $post['type'] ?? 'announcement')) }}</span>
-            </div>
-            <p>{{ $post['body'] ?? '' }}</p>
-            @if(!empty($post['created_at']))
-                <time datetime="{{ $post['created_at'] }}">{{ \Illuminate\Support\Carbon::parse($post['created_at'])->diffForHumans() }}</time>
-            @endif
-        </article>
-    @empty
-        <p class="hope-admin-post-empty">No updates yet. Check back soon.</p>
-    @endforelse
-</section>
 <div class="hope-grid hope-section">
-    @foreach([['request-status','▤','Your requests','Track decisions, review feedback, and explore the appeal process.'],['notifications','◉','Your notifications','See request updates and community milestones.'],['groups','◎','Your community','Meet people who are making a difference together.']] as [$route,$icon,$title,$description])
+    @foreach([['request-status','▤','Your requests','Track decisions, review feedback, and explore the appeal process.'],['notifications','◉','Your notifications','See updates on your requests.'],['dashboarduser','◎','Foundation updates','Announcements and funding news from Gift of Hope.']] as [$route,$icon,$title,$description])
         <section class="hope-card">
             <span class="hope-avatar" aria-hidden="true">{{ $icon }}</span>
             <h2 style="margin-top:16px">{{ $title }}</h2>

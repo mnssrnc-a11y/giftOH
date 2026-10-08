@@ -4,6 +4,9 @@ namespace App\Repositories;
 
 class FirebaseIotBoxRepository extends FirebaseRepository
 {
+    /** Not cached between requests: the smart boxes write this node directly. */
+    protected int $cacheSeconds = 0;
+
     protected function nodeKey(): string
     {
         return 'boxes';
@@ -17,7 +20,8 @@ class FirebaseIotBoxRepository extends FirebaseRepository
     public function getBoxes(): ?array
     {
         try {
-            $value = $this->root()->getValue();
+            // Several dashboard figures need the boxes; read them once per request.
+            $value = $this->oncePerRequest('boxes', fn () => $this->root()->getValue());
 
             if ($value === null) {
                 return null;

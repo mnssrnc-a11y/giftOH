@@ -1,10 +1,8 @@
 @extends(\App\Support\Layout::forRole())
 @section('title', 'Settings - Gift of Hope')
+@section('page-kicker', 'Account')
+@section('page-title', 'Settings')
 @section('content')
-<div class="hope-actions" style="margin:24px">
-    <a class="hope-button secondary" href="{{ route('user.edit') }}">Edit account details</a>
-    <a class="hope-button secondary" href="{{ route('change-password.form') }}">Change account password</a>
-</div>
 <div class="hope-page">
     <div class="hope-heading"><div>
     <div class="hope-eyebrow">SETTINGS</div>
@@ -12,6 +10,10 @@
     <p>Manage your profile, preferences, and account security.</p>
     </div>
 </div>
+{{-- Preferences, account details and password changes all return here with a "status" message. --}}
+@if (session('status'))
+<div class="hope-preview" role="status">{{ session('status') }}</div>
+@endif
 <div class="hope-grid two">
     <section class="hope-card">
         <h2>Profile picture</h2>
@@ -36,26 +38,27 @@
 
 <section class="hope-card">
     <h2>Preferences</h2>
-    <form method="POST" action="{{ route('settings.update') }}" class="space-y-4">@csrf
+    <p>Changes save as soon as you switch them.</p>
+    <form method="POST" action="{{ route('settings.update') }}" data-preferences-form>@csrf
         <div class="hope-toggle-row">
-            <label for="email-preference">Email notifications<small>Receive account activity emails, including sign-in and verification codes.</small></label>
-            <input id="email-preference" type="checkbox" name="email_notifications" value="1" class="w-5 h-5" {{ filter_var(Auth::user()->email_notifications ?? true, FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}/>
+            <label for="email-preference">Email notifications<small>Sign-in asks for a 6-digit code sent to your email, and account activity is emailed to you.</small></label>
+            <input type="hidden" name="email_notifications" value="0">
+            <input id="email-preference" type="checkbox" role="switch" class="hope-switch" name="email_notifications" value="1" data-preference="email_notifications" @checked(filter_var(Auth::user()->email_notifications ?? true, FILTER_VALIDATE_BOOLEAN))>
         </div>
         <div class="hope-toggle-row">
             <label for="dark-preference">Dark mode<small>A softer view across the app.</small></label>
-            <input id="dark-preference" type="checkbox" name="dark_mode" value="1" class="w-5 h-5" {{ filter_var(Auth::user()->dark_mode ?? false, FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}/>
+            <input type="hidden" name="dark_mode" value="0">
+            <input id="dark-preference" type="checkbox" role="switch" class="hope-switch" name="dark_mode" value="1" data-preference="dark_mode" @checked(filter_var(Auth::user()->dark_mode ?? false, FILTER_VALIDATE_BOOLEAN))>
         </div>
-        <button type="submit" class="hope-button">Save preferences</button>
-        @if (session('status'))
-            <p class="text-sm text-green-700 mt-4">{{ session('status') }}</p>
-        @endif
+        <noscript><div class="hope-actions"><button type="submit" class="hope-button">Save preferences</button></div></noscript>
+        <p class="hope-pref-status" data-preference-status role="status" aria-live="polite"></p>
     </form>
 </section>
 </div>
 
 <section class="hope-card hope-section">
-    <h2>Personal information</h2>
-    <p>Your current details on file. Changes are made on the account details page and verified through your current email address.</p>
+    <h2>Account</h2>
+    <p>Your details on file. Update your name and phone number on the account details page.</p>
     <dl class="hope-detail">
         @foreach(['fname' => 'First name', 'lname' => 'Last name', 'email' => 'Email address', 'phone' => 'Phone number', 'address' => 'Address', 'date_of_birth' => 'Birthdate'] as $field => $label)
             <div><dt>{{ $label }}</dt><dd>{{ auth()->user()->$field ?: 'Not provided' }}</dd></div>
@@ -63,18 +66,16 @@
     </dl>
     <div class="hope-actions">
         <a class="hope-button" href="{{ route('user.edit') }}">Edit account details</a>
+        <a class="hope-button secondary" href="{{ route('change-password.form') }}">Change password</a>
+        <span class="hope-muted-note">Your password is never displayed.</span>
     </div>
 </section>
 
-<section class="hope-card hope-section">
-    <div class="hope-heading" style="margin:0">
-        <div>
-            <h2>Security</h2>
-            <p>Password protected · Your password is never displayed.</p>
-        </div>
-        <a class="hope-button secondary" href="{{ route('change-password.form') }}">Change password</a>
-    </div>
-</section>
+<dialog class="hope-dialog" data-preference-dialog data-email="{{ auth()->user()->email }}" aria-labelledby="preference-dialog-title">
+    <h2 id="preference-dialog-title" data-preference-title>Change email verification?</h2>
+    <p data-preference-text></p>
+    <div class="hope-actions"><button type="button" class="hope-button secondary" data-preference-cancel>Cancel</button><button type="button" class="hope-button" data-preference-confirm>Confirm</button></div>
+</dialog>
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function () {

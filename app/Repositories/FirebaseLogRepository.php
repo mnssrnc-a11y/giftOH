@@ -4,6 +4,9 @@ namespace App\Repositories;
 
 class FirebaseLogRepository extends FirebaseRepository
 {
+    /** Not cached between requests: devices and services append to it directly. */
+    protected int $cacheSeconds = 0;
+
     public function findByUserId(string|int $userId): array
     {
         return $this->queryBy('user_id', $userId);

@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="min-h-screen bg-white">
-        <div class="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white px-8 py-16">
+        <div class="bg-gradient-to-r from-[#0D47A1] to-[#1976D2] text-white px-8 py-16">
             <div class="max-w-5xl mx-auto text-center">
                 <h1 class="text-5xl font-bold mb-6">About Gift of Hope</h1>
                 <p class="text-xl text-blue-100 max-w-3xl mx-auto">
@@ -48,7 +48,7 @@
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
                     @foreach ($stats as $stat)
                         <div class="text-center">
-                            <div class="text-4xl font-bold text-[#1E3A8A] mb-2">{{ $stat['value'] }}</div>
+                            <div class="text-4xl font-bold text-[#0D47A1] mb-2">{{ $stat['value'] }}</div>
                             <div class="text-sm text-gray-600">{{ $stat['label'] }}</div>
                         </div>
                     @endforeach
@@ -82,7 +82,7 @@
                     @foreach ($values as $value)
                         <div class="bg-white border border-gray-200 rounded-xl p-8 hover:shadow-lg transition-shadow">
                             <div class="flex items-start gap-4">
-                                <div class="bg-[#3B82F6] p-3 rounded-lg flex-shrink-0 w-12 h-12"></div>
+                                <div class="bg-[#1976D2] p-3 rounded-lg flex-shrink-0 w-12 h-12"></div>
                                 <div>
                                     <h3 class="text-xl font-bold text-gray-900 mb-3">{{ $value['title'] }}</h3>
                                     <p class="text-gray-600 leading-relaxed">{{ $value['description'] }}</p>
@@ -93,7 +93,7 @@
                 </div>
             </div>
 
-            <div class="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] rounded-2xl p-12 mt-16 text-white text-center">
+            <div class="bg-gradient-to-r from-[#0D47A1] to-[#1976D2] rounded-2xl p-12 mt-16 text-white text-center">
                 <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-white/10"></div>
                 <h2 class="text-3xl font-bold mb-4">The Technology Behind the Mission</h2>
                 <p class="text-xl text-blue-100 max-w-3xl mx-auto">

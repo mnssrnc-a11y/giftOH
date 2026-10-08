@@ -3,11 +3,11 @@
 @section('title', 'Verify Reset Code - Gift of Hope')
 
 @section('content')
-    <div class="min-h-screen bg-gray-50 flex items-center justify-center px-8">
+    <div class="brand-auth">
         <div class="max-w-md w-full">
             <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
                 <div class="text-center mb-8">
-                    <div class="bg-[#3B82F6] w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <div class="bg-[#1976D2] w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center">
                         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -37,10 +37,10 @@
 
                     <div class="mb-6">
                         <label for="code" class="block text-sm font-semibold text-gray-700 mb-2">Enter 6-Digit Code</label>
-                        <input id="code" name="code" type="text" required autofocus maxlength="6" placeholder="000000" class="w-full px-4 py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] text-center text-2xl font-mono tracking-[0.5em] font-bold"/>
+                        <input id="code" name="code" type="text" required autofocus maxlength="6" placeholder="000000" class="w-full px-4 py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1976D2] text-center text-2xl font-mono tracking-[0.5em] font-bold"/>
                     </div>
 
-                    <button type="submit" class="w-full bg-[#1E3A8A] text-white py-3 rounded-lg font-bold hover:bg-[#2d4a9e] transition-colors flex items-center justify-center gap-2">Verify Code</button>
+                    <button type="submit" class="w-full bg-[#0D47A1] text-white py-3 rounded-lg font-bold hover:bg-[#1565C0] transition-colors flex items-center justify-center gap-2">Verify Code</button>
                 </form>
 
                 <div class="mt-6 text-center space-y-2">
@@ -49,7 +49,7 @@
                         <form method="POST" action="{{ route('password.send-code') }}" class="inline">
                             @csrf
                             <input type="hidden" name="email" value="{{ $email }}">
-                            <button type="submit" class="text-[#3B82F6] font-semibold hover:underline">Resend Code</button>
+                            <button type="submit" class="text-[#1976D2] font-semibold hover:underline">Resend Code</button>
                         </form>
                     </p>
                     <p class="text-sm text-gray-500">
@@ -59,10 +59,10 @@
             </div>
             <div class="mt-6 text-center">
                 <p class="text-xs text-gray-500">
-                    The code expires in <span id="countdown-timer" class="font-bold text-[#3B82F6]">05:00</span>. Check your spam folder if you don't see it.
+                    The code expires in <span id="countdown-timer" class="font-bold text-[#1976D2]">05:00</span>. Check your spam folder if you don't see it.
                 </p>
                 <div class="mt-4">
-                    <a href="{{ route('login') }}" class="text-[#3B82F6] font-semibold hover:underline text-sm">← Back to Login</a>
+                    <a href="{{ route('login') }}" class="text-[#1976D2] font-semibold hover:underline text-sm">← Back to Login</a>
                 </div>
             </div>
         </div>
@@ -77,7 +77,7 @@
                 if (timeLeft <= 0) {
                     clearInterval(countdown);
                     timerElement.innerText = "00:00 (Expired)";
-                    timerElement.classList.replace('text-[#3B82F6]', 'text-red-500');
+                    timerElement.classList.replace('text-[#1976D2]', 'text-red-500');
                     return;
                 }
                 

@@ -2,6 +2,8 @@
 
 namespace App\Repositories;
 
+use App\Auth\FirebaseUserProvider;
+use Illuminate\Support\Facades\Cache;
 use Kreait\Firebase\Exception\Database\UnsupportedQuery;
 
 class FirebaseUserRepository extends FirebaseRepository
@@ -48,8 +50,18 @@ class FirebaseUserRepository extends FirebaseRepository
         if (isset($data['email'])) {
             $data['email'] = strtolower(trim((string) $data['email']));
         }
+        $updated = parent::update($id, $data);
+        Cache::forget(FirebaseUserProvider::cacheKey($id));
 
-        return parent::update($id, $data);
+        return $updated;
+    }
+
+    public function delete(string|int $id): bool
+    {
+        $deleted = parent::delete($id);
+        Cache::forget(FirebaseUserProvider::cacheKey($id));
+
+        return $deleted;
     }
 
     protected function nodeKey(): string

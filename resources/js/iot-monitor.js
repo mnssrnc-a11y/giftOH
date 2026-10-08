@@ -60,6 +60,11 @@ const boxTracking = new Map();
 const activeBoxesEl = document.getElementById("stat-active-boxes");
 const todayTotalEl = document.getElementById("stat-today-total");
 const alertsEl = document.getElementById("stat-alerts");
+const activeNoteEl = document.getElementById("stat-active-note");
+const alertsNoteEl = document.getElementById("stat-alerts-note");
+
+// Box data comes from devices and is not trusted: escape it before it goes into HTML.
+const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#039;", '"': "&quot;" })[c]);
 const tbody = document.getElementById("boxes-tbody");
 
 // ==========================================
@@ -277,6 +282,7 @@ function render(boxesObj) {
 
   let activeCount = 0;
   let alertCount = 0;
+  const offlineIds = [];
   let grandTotal = 0;
   const rowsHtml = [];
 
@@ -290,7 +296,7 @@ function render(boxesObj) {
     const state = updateLivenessState(boxId, heartbeatMs, box.status, box.lastChecked); // "online" | "offline" | "syncing"
 
     if (state === "online" || state === "syncing") activeCount++;
-    if (state === "offline") alertCount++;
+    if (state === "offline") { alertCount++; offlineIds.push(boxId); }
 
     grandTotal += Number(box.total || 0);
 
@@ -303,8 +309,8 @@ function render(boxesObj) {
 
     rowsHtml.push(`
       <tr>
-        <td class="px-6 py-4 text-sm font-medium text-gray-900">${boxId}</td>
-        <td class="px-6 py-4 text-sm text-gray-600">${box.location || "-"}</td>
+        <td class="px-6 py-4 text-sm font-medium text-gray-900">${escapeHtml(boxId)}</td>
+        <td class="px-6 py-4 text-sm text-gray-600">${escapeHtml(box.location || "-")}</td>
         <td class="px-6 py-4 text-sm">${statusBadge(state)}</td>
         <td class="px-6 py-4 text-sm text-gray-600">${lastSeenDisplay}</td>
         <td class="px-6 py-4 text-sm font-medium text-gray-900">${formatPeso(box.total)}</td>
@@ -319,6 +325,20 @@ function render(boxesObj) {
   activeBoxesEl.textContent = activeCount;
   todayTotalEl.textContent = formatPeso(grandTotal);
   alertsEl.textContent = alertCount;
+
+  // Captions follow the live counts instead of fixed text.
+  setNote(activeNoteEl,
+    boxIds.length === 0 ? "No boxes registered" : alertCount === 0 ? `All ${boxIds.length} box(es) operational` : `${activeCount} of ${boxIds.length} box(es) online`,
+    boxIds.length > 0 && alertCount === 0 ? "text-green-600" : alertCount > 0 ? "text-amber-600" : "text-gray-500");
+  setNote(alertsNoteEl,
+    alertCount === 0 ? "No issues detected" : `${alertCount} box(es) offline: ${offlineIds.join(", ")}`,
+    alertCount === 0 ? "text-green-600" : "text-red-600");
+}
+
+function setNote(element, text, colorClass) {
+  if (!element) return;
+  element.textContent = text;
+  element.className = `text-sm mt-2 ${colorClass}`;
 }
 
 // ==========================================
@@ -332,12 +352,14 @@ let latestBoxesData = null;
 
 async function startMonitor() {
   try {
-    const response = await fetch("/config/firebase");
-    if (!response.ok) {
-      throw new Error(`Firebase configuration request failed (${response.status})`);
+    let firebaseConfig = window.giftOfHopeFirebaseConfig;
+    if (!firebaseConfig) {
+      const response = await fetch("/config/firebase");
+      if (!response.ok) {
+        throw new Error(`Firebase configuration request failed (${response.status})`);
+      }
+      firebaseConfig = await response.json();
     }
-
-    const firebaseConfig = await response.json();
     db = getDatabase(initializeApp(firebaseConfig));
 
     onValue(

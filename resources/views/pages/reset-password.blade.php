@@ -3,7 +3,7 @@
 @section('title', 'Reset Password - Gift of Hope')
 
 @section('content')
-    <div class="min-h-screen bg-gray-50 flex items-center justify-center px-8">
+    <div class="brand-auth">
         <div class="max-w-md w-full">
             <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
                 <div class="text-center mb-8">
@@ -32,19 +32,19 @@
 
                     <div class="mb-5">
                         <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">New Password</label>
-                        <input id="password" name="password" type="password" required autofocus minlength="8" placeholder="Enter new password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"/>
+                        <input id="password" name="password" type="password" required autofocus minlength="8" placeholder="Enter new password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1976D2]"/>
                     </div>
 
                     <div class="mb-6">
                         <label for="password_confirmation" class="block text-sm font-semibold text-gray-700 mb-2">Confirm New Password</label>
-                        <input id="password_confirmation" name="password_confirmation" type="password" required minlength="8" placeholder="Confirm new password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"/>
+                        <input id="password_confirmation" name="password_confirmation" type="password" required minlength="8" placeholder="Confirm new password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1976D2]"/>
                     </div>
 
-                    <button type="submit" class="w-full bg-[#1E3A8A] text-white py-3 rounded-lg font-bold hover:bg-[#2d4a9e] transition-colors flex items-center justify-center gap-2"> Reset Password </button>
+                    <button type="submit" class="w-full bg-[#0D47A1] text-white py-3 rounded-lg font-bold hover:bg-[#1565C0] transition-colors flex items-center justify-center gap-2"> Reset Password </button>
                 </form>
             </div>
 
-            <p class="text-xs text-gray-500 text-center mt-6">
+            <p class="text-xs text-blue-50 text-center mt-6">
                 Your password must be at least 8 characters long.
             </p>
         </div>

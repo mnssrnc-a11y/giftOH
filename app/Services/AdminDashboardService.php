@@ -60,7 +60,9 @@ class AdminDashboardService
      */
     public function fundingRows(): array
     {
-        $rows = array_map(function (array $request): array {
+        // Unread requester messages per request (badge in the admin list and notifications).
+        $unread = app(RequestMessageService::class)->unreadForStaff();
+        $rows = array_map(function (array $request) use ($unread): array {
             $status = $this->funding->statusOf($request);
             $user = $this->user($request['user_id'] ?? null);
 
@@ -84,12 +86,23 @@ class AdminDashboardService
                 'description' => $request['description'] ?? $request['mission'] ?? '',
                 'reason' => $request['reason'] ?? $request['mission'] ?? '',
                 'ai_score' => isset($request['ai_score']) ? (float) $request['ai_score'] : null,
+                'stage' => $stage = $this->funding->stageOf($request),
+                'beneficiary_count' => (int) ($request['beneficiary_count'] ?? 0),
+                'per_person' => isset($request['budget']['per_person']) ? (float) $request['budget']['per_person'] : null,
+                'assessment_outcome' => $request['assessment']['outcome'] ?? null,
+                'verified_beneficiaries' => isset($request['assessment']['verified_beneficiaries']) ? (int) $request['assessment']['verified_beneficiaries'] : null,
+                'assessment_notes' => $request['assessment']['notes'] ?? null,
+                'assessment_due' => $this->funding->assessmentDueAt($request)?->toIso8601String(),
+                'overdue' => ($stage['step'] === 1 && $this->funding->assessmentDueAt($request)?->isPast())
+                    || ($stage['key'] === 'released' && $this->funding->liquidationDueAt($request)?->isPast()),
                 'admin_decision' => $request['admin_decision'] ?? null,
                 'admin_amount' => isset($request['admin_recommended_amount']) ? (float) $request['admin_recommended_amount'] : null,
                 'ai_amount' => isset($request['ai_recommended_amount']) ? (float) $request['ai_recommended_amount'] : null,
                 'admin_notes' => $request['admin_notes'] ?? null,
+                'staff_notes' => $this->funding->staffNotesOf($request),
                 'review' => $this->reviewTrail($request),
-                'documents' => $this->documents($request),
+                'unread_messages' => $unread[(string) ($request['id'] ?? '')]['count'] ?? 0,
+                'last_message_at' => $unread[(string) ($request['id'] ?? '')]['last_at'] ?? null,
             ];
         }, $this->funding->getAllRequests());
 
@@ -125,25 +138,6 @@ class AdminDashboardService
         }
 
         return $trail;
-    }
-
-    private function documents(array $request): array
-    {
-        return collect([
-            'Supporting Document' => $request['doc_image'] ?? null,
-            'Valid ID' => $request['id_image'] ?? null,
-            'Financial Report' => $request['financial_rprt'] ?? null,
-            'Barangay Clearance' => $request['barangay_clr'] ?? null,
-        ])->map(function (?string $path, string $label): array {
-            $extension = $path ? strtolower(pathinfo($path, PATHINFO_EXTENSION)) : null;
-
-            return [
-                'label' => $label,
-                'url' => $path ? asset('storage/' . ltrim($path, '/')) : null,
-                'extension' => $extension,
-                'is_image' => in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true),
-            ];
-        })->values()->all();
     }
 
     private function donationRows(): array
@@ -186,6 +180,7 @@ class AdminDashboardService
             'author' => $this->nameOf($this->user($post['author_id'] ?? null)) ?: 'Admin',
             'author_id' => (string) ($post['author_id'] ?? ''),
             'date' => $post['created_at'] ?? '',
+            'image' => FirebaseAdminPostRepository::imageUrl($post),
         ], $posts);
     }
 
@@ -281,6 +276,12 @@ class AdminDashboardService
             'grantedTotal' => $sum($granted, 'granted'),
             'approvalRate' => $decided > 0 ? round(count($granted) / $decided * 100, 1) : null,
             'decidedCount' => $decided,
+            // Process stages from the foundation interview.
+            'needsAssessment' => count(array_filter($requests, static fn (array $row): bool => $row['stage']['step'] === 1)),
+            'overdue' => count(array_filter($requests, static fn (array $row): bool => $row['overdue'])),
+            'toRelease' => count(array_filter($requests, static fn (array $row): bool => $row['stage']['key'] === 'to_release')),
+            'liquidationPending' => count(array_filter($requests, static fn (array $row): bool => in_array($row['stage']['key'], ['released', 'liquidation_review', 'liquidation_returned'], true))),
+            'liquidationToReview' => count(array_filter($requests, static fn (array $row): bool => $row['stage']['key'] === 'liquidation_review')),
         ];
     }
 

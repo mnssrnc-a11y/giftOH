@@ -2,89 +2,31 @@
   "rules": {
     ".read": false,
     ".write": false,
-    "users": {
-      ".indexOn": [
-        "email"
-      ]
+
+    "boxes": {
+      ".read": true,
+      "$boxId": {
+        ".write": true
+      }
     },
-    "funding_requests": {
-      ".indexOn": [
-        "user_id",
-        "status_id",
-        "created_at"
-      ]
+    "logs": {
+      ".read": true,
+      "$boxId": {
+        ".write": true
+      }
     },
-    "funding_documents": {
-      ".indexOn": [
-        "request_id"
-      ]
-    },
-    "funding_approvals": {
-      ".indexOn": [
-        "request_id",
-        "approved_by"
-      ]
-    },
-    "donations": {
-      ".indexOn": [
-        "user_id",
-        "iot_box_id",
-        "detected_at"
-      ]
-    },
-    "audit_logs": {
-      ".indexOn": [
-        "user_id",
-        "subject_id",
-        "created_at"
-      ]
-    },
-    "activity_logs": {
-      ".indexOn": [
-        "user_id",
-        "created_at"
-      ]
-    },
-    "notification_logs": {
-      ".indexOn": [
-        "user_id",
-        "related_id",
-        "created_at"
-      ]
-    },
-    "notifications": {
-      ".indexOn": [
-        "user_id",
-        "created_at"
-      ]
-    },
-    "notification_history": {
-      ".indexOn": [
-        "user_id",
-        "created_at",
-        "read_at"
-      ]
-    },
-  "doc_image": {
-    "storage_path": "funding_documents/request123/doc_image.jpg",
-    "file_name": "registration.jpg",
-    "content_type": "image/jpeg/png/pdf/jpg",
-    "download_url": "...",
-    "uploaded_at": "..."
-  },
-  "id_img": {
-    "storage_path": "funding_documents/request123/id_img.jpg",
-    "file_name": "id_card.jpg",
-    "content_type": "image/jpeg/png/pdf/jpg",
-    "download_url": "...",
-    "uploaded_at": "..."
-  },
-  "financial_rprt": {
-    "storage_path": "funding_documents/request123/financial_rprt.jpg",
-    "file_name": "financial_report.jpg",
-    "content_type": "image/jpeg/png/pdf/jpg",
-    "download_url": "...",
-    "uploaded_at": "..."
-  }
+
+    "users": { ".indexOn": ["email"] },
+    "funding_requests": { ".indexOn": ["user_id", "status_id", "created_at"] },
+    "funding_approvals": { ".indexOn": ["request_id", "approved_by"] },
+    "funding_appeals": { ".indexOn": ["original_request_id"] },
+    "donations": { ".indexOn": ["user_id", "iot_box_id", "created_at"] },
+    "activity_logs": { ".indexOn": ["user_id", "created_at"] },
+    "audit_logs": { ".indexOn": ["user_id", "subject_id", "created_at"] },
+    "notifications": { ".indexOn": ["user_id", "created_at"] },
+    "notification_history": { ".indexOn": ["user_id", "created_at", "read_at"] },
+    "admin_posts": { ".indexOn": ["created_at"] },
+    "request_messages": { ".indexOn": ["request_id", "created_at"] },
+    "price_list": { "$group": { "items": { ".indexOn": ["type", "name"] } } }
   }
 }

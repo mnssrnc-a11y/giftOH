@@ -1,0 +1,49 @@
+# Render Blueprint for Gift of Hope (free plan). See DEPLOY.md for the step-by-step guide.
+#
+# Secrets (APP_KEY, Firebase key, Brevo and AI keys) are NOT stored here. Generate them with
+#   php artisan deploy:render-env --url=https://<your-service>.onrender.com --brevo-key=<key>
+# and paste the file into Render → Environment → "Add from .env".
+services:
+  - type: web
+    name: giftofhope
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /up
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: SESSION_DRIVER
+        value: cookie
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
+      - key: CACHE_STORE
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: FILES_DRIVER
+        value: firebase
+      - key: MAIL_MAILER
+        value: brevo
+      - key: UPLOAD_SCAN_ENGINES
+        value: heuristic
+      # Filled in from the generated file (or typed in the dashboard):
+      - key: APP_KEY
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: FIREBASE_CREDENTIALS_JSON
+        sync: false
+      - key: FIREBASE_DATABASE_URL
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM_ADDRESS
+        sync: false

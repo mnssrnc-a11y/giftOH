@@ -3,6 +3,8 @@
 @import './admin.css';
 @import './user-flow.css';
 @import './superadmin.css';
+@import './polish.css';
+@import './brand.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -10,8 +12,20 @@
 @source '../**/*.js';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    /* Tailwind's blue scale follows the logo, so pages built with utilities (sign-in, register,
+       request forms) use the same palette as the workspaces (see brand.css). */
+    --color-blue-50: #e3f2fd;
+    --color-blue-100: #bbdefb;
+    --color-blue-200: #90caf9;
+    --color-blue-300: #64b5f6;
+    --color-blue-400: #42a5f5;
+    --color-blue-500: #1e88e5;
+    --color-blue-600: #1976d2;
+    --color-blue-700: #1565c0;
+    --color-blue-800: #0d47a1;
+    --color-blue-900: #0b3c8c;
 }
 
 @layer utilities {

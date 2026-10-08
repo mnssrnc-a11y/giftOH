@@ -49,6 +49,13 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
+        // Brevo's HTTPS API, for hosts that block SMTP ports (Render's free plan). See DEPLOY.md.
+        'brevo' => [
+            'transport' => 'brevo',
+            'key' => env('BREVO_API_KEY'),
+            'timeout' => (int) env('BREVO_TIMEOUT', 20),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],

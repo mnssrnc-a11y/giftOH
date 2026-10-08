@@ -27,6 +27,18 @@ class FirebaseFundingRepository extends FirebaseRepository
         return $this->queryBy('status_id', $statusId);
     }
 
+    /**
+     * Append an entry under a list on the request (e.g. staff_notes) without rewriting the request,
+     * so two admins adding notes at once cannot overwrite each other. Returns the new key.
+     */
+    public function pushChild(string|int $id, string $child, array $data): string
+    {
+        $key = $this->reference((string) $id)->getChild($child)->push($data)->getKey();
+        $this->nodeChanged();
+
+        return $key;
+    }
+
     protected function nodeKey(): string
     {
         return 'funding_requests';

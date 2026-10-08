@@ -3,12 +3,11 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use App\Models\User;
 use App\Models\FirebaseUser;
 use App\Services\VerificationService;
 use App\Mail\PasswordResetCode;
@@ -17,23 +16,31 @@ use App\Mail\LoginAuthCode;
 use App\Mail\VerifyEmail;
 use App\Rules\RealEmail;
 use App\Repositories\FirebaseUserRepository;
+use App\Services\MailSettingsService;
 use App\Services\NotificationService;
-use app\Services\FirebaseService;
+use App\Services\RegistrationService;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class AccountController extends Controller
 {
-    protected $firebaseService;
 
     public function __construct(
         private FirebaseUserRepository $firebaseUsers,
         private VerificationService $verificationService,
-        private NotificationService $notificationService
+        private NotificationService $notificationService,
+        private MailSettingsService $mailSettings,
+        private RegistrationService $registration
     ) {
     }
 
     public function register()
     {
         return view('pages.register');
+    }
+
+    private function storeProfilePicture(?UploadedFile $file): ?string
+    {
+        return $file?->store('profile_pictures', 'public') ?: null;
     }
 
     public function storeRegister(Request $request)
@@ -75,6 +82,32 @@ class AccountController extends Controller
                 . $validated['city'] . ', '
                 . $validated['province'];
 
+        $pending = [
+            'fname' => $validated['fname'],
+            'lname' => $validated['lname'],
+            'mname' => $validated['mname'] ?? null,
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'phone' => $validated['contact_number'],
+            'address' => $address,
+            'gender' => $validated['gender'] ?? null,
+            'date_of_birth' => $validated['date_of_birth'] ?? null,
+            'profile_picture' => null,
+        ];
+
+        // No sending account is set up yet (no Gmail app password / Brevo key): every send would
+        // fail, so create the account now with email verification off instead of blocking sign-up.
+        if (! $this->mailSettings->canSend()) {
+            $pending['profile_picture'] = $this->storeProfilePicture($validated['profile_picture'] ?? null);
+            $user = $this->registration->createAccount($pending, emailConfirmed: false);
+
+            Auth::login($user);
+            $request->session()->regenerate();
+
+            return redirect()->route($user->homeRoute())
+                ->with('status', 'Your account is ready. Email verification is off for now because the foundation has not set up email yet; you can turn it on in Settings later.');
+        }
+
         // Generate a random 6-digit code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
@@ -86,36 +119,19 @@ class AccountController extends Controller
             Mail::to($validated['email'])
                 ->send(new VerifyEmail($code, $validated['fname']));
         } catch (\Exception $error) {
+            report($error);
             // Clean up the verification code since email failed
             $this->verificationService->forget($validated['email'], 'register_verification_codes');
             return back()
                 ->withInput()
                 ->with('alert_error',
-                    'The email address you provided is not eligible. Please use a valid email to register.');
+                    'Our email service could not send the verification code right now. Please try again in a few minutes or contact the foundation.');
         }
 
-        $profilePicture = $validated['profile_picture'] ?? null;
-        if ($profilePicture !== null) {
-            $profilePicture = $profilePicture->store('profile_pictures', 'public');
-        } else {
-            $profilePicture = null;
-        }
+        $pending['profile_picture'] = $this->storeProfilePicture($validated['profile_picture'] ?? null);
 
         // Store pending registration data in session
-        session([
-            'pending_registration' => [
-                'fname' => $validated['fname'],
-                'lname' => $validated['lname'],
-                'mname' => $validated['mname'] ?? null,
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-                'phone' => $validated['contact_number'],
-                'address' => $address,
-                'gender' => $validated['gender'],
-                'date_of_birth' => $validated['date_of_birth'],
-                'profile_picture' => $profilePicture,
-            ],
-        ]);
+        session(['pending_registration' => $pending]);
 
         return redirect()->route('register.verify-code.form', ['email' => $validated['email']])
             ->with('status', 'We sent a 6-digit verification code to your email.');
@@ -142,16 +158,6 @@ class AccountController extends Controller
             return redirect()->route('forgot-password');
         }
         return view('pages.verify-code', ['email' => $email]);
-    }
-
-    // show verify code form
-    public function showVerifyCodeFormEmail(Request $request)
-    {
-        $email = $request->query('email', old('email'));
-        if (!$email){
-            return redirect()->route('edit-email');
-        }
-        return view('user.', ['email' => $email]);
     }
 
 
@@ -205,20 +211,33 @@ class AccountController extends Controller
             Cookie::queue(Cookie::forget('remembered_email'));
         }
 
-        if (! filter_var($user['email_notifications'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
+        // No code is needed when the account has email verification off, or when no email service
+        // is set up at all (a code could never arrive, and the super admin could not sign in to
+        // set one up). A temporary sending failure still blocks sign-in below.
+        $codesOn = filter_var($user['email_notifications'] ?? true, FILTER_VALIDATE_BOOLEAN);
+        if (! $codesOn || ! $this->mailSettings->canSend()) {
             $authenticatedUser = is_array($user) ? new FirebaseUser($user) : $user;
             Auth::login($authenticatedUser, $request->boolean('remember'));
             $request->session()->regenerate();
             session()->forget('alert_error');
 
-            return redirect()->route($authenticatedUser->homeRoute());
+            return redirect()->route($authenticatedUser->homeRoute())->with($codesOn ? ['status' => 'Signed in without an email code because email is not set up yet.'] : []);
         }
 
         // Generate a random 6-digit code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $this->verificationService->store($request->email, $code, 'login_auth_codes');
         $firstName = is_array($user) ? ($user['fname'] ?? '') : $user->fname;
-        Mail::to($request->email)->send(new \App\Mail\LoginAuthCode($code, $firstName));
+        try {
+            Mail::to($request->email)->send(new LoginAuthCode($code, $firstName));
+        } catch (TransportExceptionInterface $exception) {
+            report($exception);
+
+            return back()->withErrors([
+                'email' => 'We could not send your sign-in verification code. Please try again later or contact the administrator.',
+            ])->onlyInput('email');
+        }
+
+        $this->verificationService->store($request->email, $code, 'login_auth_codes');
         session([
             'login_2fa_email' => $request->email,
             'login_2fa_remember' => $request->boolean('remember'),
@@ -282,8 +301,16 @@ class AccountController extends Controller
             return back()->with('alert_error', 'Email notifications are disabled for this account.')->onlyInput('email');
         }
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        try {
+            Mail::to($request->email)->send(new PasswordResetCode($code, $user->fname));
+        } catch (TransportExceptionInterface $exception) {
+            report($exception);
+
+            return back()->withErrors([
+                'email' => 'We could not send the reset code right now. Please try again later or contact the administrator.',
+            ])->onlyInput('email');
+        }
         $this->verificationService->store($request->email, $code, 'password_reset_tokens');
-        Mail::to($request->email)->send(new PasswordResetCode($code, $user->fname));
         return redirect()->route('password.verify-code.form', ['email' => $request->email])
             ->with('status', 'We sent a 6-digit code to your email.');
     }
@@ -310,7 +337,7 @@ class AccountController extends Controller
         $this->firebaseUsers->update($user->getAuthIdentifier(), [
             'password' => Hash::make($request->password),
         ]);
-        return redirect()->route('settings')->with('success', 'Password changed successfully.');
+        return redirect()->route('settings')->with('status', 'Password changed successfully.');
     }
 
     public function updateUser(Request $request)
@@ -318,13 +345,15 @@ class AccountController extends Controller
         $validated = $request->validate([
             'fname' => ['required', 'string', 'max:255'],
             'lname' => ['required', 'string', 'max:255'],
+            'contact_number' => ['required', 'string', 'max:15'],
         ]);
         $currentUser = Auth::user();
 
+        // Registration stores the number as "phone"; every page reads that field.
         $this->firebaseUsers->update($currentUser->getAuthIdentifier(), [
             'fname' => $validated['fname'],
             'lname' => $validated['lname'],
-            'contact_number' => $request->input('contact_number', $currentUser->contact_number),
+            'phone' => $validated['contact_number'],
         ]);
 
         return redirect()->route('settings')->with('status', 'Your profile has been updated successfully.');

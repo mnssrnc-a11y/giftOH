@@ -113,6 +113,16 @@ class FirebaseUser implements Authenticatable
     }
 
     /**
+     * Display name: Firebase accounts store first and last name separately.
+     */
+    public function fullName(): string
+    {
+        $name = trim((string) ($this->attributes['name'] ?? ''));
+
+        return $name !== '' ? $name : trim(($this->attributes['fname'] ?? '') . ' ' . ($this->attributes['lname'] ?? ''));
+    }
+
+    /**
      * Name of the route each role lands on after signing in.
      */
     public function homeRoute(): string
@@ -126,6 +136,7 @@ class FirebaseUser implements Authenticatable
 
     public function isActive(): bool
     {
-        return ($this->attributes['is_active'] ?? false) === true;
+        // Accounts without the field are active, as at sign-in and in EnsureActiveAccount.
+        return filter_var($this->attributes['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN);
     }
 }

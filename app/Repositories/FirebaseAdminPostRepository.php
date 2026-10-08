@@ -28,6 +28,16 @@ class FirebaseAdminPostRepository extends FirebaseRepository
         return $limit === null ? $posts : array_slice($posts, 0, $limit);
     }
 
+    /**
+     * URL of the photo attached to a post (stored on the public disk), or null.
+     */
+    public static function imageUrl(array $post): ?string
+    {
+        $path = trim((string) ($post['image'] ?? ''));
+
+        return $path === '' ? null : asset('storage/' . ltrim($path, '/'));
+    }
+
     protected function nodeKey(): string
     {
         return 'admin_posts';

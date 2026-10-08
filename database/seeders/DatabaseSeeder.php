@@ -24,13 +24,6 @@ class DatabaseSeeder extends Seeder
         RequestStatus::firstOrCreate(['status_name' => 'completed'], ['description' => 'Funding request completed']);
 
         // Seed funding categories
-        FundingCategory::firstOrCreate(['category_name' => 'Education'], [
-            'description' => 'Educational programs and scholarships',
-            'is_active' => true,
-            'weight_in_scoring' => 1.2,
-            'approval_priority' => 1,
-        ]);
-
         FundingCategory::firstOrCreate(['category_name' => 'Healthcare'], [
             'description' => 'Medical and healthcare services',
             'is_active' => true,

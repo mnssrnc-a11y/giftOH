@@ -4,9 +4,18 @@ import { getDatabase, onValue, ref } from "firebase/database";
 const fundingRequests = window.giftOfHopeFundingRequests ?? [];
 const adminData = window.giftOfHopeAdminData ?? {};
 
-// Latest per-box state from the live Firebase monitor, shared with notifications.
+// Latest per-box state from the live Firebase monitor (dashboard tiles, alerts and IoT report).
 const liveBoxes = { list: [], connected: false };
 
+const STAGE_TABS = {
+    assessment: item => item.stage.step === 1,
+    decision: item => item.stage.key === 'ready_for_decision',
+    awaiting: item => item.stage.key === 'awaiting_final',
+    release: item => item.stage.key === 'to_release',
+    liquidation: item => ['released', 'liquidation_review', 'liquidation_returned'].includes(item.stage.key),
+    completed: item => item.stage.key === 'completed',
+    rejected: item => item.stage.key === 'rejected',
+};
 const STATUS_LABELS = { awaiting: 'Awaiting super admin', pending: 'Pending', approved: 'Approved', rejected: 'Rejected', completed: 'Completed', cancelled: 'Cancelled' };
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#039;', '"':'&quot;' })[char]);
 const money = value => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 }).format(Number(value) || 0);
@@ -25,7 +34,6 @@ const timeAgo = value => {
     const amount = Math.floor(seconds / size);
     return `${amount} ${unit}${amount === 1 ? '' : 's'} ago`;
 };
-const statusBadge = status => `<span class="admin-status ${escapeHtml(status)}">${escapeHtml(STATUS_LABELS[status] ?? status)}</span>`;
 const routeFor = (name, id) => (adminData.routes?.[name] ?? '').replace('__ID__', encodeURIComponent(id));
 const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
@@ -60,6 +68,13 @@ function initAdminUI() {
     };
 
     function navigate(page) {
+        // "#reports-prices" opens the Reports page on the Price reference tab.
+        const [base, tab] = String(page).split('-');
+        if (base === 'reports' && tab) {
+            navigate('reports');
+            app.querySelector(`[data-report-tab="${tab}"]`)?.click();
+            return;
+        }
         const safePage = pageMeta[page] ? page : 'dashboard';
         app.querySelectorAll('[data-admin-page]').forEach(node => node.classList.toggle('is-active', node.dataset.adminPage === safePage));
         app.querySelectorAll('[data-admin-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.adminNav === safePage));
@@ -75,7 +90,7 @@ function initAdminUI() {
     function filteredFunding() {
         let rows = fundingRequests.filter(item => {
             const haystack = `${item.id} ${item.project} ${item.organization} ${item.requester}`.toLowerCase();
-            return (state.status === 'all' || item.status === state.status)
+            return (state.status === 'all' || STAGE_TABS[state.status]?.(item))
                 && (state.category === 'all' || item.category === state.category)
                 && haystack.includes(state.query.toLowerCase());
         });
@@ -86,10 +101,13 @@ function initAdminUI() {
     }
 
     function fundingActions(item) {
-        const review = item.status === 'pending'
-            ? `<button class="admin-table-action" data-decision-open="approved" data-request-id="${escapeHtml(item.id)}" title="Approve">✓</button><button class="admin-table-action" data-decision-open="rejected" data-request-id="${escapeHtml(item.id)}" title="Reject">×</button>`
-            : '';
-        return `<button class="admin-table-action" data-request-view="${escapeHtml(item.id)}" title="View details">⌕</button>${review}`;
+        return `<a class="admin-table-action" href="${escapeHtml(routeFor('show', item.id))}" title="Open request">⌕</a>`;
+    }
+
+    function stageBadge(item) {
+        const kind = ['completed', 'to_release', 'released'].includes(item.stage.key) ? 'approved'
+            : item.stage.key === 'rejected' ? 'rejected' : item.stage.key === 'awaiting_final' ? 'awaiting' : 'in-progress';
+        return `<span class="admin-status ${kind}">${escapeHtml(item.stage.label)}</span>${item.overdue ? '<small style="color:#dc2626;font-weight:700">Overdue</small>' : ''}`;
     }
 
     function renderFunding() {
@@ -101,10 +119,10 @@ function initAdminUI() {
         const start = (state.page - 1) * state.pageSize;
         const visible = rows.slice(start, start + state.pageSize);
         body.innerHTML = visible.map(item => `<tr>
-            <td><strong>${escapeHtml(item.project)}</strong><small>${escapeHtml(item.id.slice(0, 8))} · ${escapeHtml(item.requester)}</small></td>
+            <td><a href="${escapeHtml(routeFor('show', item.id))}"><strong>${escapeHtml(item.project)}</strong></a>${item.unread_messages ? `<a href="${escapeHtml(routeFor('show', item.id))}#messages" class="admin-status in-progress" style="margin:3px 0">✉ ${item.unread_messages} new message${item.unread_messages > 1 ? 's' : ''}</a>` : ''}<small>${escapeHtml(item.id.slice(0, 8))} · ${escapeHtml(item.requester)} · ${item.beneficiary_count || '—'} people</small></td>
             <td>${escapeHtml(item.organization)}</td><td>${escapeHtml(item.category)}</td>
-            <td><strong>${money(item.amount)}</strong>${item.granted !== null ? `<small>${money(item.granted)} granted</small>` : ''}</td>
-            <td>${statusBadge(item.status)}</td><td>${formatDate(item.date)}</td><td><div class="admin-table-actions">${fundingActions(item)}</div></td>
+            <td>${item.amount > 0 ? `<strong>${money(item.amount)}</strong>` : '<small>Budget not set</small>'}${item.granted !== null ? `<small>${money(item.granted)} granted</small>` : ''}</td>
+            <td>${stageBadge(item)}</td><td>${formatDate(item.date)}</td><td><div class="admin-table-actions">${fundingActions(item)}</div></td>
         </tr>`).join('');
         app.querySelector('[data-funding-table-wrap]').style.display = rows.length ? '' : 'none';
         app.querySelector('[data-funding-empty]').classList.toggle('admin-state-visible', !rows.length);
@@ -112,40 +130,6 @@ function initAdminUI() {
         app.querySelector('[data-page-numbers]').innerHTML = Array.from({ length: pages }, (_, index) => `<button class="${state.page === index + 1 ? 'is-active' : ''}" data-funding-page="${index + 1}">${index + 1}</button>`).join('');
         app.querySelector('[data-page-prev]').disabled = state.page === 1;
         app.querySelector('[data-page-next]').disabled = state.page === pages;
-    }
-
-    function openRequestDetails(id) {
-        const item = fundingRequests.find(row => row.id === id);
-        if (!item) return;
-        const documents = (item.documents ?? []).map(document => {
-            if (!document.url) {
-                return `<div class="admin-field"><label>${escapeHtml(document.label)}</label><p>Not provided</p></div>`;
-            }
-            const preview = document.is_image
-                ? `<img src="${escapeHtml(document.url)}" alt="${escapeHtml(document.label)}" class="admin-document-thumb">`
-                : `<a class="admin-button" href="${escapeHtml(document.url)}" target="_blank" rel="noopener">Open ${escapeHtml((document.extension || 'file').toUpperCase())} document</a>`;
-            const downloadName = `${document.label.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.${document.extension || 'file'}`;
-            const controls = `<div class="admin-actions" style="margin-top:8px"><a class="admin-button" href="${escapeHtml(document.url)}" download="${escapeHtml(downloadName)}">Download</a>${document.is_image ? `<button class="admin-button" type="button" data-document-enlarge data-document-url="${escapeHtml(document.url)}" data-document-label="${escapeHtml(document.label)}" data-document-request-id="${escapeHtml(item.id)}">Enlarge</button>` : ''}</div>`;
-            return `<div class="admin-field"><label>${escapeHtml(document.label)}</label>${preview}${controls}</div>`;
-        }).join('');
-        const contact = Object.entries(item.contact ?? {}).map(([label, value]) => `<div class="admin-field"><label>Contact ${escapeHtml(label)}</label><span>${escapeHtml(value)}</span></div>`).join('');
-        const timeline = [`<div class="admin-timeline-row"><strong>Request submitted</strong><span>${formatDate(item.date)} · ${escapeHtml(item.requester)}</span></div>`]
-            .concat((item.review ?? []).map(step => `<div class="admin-timeline-row"><strong>${escapeHtml(step.label)}</strong><span>${formatDate(step.at)} · ${escapeHtml(step.by)}${step.notes ? ` — “${escapeHtml(step.notes)}”` : ''}</span></div>`));
-        if (item.status === 'awaiting') timeline.push('<div class="admin-timeline-row"><strong>Awaiting super admin finalization</strong><span>The requester is notified once the super admin decides.</span></div>');
-        const actions = item.status === 'pending'
-            ? `<button class="admin-button danger" data-decision-open="rejected" data-request-id="${escapeHtml(item.id)}">Reject</button><button class="admin-button success" data-decision-open="approved" data-request-id="${escapeHtml(item.id)}">Approve</button>`
-            : '';
-
-        openModal(`<h2>${escapeHtml(item.project)}</h2><p>${escapeHtml(item.id)} · Submitted by ${escapeHtml(item.requester)}</p>
-            <div class="admin-grid admin-form-grid" style="margin:18px 0"><div class="admin-field"><label>Organization</label><strong>${escapeHtml(item.organization)}</strong></div><div class="admin-field"><label>Requested amount</label><strong>${money(item.amount)}</strong></div><div class="admin-field"><label>Category</label><span>${escapeHtml(item.category)}</span></div><div class="admin-field"><label>Status</label>${statusBadge(item.status)}</div>${contact}</div>
-            <div class="admin-field"><label>Description</label><p>${escapeHtml(item.description) || '—'}</p></div>
-            <h3 style="font-size:13px;margin-top:18px">Submitted documents</h3><div class="admin-grid admin-form-grid" style="margin-top:10px">${documents || '<p>No documents submitted.</p>'}</div>
-            <div class="admin-history"><h3 style="font-size:13px">Funding history</h3>${timeline.join('')}</div>
-            <div class="admin-modal-actions"><button class="admin-button" data-modal-close>Close</button>${actions}</div>`);
-    }
-
-    function openDocumentPreview(url, label, requestId) {
-        openModal(`<h2>${escapeHtml(label)}</h2><img src="${escapeHtml(url)}" alt="${escapeHtml(label)}" style="display:block;width:100%;max-height:75vh;object-fit:contain;border:1px solid var(--admin-border);border-radius:8px;background:var(--admin-surface);padding:8px"><div class="admin-modal-actions"><a class="admin-button" href="${escapeHtml(url)}" download>Download</a><button class="admin-button" data-document-back="${escapeHtml(requestId)}">Back to files</button></div>`);
     }
 
     /**
@@ -157,7 +141,7 @@ function initAdminUI() {
         const approving = action === 'approved';
 
         openModal(`<h2>${approving ? 'Approve' : 'Reject'} request</h2>
-            <p><strong>${escapeHtml(item.project)}</strong> · ${escapeHtml(item.organization)} · ${money(item.amount)} requested</p>
+            <p><strong>${escapeHtml(item.project)}</strong>${item.organization !== item.project ? ` · ${escapeHtml(item.organization)}` : ''} · ${money(item.amount)} requested</p>
             <form method="POST" action="${escapeHtml(routeFor('action', id))}" data-decision-form>
                 <input type="hidden" name="_token" value="${escapeHtml(csrfToken())}">
                 <input type="hidden" name="action" value="${action}">
@@ -190,11 +174,16 @@ function initAdminUI() {
 
             form.querySelector('[data-ai-amount]').value = rec.recommended_amount;
             if (!amountInput.value) amountInput.value = rec.recommended_amount;
-            panel.innerHTML = `<div class="admin-ai-head"><span class="admin-eyebrow">AI assistance · ${rec.source === 'gemini' ? 'Gemini' : 'priority rules'}</span><strong>${money(rec.recommended_amount)} <small>(${rec.coverage}% of request)</small></strong><span class="admin-status ${rec.priority_label === 'critical' ? 'critical' : rec.priority_label === 'high' ? 'approved' : 'in-progress'}">${escapeHtml(rec.priority_label)} priority · ${rec.priority_score}/100</span></div>
+            const perPerson = rec.per_person !== null && rec.people ? ` · ${money(rec.per_person)} × ${rec.people} people` : '';
+            panel.innerHTML = `<div class="admin-ai-head"><span class="admin-eyebrow">AI assistance · ${rec.source === 'ai' ? escapeHtml(rec.provider) : 'priority rules (no AI provider answered)'}</span><strong>${money(rec.recommended_amount)} <small>(${rec.coverage}% of request${perPerson})</small></strong><span class="admin-status ${rec.priority_label === 'critical' ? 'critical' : rec.priority_label === 'high' ? 'approved' : 'in-progress'}">${escapeHtml(rec.priority_label)} priority · ${rec.priority_score}/100</span></div>
                 <div class="admin-ai-figures"><span><b>${money(rec.total_funds)}</b>Total funds</span><span><b>${money(rec.committed_funds + rec.reserved_funds)}</b>Committed</span><span><b>${money(rec.available_funds)}</b>Available</span><span><b>${rec.queue_size}</b>In queue</span></div>
                 <ul>${rec.reasoning.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
-                <button type="button" class="admin-button" data-use-recommendation>Use ${money(rec.recommended_amount)}</button>`;
-            panel.querySelector('[data-use-recommendation]').addEventListener('click', () => { amountInput.value = rec.recommended_amount; amountInput.focus(); });
+                <button type="button" class="admin-button" data-use-recommendation>Use ${money(rec.recommended_amount)}</button>
+                <p class="admin-field-hint" data-over-budget hidden>This amount is more than the ${money(rec.available_funds)} currently available, which leaves no budget for the other requests.</p>`;
+            const warnIfOverBudget = () => { panel.querySelector('[data-over-budget]').hidden = !(Number(amountInput.value) > rec.available_funds); };
+            amountInput.addEventListener('input', warnIfOverBudget);
+            warnIfOverBudget();
+            panel.querySelector('[data-use-recommendation]').addEventListener('click', () => { amountInput.value = rec.recommended_amount; amountInput.focus(); warnIfOverBudget(); });
         } catch (error) {
             console.error('Fund recommendation failed:', error);
             if (panel.isConnected) panel.innerHTML = '<div class="admin-ai-head"><span class="admin-eyebrow">AI assistance</span><strong>Recommendation unavailable</strong></div><p>Enter the amount manually, or close and try again.</p>';
@@ -223,13 +212,13 @@ function initAdminUI() {
             return `${area}<polyline class="line" style="stroke:${line.color}" points="${points}"/>${dots}`;
         }).join('');
         const xLabels = labels.map((label, index) => `<text x="${x(index)}" y="${height - 5}" text-anchor="middle">${escapeHtml(label)}</text>`).join('');
-        container.innerHTML = `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img"><defs><linearGradient id="adminGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#60a5fa"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>${grid}${lines}${xLabels}</svg>`;
+        container.innerHTML = `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img"><defs><linearGradient id="adminGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#64b5f6"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>${grid}${lines}${xLabels}</svg>`;
     }
 
     function renderCharts() {
-        lineChart(app.querySelector('[data-chart="donations"]'), [{ points: adminData.donationSeries ?? [], color: '#3b82f6', area: true }], 'No donations recorded in the last 6 months');
+        lineChart(app.querySelector('[data-chart="donations"]'), [{ points: adminData.donationSeries ?? [], color: '#1976d2', area: true }], 'No donations recorded in the last 6 months');
         lineChart(app.querySelector('[data-chart="funding"]'), [
-            { points: adminData.fundingSeries?.requested ?? [], color: '#3b82f6' },
+            { points: adminData.fundingSeries?.requested ?? [], color: '#1976d2' },
             { points: adminData.fundingSeries?.granted ?? [], color: '#10b981' },
         ], 'No funding activity in the last 6 months');
     }
@@ -320,31 +309,6 @@ function initAdminUI() {
         showSnack(`Exported ${rows.length - 1} row(s).`);
     }
 
-    /* ---------- Notifications ---------- */
-
-    const SEEN_KEY = 'giftOfHopeAdminNotificationsSeen';
-    const readSeen = () => { try { return Number(localStorage.getItem(SEEN_KEY)) || 0; } catch { return 0; } };
-
-    function notifications() {
-        const items = fundingRequests.filter(item => item.status === 'pending')
-            .map(item => ({ icon: '₱', title: 'New funding request', detail: `${item.organization} requested ${money(item.amount)}`, at: new Date(item.date).getTime() || 0 }))
-            .concat(fundingRequests.flatMap(item => (item.review ?? []).slice(1).map(step => ({ icon: '✓', title: `${item.organization}: ${step.label}`, detail: `Finalized by ${step.by}`, at: new Date(step.at).getTime() || 0 }))))
-            .concat(liveBoxes.list.filter(box => !box.online).map(box => ({ icon: '!', title: `Smart box ${box.id} is offline`, detail: `${box.location} · last seen ${timeAgo(box.lastSeen)}`, at: box.lastSeen || 0 })));
-        return items.sort((a, b) => b.at - a.at).slice(0, 8);
-    }
-
-    function refreshNotificationDot() {
-        const button = app.querySelector('[data-notification-open]');
-        button?.classList.toggle('has-dot', notifications().some(item => item.at > readSeen()));
-    }
-
-    function openNotifications() {
-        const items = notifications();
-        openModal(`<h2>Notifications</h2><p>${items.length ? 'Recent requests, decisions, and device alerts.' : 'You are all caught up.'}</p><div class="admin-notification-list">
-            ${items.map(item => `<div class="admin-notification-item"><i>${item.icon}</i><div><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.detail)} · ${timeAgo(item.at)}</span></div></div>`).join('')}
-        </div><div class="admin-modal-actions">${items.length ? '<button class="admin-button" data-notifications-read>Mark all as read</button>' : ''}<button class="admin-button primary" data-modal-close>Done</button></div>`);
-    }
-
     /* ---------- Events ---------- */
 
     app.addEventListener('click', event => {
@@ -356,20 +320,12 @@ function initAdminUI() {
         if (target.dataset.snackbar) showSnack(target.dataset.snackbar);
         if (target.matches('[data-reload]')) location.reload();
         if (target.matches('[data-theme-toggle]')) setDark(!app.classList.contains('is-dark'));
-        if (target.matches('[data-notification-open]')) openNotifications();
-        if (target.matches('[data-notifications-read]')) {
-            try { localStorage.setItem(SEEN_KEY, String(Date.now())); } catch { /* storage unavailable */ }
-            refreshNotificationDot(); closeModal(); showSnack('All notifications marked as read.');
-        }
         if (target.matches('[data-modal-close]')) closeModal();
         if (target.dataset.statusTab) { state.status = target.dataset.statusTab; state.page = 1; app.querySelectorAll('[data-status-tab]').forEach(tab => tab.classList.toggle('is-active', tab === target)); renderFunding(); }
         if (target.dataset.fundingPage) { state.page = Number(target.dataset.fundingPage); renderFunding(); }
         if (target.matches('[data-page-prev]') && state.page > 1) { state.page--; renderFunding(); }
         if (target.matches('[data-page-next]') && state.page < Math.ceil(filteredFunding().length / state.pageSize)) { state.page++; renderFunding(); }
-        if (target.dataset.requestView) openRequestDetails(target.dataset.requestView);
         if (target.dataset.decisionOpen) openDecision(target.dataset.requestId, target.dataset.decisionOpen);
-        if (target.matches('[data-document-enlarge]')) openDocumentPreview(target.dataset.documentUrl, target.dataset.documentLabel, target.dataset.documentRequestId);
-        if (target.dataset.documentBack) openRequestDetails(target.dataset.documentBack);
         if (target.matches('[data-compile-post]')) compileUpdate();
         if (target.dataset.reportTab) { app.querySelectorAll('[data-report-tab]').forEach(tab => tab.classList.toggle('is-active', tab === target)); app.querySelectorAll('[data-report-panel]').forEach(panel => panel.classList.toggle('is-active', panel.dataset.reportPanel === target.dataset.reportTab)); }
         if (target.matches('[data-report-clear]')) { app.querySelectorAll('[data-report-search],[data-report-from],[data-report-to]').forEach(input => input.value = ''); applyReportFilters(); }
@@ -403,6 +359,7 @@ function initAdminUI() {
             showSnack(`Table density changed to ${event.target.checked ? 'compact' : 'comfortable'}.`);
         }
         if (event.target.matches('[data-profile-input]')) previewProfilePhoto(event.target);
+        if (event.target.matches('[data-post-image]')) previewPostImage(event.target);
         if (event.target.matches('[data-two-factor-switch]')) {
             const toggle = event.target;
             const enabling = toggle.checked;
@@ -410,7 +367,27 @@ function initAdminUI() {
             confirmDialog(enabling ? 'Turn on email verification?' : 'Turn off email verification?',
                 enabling ? 'You will enter an emailed code at sign-in and before each funding decision is submitted.' : 'Sign-in and funding decisions will no longer require an emailed code.',
                 enabling ? 'Turn on' : 'Turn off', enabling ? 'primary' : 'warning',
-                () => { toggle.checked = enabling; toggle.form.submit(); });
+                async () => {
+                    closeModal();
+                    toggle.disabled = true;
+                    try {
+                        // Saved in the background; the page does not reload.
+                        const response = await fetch(toggle.form.action, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken() },
+                            body: JSON.stringify({ email_notifications: enabling ? 1 : 0 }),
+                        });
+                        const result = await response.json().catch(() => ({}));
+                        if (!response.ok || !result.saved) throw new Error(result.message || 'Email verification could not be changed. Try again.');
+                        toggle.checked = enabling;
+                        showSnack(result.message);
+                    } catch (error) {
+                        toggle.checked = !enabling;
+                        showSnack(error.message);
+                    } finally {
+                        toggle.disabled = false;
+                    }
+                });
         }
     });
 
@@ -435,6 +412,18 @@ function initAdminUI() {
         photo.querySelector('[data-profile-initial]').hidden = true;
         saveButton.hidden = false;
         hint.textContent = `${file.name} selected. Click “Save photo” to update your profile.`;
+    }
+
+    // Photo for a new update: checked and previewed before it is posted.
+    function previewPostImage(input) {
+        const file = input.files?.[0];
+        const preview = app.querySelector('[data-post-image-preview]');
+        if (!file) { preview.hidden = true; return; }
+        const problem = !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ? 'The photo must be a JPG, PNG or WebP image.'
+            : file.size > 5 * 1024 * 1024 ? 'The photo must not be larger than 5 MB.' : null;
+        if (problem) { input.value = ''; preview.hidden = true; showSnack(problem); return; }
+        preview.src = URL.createObjectURL(file);
+        preview.hidden = false;
     }
 
     app.querySelector('[data-profile-form]')?.addEventListener('submit', event => {
@@ -469,9 +458,77 @@ function initAdminUI() {
         renderFunding();
         renderCharts();
     }
-    refreshNotificationDot();
+    initBudgetBuilder(app);
+    initAdminIotMonitor(app, () => applyReportFilters());
+}
 
-    initAdminIotMonitor(app, () => { applyReportFilters(); refreshNotificationDot(); });
+/**
+ * Per-person budget builder on the admin request page. Items come from the AI-maintained price
+ * list and their prices are fixed: the admin only chooses items and quantities.
+ */
+function initBudgetBuilder(app) {
+    const form = app.querySelector('[data-budget-builder]');
+    const config = adminData.budget;
+    if (!form || !config) return;
+
+    const catalog = Object.fromEntries(Object.values(config.catalog).flat().map(item => [item.key, item]));
+    // Only price-list items can be budgeted (older custom lines are dropped).
+    const rows = (config.rows ?? []).filter(row => catalog[row.ref]).map(row => ({ ref: row.ref, qty: row.qty }));
+    const updated = item => item.updated_at ? `updated ${new Date(item.updated_at).toLocaleDateString('en-PH', { month: 'short', year: 'numeric' })}` : 'initial reference';
+    const subtotal = row => (Number(row.qty) || 0) * (catalog[row.ref]?.price || 0);
+
+    function render() {
+        form.querySelector('[data-budget-rows]').innerHTML = rows.length ? rows.map((row, index) => {
+            const item = catalog[row.ref];
+            return `<tr data-budget-row="${index}">
+                <td><input type="hidden" name="budget[${index}][ref]" value="${escapeHtml(row.ref)}"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.size)} · ${escapeHtml(item.source || 'price list')}</small></td>
+                <td><input class="admin-input" style="width:100%" type="number" min="0.25" step="0.25" required name="budget[${index}][qty]" value="${escapeHtml(row.qty)}" data-budget-field="qty" aria-label="Quantity per person"></td>
+                <td class="admin-price-fixed">${money(item.price)}<small>${escapeHtml(updated(item))}</small></td>
+                <td data-budget-subtotal>${money(subtotal(row))}</td>
+                <td><button type="button" class="admin-table-action" data-budget-remove="${index}" aria-label="Remove item">×</button></td></tr>`;
+        }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--admin-muted)">No items yet. Add items for one person\'s package.</td></tr>';
+        totals();
+    }
+
+    function totals() {
+        const perPerson = rows.reduce((sum, row) => sum + subtotal(row), 0);
+        form.querySelector('[data-budget-per-person]').textContent = money(perPerson);
+        form.querySelector('[data-budget-total]').textContent = money(perPerson * (config.people || 0));
+        const capNote = form.querySelector('[data-budget-cap-note]');
+        if (capNote) capNote.textContent = config.cap && perPerson > config.cap ? `This package is ${money(perPerson - config.cap)} above the usual allocation.` : '';
+    }
+
+    form.querySelector('[data-budget-picker]').insertAdjacentHTML('beforeend', Object.entries(config.catalog).map(([group, items]) =>
+        `<optgroup label="${escapeHtml(group)}">${items.map(item => `<option value="${escapeHtml(item.key)}">${escapeHtml(`${item.name} (${item.size}) · ${money(item.price)}`)}</option>`).join('')}</optgroup>`).join(''));
+
+    form.addEventListener('change', event => {
+        if (!event.target.matches('[data-budget-picker]') || !event.target.value) return;
+        const existing = rows.find(row => row.ref === event.target.value);
+        if (existing) existing.qty = Number(existing.qty) + 1;
+        else rows.push({ ref: event.target.value, qty: 1 });
+        event.target.value = '';
+        render();
+    });
+    form.addEventListener('input', event => {
+        if (event.target.dataset.budgetField !== 'qty') return;
+        const tr = event.target.closest('[data-budget-row]');
+        const row = rows[Number(tr.dataset.budgetRow)];
+        row.qty = event.target.value;
+        // Update in place so typing keeps focus.
+        tr.querySelector('[data-budget-subtotal]').textContent = money(subtotal(row));
+        totals();
+    });
+    form.addEventListener('click', event => {
+        if (event.target.dataset.budgetRemove !== undefined) {
+            rows.splice(Number(event.target.dataset.budgetRemove), 1);
+            render();
+        }
+    });
+    form.addEventListener('submit', event => {
+        if (rows.length === 0) { event.preventDefault(); alert('Add at least one item to the per-person budget.'); }
+    });
+
+    render();
 }
 
 /**
@@ -563,11 +620,11 @@ function initAdminIotMonitor(app, onRender) {
         onRender?.();
     };
 
-    fetch('/config/firebase')
+    (window.giftOfHopeFirebaseConfig ? Promise.resolve(window.giftOfHopeFirebaseConfig) : fetch('/config/firebase')
         .then(response => {
             if (!response.ok) throw new Error(`Firebase configuration request failed (${response.status})`);
             return response.json();
-        })
+        }))
         .then(firebaseConfig => {
             const database = getDatabase(initializeApp(firebaseConfig, 'admin-iot-monitor'));
             onValue(ref(database, '/boxes'), snapshot => {

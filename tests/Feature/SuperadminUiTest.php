@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
+use App\Models\FirebaseUser;
 use Tests\TestCase;
 
 class SuperadminUiTest extends TestCase
@@ -10,25 +10,12 @@ class SuperadminUiTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // Isolate UI access tests from external authentication and asset services.
-        config(['auth.providers.users.driver' => 'eloquent',
-            'app.key' => 'base64:'.base64_encode(str_repeat('t', 32))]);
         $this->withoutVite();
     }
 
-    public function createApplication()
+    private function account(string $role, bool $active = true): FirebaseUser
     {
-        $original = $_ENV['APP_URL'] ?? null;
-        $_ENV['APP_URL'] = 'http://localhost';
-        try {
-            return parent::createApplication();
-        } finally {
-            if ($original === null) {
-                unset($_ENV['APP_URL']);
-            } else {
-                $_ENV['APP_URL'] = $original;
-            }
-        }
+        return new FirebaseUser(['id' => "test-{$role}", 'fname' => 'Alex', 'lname' => 'Tester', 'role' => $role, 'is_active' => $active]);
     }
 
     public function test_guests_must_sign_in(): void
@@ -36,21 +23,18 @@ class SuperadminUiTest extends TestCase
         $this->get(route('superadmin'))->assertRedirect(route('login'));
     }
 
-    public function test_regular_users_cannot_open_administration_preview(): void
+    public function test_other_roles_are_sent_back_to_their_own_workspace(): void
     {
-        $this->actingAs(new User(['fname' => 'Test', 'role' => 'user']))
-            ->get(route('superadmin'))->assertForbidden();
+        $this->actingAs($this->account('user'))->get(route('superadmin'))->assertRedirect(route('dashboarduser'));
+        $this->actingAs($this->account('admin'))->get(route('superadmin'))->assertRedirect(route('admin'));
     }
 
-    public function test_admin_roles_can_render_the_complete_preview(): void
+    public function test_disabled_accounts_are_signed_out(): void
     {
-        foreach (['admin', 'superadmin'] as $role) {
-            $this->actingAs(new User(['fname' => 'Alex', 'lname' => 'Tester', 'role' => $role]))
-                ->get(route('superadmin'))->assertOk()
-                ->assertSee('Superadmin navigation')->assertSee('UI preview')
-                ->assertSee('Account management')->assertSee('System settings')
-                ->assertSee('System monitor')->assertSee('Fund requests')
-                ->assertSee('Activity log')->assertSee('greater than 92 days');
-        }
+        $this->actingAs($this->account('super_admin', active: false))
+            ->get(route('superadmin'))
+            ->assertRedirect(route('login'));
+
+        $this->assertGuest();
     }
 }

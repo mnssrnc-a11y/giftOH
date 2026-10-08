@@ -6,6 +6,7 @@ use App\Models\FirebaseUser;
 use App\Repositories\FirebaseUserRepository;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\UserProvider;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 
 class FirebaseUserProvider implements UserProvider
@@ -17,9 +18,16 @@ class FirebaseUserProvider implements UserProvider
 
     public function retrieveById($identifier): ?Authenticatable
     {
-        $user = $this->users->findById($identifier);
+        // Every page needs the signed-in account; reading it from Firebase each time costs ~0.3 s.
+        // FirebaseUserRepository clears this entry whenever the account is updated or deleted.
+        $user = Cache::remember(self::cacheKey($identifier), 60, fn () => $this->users->findById($identifier) ?: null);
 
         return $user ? new FirebaseUser($user) : null;
+    }
+
+    public static function cacheKey(string|int $identifier): string
+    {
+        return 'auth-user:' . $identifier;
     }
 
     public function retrieveByToken($identifier, $token): ?Authenticatable

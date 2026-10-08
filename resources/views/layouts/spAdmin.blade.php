@@ -1,26 +1,56 @@
 @extends('app')
 @section('body')
-
-<div class="sa-shell" data-superadmin>
-    <aside class="sa-sidebar" id="sa-navigation">
-        <a class="sa-brand" href="#dashboard"><span class="sa-logo">GH</span><span>Gift of Hope<small>SUPERADMIN WORKSPACE</small></span></a>
-        <p class="sa-nav-label">MANAGEMENT</p>
-        <nav aria-label="Superadmin navigation">
-            @foreach(['dashboard' => ['▦', 'Dashboard'], 'accounts' => ['♧', 'Accounts'], 'settings' => ['⚙', 'System settings'], 'monitor' => ['◉', 'System monitor'], 'requests' => ['₱', 'Fund requests'], 'activity' => ['◷', 'Activity log']] as $key => [$icon, $label])
-            <a href="#{{ $key }}" data-sa-nav="{{ $key }}"><span aria-hidden="true">{{ $icon }}</span>{{ $label }}@if($key === 'requests')<b data-sa-pending>3</b>@endif</a>
+@php
+    $saSection = trim($__env->yieldContent('sa-section'));
+    $saNav = [
+        'WORKSPACE' => ['dashboard' => ['▦', 'Dashboard'], 'requests' => ['₱', 'Fund requests'], 'accounts' => ['♧', 'Accounts'], 'prices' => ['▤', 'Price list']],
+        'SYSTEM' => ['settings' => ['⚙', 'System settings'], 'monitor' => ['◉', 'System monitor'], 'activity' => ['◷', 'Activity log']],
+    ];
+    $awaitingCount = $outcomes['awaiting'] ?? null;
+    $navCount = count($navNotifications ?? []);
+@endphp
+<div class="sa-shell ws-shell" data-superadmin>
+    <aside class="ws-sidebar" id="sa-navigation">
+        <a class="ws-brand" href="{{ route('superadmin') }}#dashboard"><span class="brand-tile"><img src="{{ asset('images/logo-mark.png') }}" alt="" width="466" height="322"></span><span>Gift of Hope<small>Super admin</small></span></a>
+        <nav class="ws-nav" aria-label="Superadmin navigation">
+            @foreach ($saNav as $group => $links)
+                <p class="ws-nav-label">{{ $group }}</p>
+                @foreach ($links as $key => [$icon, $label])
+                    <a href="{{ route('superadmin') }}#{{ $key }}" data-sa-nav="{{ $key }}" data-sa-label="{{ $label }}" @if ($saSection === $key) aria-current="page" @endif><span aria-hidden="true">{{ $icon }}</span>{{ $label }}@if ($key === 'requests' && $awaitingCount)<b>{{ $awaitingCount }}</b>@endif</a>
+                @endforeach
             @endforeach
+            <p class="ws-nav-label">MORE</p>
+            <a href="{{ route('iot-monitor') }}" @if (request()->routeIs('iot-monitor')) aria-current="page" @endif><span aria-hidden="true">◫</span>IoT box monitor</a>
+            <a href="{{ route('notifications') }}" @if (request()->routeIs('notifications')) aria-current="page" @endif><span aria-hidden="true">◔</span>Notifications @if ($navCount)<b>{{ $navCount }}</b>@endif</a>
+            <a href="{{ route('settings') }}" @if (request()->routeIs('settings', 'user.edit', 'change-password.form')) aria-current="page" @endif><span aria-hidden="true">○</span>My account</a>
         </nav>
-        <div class="sa-side-bottom"><div class="sa-side-note">A little kindness.<br><strong>A lasting impact.</strong></div><div class="sa-person"><x-avatar class="sa-avatar" fallback="A" /><div><strong>{{ auth()->user()->name }}</strong><small>Superadmin UI preview</small></div></div><a class="sa-back" href="{{ route('landing') }}">Back to homepage ↗</a></div>
+        <div class="ws-person">
+            <x-avatar class="ws-avatar" fallback="S" />
+            <div><strong>{{ auth()->user()->fullName() ?: 'Super admin' }}</strong><small>Super administrator</small></div>
+        </div>
+        <form class="ws-signout" method="POST" action="{{ route('logout') }}">@csrf<button type="submit">Sign out ↗</button></form>
     </aside>
-    <div class="sa-main">
-        <header class="sa-topbar"><div class="sa-breadcrumb"><button type="button" class="sa-menu" aria-label="Toggle navigation" aria-expanded="false" aria-controls="sa-navigation">☰</button><span>Workspace / <strong data-sa-title>Dashboard</strong></span></div><div class="sa-top-right"><span class="sa-badge">Superadmin</span><x-avatar class="sa-avatar" fallback="A" /></div></header>
-        <main class="sa-content">
-            <div class="sa-preview"><strong>UI preview</strong><span>Fund requests are live. Accounts, devices, settings, and activity are still sample data that resets on reload.</span></div>
+    <div class="ws-main">
+        <header class="ws-topbar">
+            <button type="button" class="ws-menu" data-sa-menu aria-label="Open navigation" aria-expanded="false" aria-controls="sa-navigation">☰</button>
+            <div class="ws-title"><small>Super admin</small><strong data-sa-title>@yield('page-title', 'Dashboard')</strong></div>
+            <div class="ws-top-actions">
+                @include('partials.notification-bell')
+                <a href="{{ route('settings') }}" class="ws-top-avatar" aria-label="My account"><x-avatar class="ws-avatar" fallback="S" /></a>
+            </div>
+        </header>
+        <main class="sa-content ws-content">
             @yield('content')
         </main>
     </div>
     <dialog class="sa-dialog" data-sa-dialog aria-labelledby="sa-dialog-title"><button class="sa-dialog-close" type="button" data-sa-close aria-label="Close dialog">×</button><div data-sa-dialog-content></div></dialog>
-    <div class="sa-toast" role="status" aria-live="polite" hidden></div>
+    {{-- Result of the last action, visible wherever the page is scrolled to. --}}
+    @php($flashError = session('alert_error') ?? ($errors->any() ? $errors->first() : null))
+    @if ($flashError || session('status'))
+        <div class="sa-toast {{ $flashError ? 'is-error' : '' }}" role="{{ $flashError ? 'alert' : 'status' }}" data-sa-flash>
+            <span>{{ $flashError ?? session('status') }}</span>
+            <button type="button" data-sa-flash-close aria-label="Dismiss message">×</button>
+        </div>
+    @endif
 </div>
-
 @endsection

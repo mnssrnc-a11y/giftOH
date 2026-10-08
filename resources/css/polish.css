@@ -1,0 +1,130 @@
+/* ---------------------------------------------------------------------------------------------
+   Gift of Hope polish: logo, navigation feedback, fewer cards, and hover states in every workspace.
+   Loaded after the workspace styles (app.css), so it refines them without editing each file.
+   --------------------------------------------------------------------------------------------- */
+
+/* Navigation progress bar: starts on click, so a page change never feels stuck. */
+.nav-progress{position:fixed;top:0;left:0;z-index:9999;height:3px;width:0;background:linear-gradient(90deg,#29b6f6,#1565c0);box-shadow:0 0 8px #29b6f680;opacity:0;pointer-events:none}
+.nav-progress.is-loading{opacity:1;width:82%;transition:width 6s cubic-bezier(.08,.8,.2,1),opacity .15s}
+.nav-progress.is-done{width:100%;opacity:0;transition:width .2s ease-out,opacity .25s .15s}
+@media (prefers-reduced-motion:reduce){.nav-progress.is-loading{transition:opacity .15s}}
+
+/* Logo: the heart mark on a white tile in each sidebar. */
+.brand-tile{display:grid;place-items:center;flex:0 0 auto;width:42px;height:42px;padding:5px;border-radius:12px;background:#fff;box-shadow:0 2px 8px #0d47a126;overflow:hidden}
+.brand-tile img{display:block;width:100%;height:auto}
+.hope-brand{display:flex;align-items:center;gap:12px;line-height:1.15;font-size:19px}
+.hope-brand small{margin-top:4px}
+.sa-logo.brand-tile{background:#fff;border:1px solid #e2eaf5}
+.admin-brand-mark.brand-tile{background:#fff}
+.landing-logo{display:grid;place-items:center;padding:28px;border-radius:24px;background:#fff;box-shadow:0 24px 60px #0d47a140}
+.landing-mark{display:grid;place-items:center;width:84px;height:84px;padding:12px;border-radius:50%;background:#fff}
+.landing-mark img{width:100%;height:auto}
+
+/* ---------- Requester pages ---------- */
+.hope-preview-error{background:#fff0ee;border-color:#f3c9c4;color:#a2463e}
+.hope-muted-note{font-size:12px;color:var(--muted)}
+
+/* Summary strip: one panel with three figures instead of three separate cards. */
+.hope-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 25px;background:var(--card);border:1px solid var(--line);border-radius:13px;overflow:hidden}
+.hope-summary a{display:grid;gap:4px;padding:20px 24px;color:var(--text);text-decoration:none;border-right:1px solid var(--line);transition:background-color .15s}
+.hope-summary a:last-child{border-right:0}
+.hope-summary span{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.hope-summary strong{font-size:26px;font-weight:750;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.hope-summary small{font-size:12px;color:var(--muted)}
+.hope-summary a:hover,.hope-summary a:focus-visible{background:color-mix(in srgb,var(--blue) 7%,var(--card))}
+.hope-summary a:hover small{color:var(--blue)}
+
+/* Home feed: updates and notifications in two plain panels with list rows. */
+.hope-feed-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:21px;align-items:start}
+.hope-panel{background:var(--card);border:1px solid var(--line);border-radius:13px;min-width:0}
+.hope-panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:20px 22px 14px;border-bottom:1px solid var(--line)}
+.hope-panel-head h2{margin:0 0 4px;font-size:17px}
+.hope-panel-head p{margin:0;font-size:12px}
+.hope-feed-item{padding:18px 22px;border-bottom:1px solid var(--line);transition:background-color .15s}
+.hope-feed-item:last-child{border-bottom:0}
+.hope-feed-item:hover{background:color-mix(in srgb,var(--blue) 4%,var(--card))}
+.hope-feed-item h3{margin:8px 0 6px;font-size:15px}
+.hope-feed-item p{margin:0;white-space:pre-line;overflow-wrap:anywhere;font-size:13px}
+.hope-feed-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted)}
+.hope-notice-row{display:grid;gap:3px;width:100%;padding:14px 22px 14px 26px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--text);font:inherit;text-align:left;cursor:pointer;position:relative;transition:background-color .15s}
+.hope-notice-row::before{content:'';position:absolute;left:12px;top:20px;width:7px;height:7px;border-radius:50%;background:#2f9a6b}
+.hope-notice-row.is-warn::before{background:#d0603f}
+.hope-notice-row strong{font-size:13px}
+.hope-notice-row span{font-size:12px;color:var(--muted)}
+.hope-notice-row time{font-size:11px;color:var(--muted)}
+.hope-panel form:last-of-type .hope-notice-row{border-bottom:0}
+.hope-notice-row:hover,.hope-notice-row:focus-visible{background:color-mix(in srgb,var(--blue) 6%,var(--card))}
+.hope-panel .hope-empty{padding:32px 22px}
+@media(max-width:900px){.hope-feed-layout,.hope-summary{grid-template-columns:1fr}.hope-summary a{border-right:0;border-bottom:1px solid var(--line)}.hope-summary a:last-child{border-bottom:0}}
+
+/* Stat rows on request status and activity: one strip, not four cards. */
+.hope-grid:has(> .hope-stat){gap:0;background:var(--card);border:1px solid var(--line);border-radius:13px;overflow:hidden}
+.hope-grid > .hope-stat{border:0;border-right:1px solid var(--line);border-radius:0;box-shadow:none;background:transparent}
+.hope-grid > .hope-stat:last-child{border-right:0}
+@media(max-width:760px){.hope-grid > .hope-stat{border-right:0;border-bottom:1px solid var(--line)}.hope-grid > .hope-stat:last-child{border-bottom:0}}
+
+/* Preference switches (save on change). */
+.hope-switch{appearance:none;-webkit-appearance:none;flex:0 0 auto;width:42px!important;height:24px!important;margin:0;border-radius:999px;background:#c5cedd;position:relative;cursor:pointer;transition:background-color .2s}
+.hope-switch::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0003;transition:transform .2s}
+.hope-switch:checked{background:var(--blue)}
+.hope-switch:checked::after{transform:translateX(18px)}
+.hope-switch:hover{filter:brightness(.95)}
+.hope-switch:disabled{opacity:.6;cursor:progress}
+.hope-switch:focus-visible{outline:3px solid #64b5f6;outline-offset:2px}
+.hope-pref-status{min-height:18px;margin:12px 0 0;font-size:12px;color:#237453}
+.hope-pref-status[data-kind=busy]{color:var(--muted)}
+.hope-pref-status[data-kind=error]{color:#b75149}
+
+/* Hover states (requester). */
+.hope-card{transition:border-color .15s,box-shadow .15s}
+.hope-card:hover{border-color:color-mix(in srgb,var(--blue) 35%,var(--line));box-shadow:0 6px 18px #0d47a10f}
+.hope-table tbody tr{transition:background-color .15s}
+.hope-table tbody tr:hover{background:color-mix(in srgb,var(--blue) 5%,var(--card))}
+.hope-text-button:hover{text-decoration:underline}
+.hope-button{transition:filter .15s,box-shadow .15s,transform .15s}
+.hope-button:hover{box-shadow:0 4px 12px #1976d233}
+.hope-button.secondary:hover{border-color:var(--blue);color:var(--blue);box-shadow:none}
+.hope-notice{transition:background-color .15s}
+.hope-notice:hover{background:color-mix(in srgb,var(--blue) 4%,var(--card))}
+.hope-toggle-row:hover label{color:var(--blue)}
+.hope-topbar .hope-avatar:hover{box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 30%,transparent)}
+.hope-sidebar nav a{transition:background-color .15s,color .15s}
+.hope-sidebar nav a:hover{color:#fff}
+.hope-signout:hover{color:#fff;text-decoration:underline}
+
+/* ---------- Admin workspace ---------- */
+/* Stat tiles: one strip instead of six separate cards. */
+.admin-stat-grid{gap:0;border:1px solid var(--admin-border);border-radius:16px;background:var(--admin-surface);box-shadow:var(--admin-shadow);overflow:hidden}
+.admin-stat-grid > .admin-stat{border:0;border-right:1px solid var(--admin-border);border-radius:0;box-shadow:none;background:transparent;transition:background-color .15s}
+.admin-stat-grid > .admin-stat:last-child{border-right:0}
+.admin-stat-grid > .admin-stat:hover{background:var(--admin-surface-2)}
+/* Quick actions: plain buttons in one bar, not boxes inside a box. */
+.admin-quick-actions button,.admin-quick-actions a{border-color:transparent;background:transparent;transition:background-color .15s,border-color .15s}
+.admin-quick-actions button:hover,.admin-quick-actions a:hover{background:var(--admin-surface-2);border-color:var(--admin-border);transform:none}
+/* Panels: flat with a border; hover lifts them slightly. */
+.admin-card{box-shadow:none;transition:border-color .15s,box-shadow .15s}
+.admin-card:hover{border-color:#bbdefb;box-shadow:var(--admin-shadow)}
+.admin-list-row,.admin-setting-row{transition:background-color .15s}
+.admin-list-row:hover,.admin-setting-row:hover{background:var(--admin-surface-2)}
+.admin-settings-nav button{transition:background-color .15s,color .15s}
+.admin-settings-nav button:hover{background:var(--admin-surface-2)}
+.admin-doc{transition:border-color .15s}
+.admin-doc:hover{border-color:#bbdefb}
+.admin-timeline-row{transition:background-color .15s}
+.admin-timeline-row:hover{background:var(--admin-surface-2)}
+.admin-user-card{transition:background-color .15s}
+.admin-user-card:hover{background:rgba(255,255,255,.16)}
+@media(max-width:1100px){.admin-stat-grid > .admin-stat{border-bottom:1px solid var(--admin-border)}}
+
+/* ---------- Super admin workspace (hover only; its layout is the reference) ---------- */
+.sa-sidebar nav a{transition:background-color .15s,color .15s}
+.sa-sidebar nav a:hover{background:#e3f2fd;color:#1565c0}
+.sa-card{transition:border-color .15s,box-shadow .15s}
+.sa-card:hover{border-color:#bbdefb;box-shadow:0 6px 18px #0f2a550d}
+.sa-stat{transition:border-color .15s,box-shadow .15s}
+.sa-stat:hover{border-color:#bbdefb;box-shadow:0 6px 18px #0f2a550d}
+.sa-table tbody tr{transition:background-color .15s}
+.sa-table tbody tr:hover{background:#f4f8fe}
+.sa-link:hover{text-decoration:underline}
+.sa-device,.sa-event,.sa-score{transition:background-color .15s}
+.sa-device:hover,.sa-event:hover{background:#f4f8fe}

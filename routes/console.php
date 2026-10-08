@@ -52,3 +52,12 @@ Artisan::command('firebase:verification-smoke', function () {
 
     $this->info('Firebase verification storage, hashing, verification, and cleanup work.');
 })->purpose('Test Firebase verification code lifecycle with a temporary namespaced record');
+
+// Monthly AI price update (DTI SRP bulletin, TGP store, AI web search). Needs the Laravel
+// scheduler running: `php artisan schedule:work`, or a Windows Task Scheduler / cron entry
+// that runs `php artisan schedule:run` every minute.
+Illuminate\Support\Facades\Schedule::command('prices:update')->monthlyOn(1, '03:00')->withoutOverlapping();
+
+// Daily anti-malware re-scan of stored uploads with the latest antivirus signatures; infected files
+// are moved to storage/app/quarantine and logged for the super admin.
+Illuminate\Support\Facades\Schedule::command('security:scan-files --quarantine')->dailyAt('02:30')->withoutOverlapping();

@@ -3,8 +3,9 @@
 @section('title', 'Register - Gift of Hope')
 
 @section('content')
-    <div class="min-h-screen flex items-center justify-center bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6]">
+    <div class="brand-auth">
         <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
+            <img src="{{ asset('images/logo-full.png') }}" alt="Gift of Hope, charity home platform" width="768" height="538" class="mx-auto mb-3 h-24 w-auto">
             <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">Create Your Account</h2>
             <form method="POST" action="{{ route('register.store') }}" enctype="multipart/form-data" class="space-y-6">
                 @csrf
@@ -106,6 +107,7 @@
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 </div>
 
+                <p id="password-rules" class="text-sm text-red-700" role="alert" aria-live="polite"></p>
                 <div>
                     <label for="password_confirmation" class="block text-sm font-medium text-gray-700">Confirm Password</label>
                     <input id="password_confirmation" name="password_confirmation" type="password" required
@@ -114,7 +116,7 @@
 
                 <div>
                     <button type="submit"
-                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-[#1E3A8A] hover:bg-[#3B82F6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-[#0D47A1] hover:bg-[#1976D2] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         Register
                     </button>
                 </div>
@@ -123,7 +125,7 @@
             <div class="mt-6 text-center">
                 <p class="text-sm text-gray-600">
                     Already have an account?
-                    <a href="{{ route('login') }}" class="text-[#3B82F6] font-semibold hover:underline">Sign in</a>
+                    <a href="{{ route('login') }}" class="text-[#1976D2] font-semibold hover:underline">Sign in</a>
                 </p>
                 @if(session('alert_error'))
                     <div class="mt-6 text-center p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -143,15 +145,17 @@
             const hasLowerCase = /[a-z]/.test(password);
             const hasNumber = /[0-9]/.test(password);
             const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+            const message = document.getElementById('password-rules');
             if (password.length < minLength || !hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
-                    alert('Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.');
-                    return false; // Prevent form submission
-                }
-            if (password !== confirmPassword) {
-                alert('Passwords do not match. Please try again.');
-                return false; // Prevent form submission
+                message.textContent = 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character (!@#$%^&*).';
+                return false;
             }
-            return true; // Allow form submission
+            if (password !== confirmPassword) {
+                message.textContent = 'Passwords do not match. Please try again.';
+                return false;
+            }
+            message.textContent = '';
+            return true;
         }
         document.querySelector('form').addEventListener('submit', function(event) {
             const emailUsername = document.getElementById('email_username').value.trim();
@@ -161,13 +165,6 @@
             }
         });
 
-        @if(session('alert_error'))
-            Swal.fire({
-                icon: 'error',
-                title: 'Registration Failed',
-                text: '{{ session('alert_error') }}'
-            });
-        @endif
 
     </script>
 @endsection

@@ -1,5 +1,7 @@
-@extends('layouts.dashboard')
+@extends(\App\Support\Layout::forRole())
 @section('title', 'Update Profile - Gift of Hope')
+@section('page-kicker', 'Account')
+@section('page-title', 'Account details')
 @section('content')
     <div class="min-h-screen bg-gray-50 p-8">
         <div class="max-w-4xl mx-auto">
@@ -17,17 +19,17 @@
                     <div>
                         <label for="fname" class="block text-sm font-semibold text-gray-700 mb-2">First Name</label>
                         <input type="text" name="fname" id="fname" value="{{ old('fname', Auth::user()->fname) }}" required
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]" />
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1976D2]" />
                     </div>
                     <div>
                         <label for="lname" class="block text-sm font-semibold text-gray-700 mb-2">Last Name</label>
                         <input type="text" name="lname" id="lname" value="{{ old('lname', Auth::user()->lname) }}" required
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]" />
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1976D2]" />
                     </div>
                     <div>
                         <label for="contact_number" class="block text-sm font-semibold text-gray-700 mb-2">Contact Number</label>
                         <input type="text" name="contact_number" id="contact_number" value="{{ old('contact_number', Auth::user()->phone) }}" required
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]" />
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1976D2]" />
                     </div>
                     <button type="submit"
                             class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200">
@@ -35,9 +37,10 @@
                     </button>
                     <button type="button" onclick="window.location='{{ route('settings') }}'"
                             class="px-6 py-3 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200">
-                        cancel
+                        Cancel
                     </button>
                 </form>
             </div>
         </div>
     </div>
+@endsection

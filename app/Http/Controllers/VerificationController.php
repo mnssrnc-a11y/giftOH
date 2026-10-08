@@ -9,23 +9,24 @@ use App\Models\User;
 use App\Models\FirebaseUser;
 use App\Repositories\FirebaseUserRepository;
 use App\Services\NotificationService;
+use App\Services\RegistrationService;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-use app\Services\FirebaseService;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class VerificationController extends Controller
 {
+    private const MAIL_FAILED = 'We could not send a new code right now. Please try again later or contact the administrator.';
+
     protected $verificationService;
-    protected $firebaseService;
 
     public function __construct(
         VerificationService $verificationService,
         private FundingService $fundingService,
         private FirebaseUserRepository $firebaseUsers,
-        private NotificationService $notificationService
+        private NotificationService $notificationService,
+        private RegistrationService $registration
     )
     {
         $this->verificationService = $verificationService;
@@ -122,12 +123,17 @@ class VerificationController extends Controller
         // Generate code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        // Store hashed code in database
-        $this->verificationService->store($request->email, $code, 'login_auth_codes');
-
-        // Send email
+        // Send email, then store the hashed code so a failed send leaves the previous code usable
         $firstName = is_array($user) ? ($user['fname'] ?? '') : $user->fname;
-        Mail::to($request->email)->send(new \App\Mail\LoginAuthCode($code, $firstName));
+        try {
+            Mail::to($request->email)->send(new \App\Mail\LoginAuthCode($code, $firstName));
+        } catch (TransportExceptionInterface $exception) {
+            report($exception);
+
+            return back()->withErrors(['code' => self::MAIL_FAILED]);
+        }
+
+        $this->verificationService->store($request->email, $code, 'login_auth_codes');
 
         return back()->with('status', 'A new 6-digit verification code has been sent to your email.');
     }
@@ -164,21 +170,7 @@ class VerificationController extends Controller
             ]);
         }
 
-        $userData = [
-            'fname' => $data['fname'],
-            'lname' => $data['lname'],
-            'mname' => $data['mname'],
-            'email' => $data['email'],
-            'password' => $data['password'],
-            'phone' => $data['phone'],
-            'address' => $data['address'],
-            'gender' => $data['gender'],
-            'date_of_birth' => $data['date_of_birth'],
-            'profile_picture' => $data['profile_picture'],
-            'role' => 'normaluser',
-        ];
-
-        $user = new FirebaseUser($this->firebaseUsers->create($userData));
+        $user = $this->registration->createAccount($data, emailConfirmed: true);
         // Clean up
         $this->verificationService->forget($request->email, 'register_verification_codes');
         session()->forget('pending_registration');
@@ -212,9 +204,15 @@ class VerificationController extends Controller
         $data = session('pending_registration');
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        $this->verificationService->store($request->email, $code, 'register_verification_codes');
+        try {
+            Mail::to($request->email)->send(new \App\Mail\VerifyEmail($code, $data['fname']));
+        } catch (TransportExceptionInterface $exception) {
+            report($exception);
 
-        Mail::to($request->email)->send(new \App\Mail\VerifyEmail($code, $data['fname']));
+            return back()->withErrors(['code' => self::MAIL_FAILED]);
+        }
+
+        $this->verificationService->store($request->email, $code, 'register_verification_codes');
 
         return back()->with('status', 'A new verification code has been sent to your email.');
     }
@@ -262,6 +260,8 @@ class VerificationController extends Controller
         }
 
         $verb = $data['action'] === 'approved' ? 'Approval' : 'Rejection';
+        app(\App\Services\AuditLogger::class)->record('funding', "Admin recommended {$data['action']}"
+            . (! empty($data['amount']) ? ' of ₱' . number_format($data['amount'], 2) : ''), $data['request_id']);
 
         return AdminController::toSection('funding')->with('status', "{$verb} recorded and sent to the super admin for finalization.");
     }
@@ -282,9 +282,15 @@ class VerificationController extends Controller
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $action = session('pending_approval.action');
 
-        $this->verificationService->store($user->email, $code, 'approval_verification_codes');
+        try {
+            Mail::to($user->email)->send(new \App\Mail\ApprovalVerificationCode($code, $user->fname, $action));
+        } catch (TransportExceptionInterface $exception) {
+            report($exception);
 
-        Mail::to($user->email)->send(new \App\Mail\ApprovalVerificationCode($code, $user->fname, $action));
+            return back()->withErrors(['code' => self::MAIL_FAILED]);
+        }
+
+        $this->verificationService->store($user->email, $code, 'approval_verification_codes');
 
         return back()->with('status', 'A new approval verification code has been sent to your email.');
     }

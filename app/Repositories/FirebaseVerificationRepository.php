@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Hash;
 
 class FirebaseVerificationRepository extends FirebaseRepository
 {
+    /** Not cached between requests: one-time codes must always be read fresh. */
+    protected int $cacheSeconds = 0;
+
     public function put(string $type, string $email, string $code): array
     {
         $record = [
@@ -15,6 +18,8 @@ class FirebaseVerificationRepository extends FirebaseRepository
         ];
 
         $this->reference($this->key($type, $email))->set($record);
+
+        $this->nodeChanged();
 
         return $record;
     }
@@ -45,6 +50,7 @@ class FirebaseVerificationRepository extends FirebaseRepository
     public function forget(string $type, string $email): void
     {
         $this->reference($this->key($type, $email))->remove();
+        $this->nodeChanged();
     }
 
     protected function nodeKey(): string

@@ -1,6 +1,8 @@
 @extends(\App\Support\Layout::forRole())
 
 @section('title', 'IoT Box Monitor - Gift of Hope')
+@section('page-kicker', 'Monitoring')
+@section('page-title', 'IoT box monitor')
 
 @section('content')
     <div class="min-h-screen bg-gray-50">
@@ -14,17 +16,17 @@
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                     <div class="text-sm text-gray-500 mb-2">Active Boxes</div>
                     <div class="text-3xl font-bold text-gray-900" id="stat-active-boxes">-</div>
-                    <div class="text-sm text-green-600 mt-2">All systems operational</div>
+                    <div class="text-sm text-gray-500 mt-2" id="stat-active-note">Waiting for live data…</div>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <div class="text-sm text-gray-500 mb-2">Today's Total</div>
+                    <div class="text-sm text-gray-500 mb-2">Total Collected</div>
                     <div class="text-3xl font-bold text-gray-900" id="stat-today-total">-</div>
-                    <div class="text-sm text-gray-600 mt-2">Verified donations</div>
+                    <div class="text-sm text-gray-600 mt-2">Running total reported by all boxes</div>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                     <div class="text-sm text-gray-500 mb-2">Alerts</div>
                     <div class="text-3xl font-bold text-gray-900" id="stat-alerts">-</div>
-                    <div class="text-sm text-gray-600 mt-2">No issues detected</div>
+                    <div class="text-sm text-gray-500 mt-2" id="stat-alerts-note">Waiting for live data…</div>
                 </div>
             </div>
 

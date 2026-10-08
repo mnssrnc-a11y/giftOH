@@ -2,24 +2,26 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
+use App\Models\FirebaseUser;
+use App\Services\FundingService;
 use Tests\TestCase;
 
 class SharedUserUiTest extends TestCase
 {
-    public function test_shared_user_views_render_with_all_navigation_targets(): void
+    public function test_every_role_can_open_its_account_pages_in_its_own_layout(): void
     {
-        config(['auth.providers.users.driver' => 'eloquent']);
         $this->withoutVite();
-        $this->actingAs(new User(['fname' => 'Alex', 'lname' => 'Tester', 'role' => 'admin']));
+        // The admin layout's pending badge reads Firebase; keep the test offline.
+        $this->mock(FundingService::class, fn ($mock) => $mock->shouldReceive('getPendingRequests')->andReturn([]));
 
-        foreach (['users.dashboarduser', 'users.user', 'pages.settings'] as $view) {
-            $this->view($view)->assertSee('Main navigation')->assertSee('Admin workspace')
-                ->assertSee('Superadmin workspace')->assertSee('Ready to sign out?');
-        }
-        foreach (['groups', 'fundraisers', 'request-status', 'activity'] as $screen) {
-            $this->view('users.flow', compact('screen'))->assertSee('Main navigation')
-                ->assertSee('UI preview');
+        $layouts = ['user' => 'Main navigation', 'admin' => 'Admin navigation', 'super_admin' => 'Superadmin navigation'];
+        foreach ($layouts as $role => $landmark) {
+            $this->actingAs(new FirebaseUser(['id' => "test-{$role}", 'fname' => 'Alex', 'lname' => 'Tester', 'role' => $role, 'phone' => '09170000000']));
+
+            $this->get(route('settings'))->assertOk()->assertSee($landmark)
+                ->assertSee(route('change-password.form'))->assertSee(route('user.edit'));
+            $this->get(route('change-password.form'))->assertOk()->assertSee($landmark)->assertSee('Change your password.');
+            $this->get(route('user.edit'))->assertOk()->assertSee($landmark)->assertSee('09170000000');
         }
     }
 }

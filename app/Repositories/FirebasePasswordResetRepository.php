@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Hash;
 
 class FirebasePasswordResetRepository extends FirebaseRepository
 {
+    /** Not cached between requests: one-time codes must always be read fresh. */
+    protected int $cacheSeconds = 0;
+
     public function put(string $email, string $code): array
     {
         $record = [
@@ -15,6 +18,8 @@ class FirebasePasswordResetRepository extends FirebaseRepository
         ];
 
         $this->reference($this->key($email))->set($record);
+
+        $this->nodeChanged();
 
         return $record;
     }
@@ -29,6 +34,7 @@ class FirebasePasswordResetRepository extends FirebaseRepository
     public function forget(string $email): void
     {
         $this->reference($this->key($email))->remove();
+        $this->nodeChanged();
     }
 
     protected function nodeKey(): string

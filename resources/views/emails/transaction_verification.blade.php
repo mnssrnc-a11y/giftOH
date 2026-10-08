@@ -12,7 +12,7 @@
                 <table role="presentation" width="480" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.07);">
                     {{-- Header --}}
                     <tr>
-                        <td style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); padding: 32px 40px; text-align: center;">
+                        <td style="background: linear-gradient(135deg, #0D47A1 0%, #1976D2 100%); padding: 32px 40px; text-align: center;">
                             <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">
                                 🤝 Gift of Hope
                             </h1>
@@ -30,11 +30,11 @@
                             </p>
 
                             {{-- Code Box --}}
-                            <div style="background-color: #eff6ff; border: 2px dashed #3B82F6; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 28px;">
+                            <div style="background-color: #eff6ff; border: 2px dashed #1976D2; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 28px;">
                                 <p style="color: #6b7280; font-size: 13px; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
                                     Your Transaction Verification Code
                                 </p>
-                                <p style="color: #1E3A8A; font-size: 36px; font-weight: 800; margin: 0; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+                                <p style="color: #0D47A1; font-size: 36px; font-weight: 800; margin: 0; letter-spacing: 8px; font-family: 'Courier New', monospace;">
                                     {{ $code }}
                                 </p>
                             </div>

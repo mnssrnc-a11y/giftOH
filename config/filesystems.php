@@ -30,21 +30,50 @@ return [
 
     'disks' => [
 
-        'local' => [
+        // FILES_DRIVER=firebase keeps uploads in the Firebase Realtime Database (file_store/*)
+        // instead of storage/app. Use it on hosts whose disk is wiped on restart (Render free).
+        'local' => env('FILES_DRIVER', 'local') === 'firebase' ? [
+            'driver' => 'firebase-rtdb',
+            'root' => 'file_store/local',
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ] : [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Not served over /storage: private request files go through FundingFileController.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
 
-        'public' => [
+        'public' => env('FILES_DRIVER', 'local') === 'firebase' ? [
+            'driver' => 'firebase-rtdb',
+            'root' => 'file_store/public',
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ] : [
             'driver' => 'local',
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
+        ],
+
+        // The machine's own disk, always. Used to copy existing uploads into Firebase.
+        'local-disk' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'throw' => false,
+        ],
+
+        'public-disk' => [
+            'driver' => 'local',
+            'root' => storage_path('app/public'),
+            'throw' => false,
         ],
 
         's3' => [

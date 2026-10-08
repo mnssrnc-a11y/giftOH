@@ -37,6 +37,8 @@ return [
 
     'firebase' => [
         'credentials' => env('FIREBASE_CREDENTIALS', storage_path('app/firebase/firebase_credentials.json')),
+        // On a host (Render): paste the service-account JSON itself, raw or base64, instead of a file path.
+        'credentials_json' => env('FIREBASE_CREDENTIALS_JSON'),
         'database_url' => env('FIREBASE_DATABASE_URL', 'https://githope-d36ee-default-rtdb.asia-southeast1.firebasedatabase.app'),
         'client' => [
             'apiKey' => env('FIREBASE_API_KEY'),

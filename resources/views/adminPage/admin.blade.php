@@ -20,6 +20,7 @@
         'routes' => [
             'action' => route('admin.fund-request.action', ['id' => '__ID__']),
             'recommendation' => route('admin.fund-request.recommendation', ['id' => '__ID__']),
+            'show' => route('admin.fund-request.show', ['id' => '__ID__']),
         ],
     ];
 @endphp
@@ -41,10 +42,6 @@
             <button class="admin-button" data-admin-go="updates">✎ Post update</button>
             <button class="admin-button primary" data-admin-go="funding">Review requests</button>
         </div>
-        <form class="logout-form" method="POST" action="/logout">
-            @csrf
-            <button class="admin-button danger" type="submit">Log out</button>
-        </form>
     </div>
     <div class="admin-grid admin-stat-grid">
         <article class="admin-stat warn"><div class="admin-stat-top"><div class="admin-stat-icon">⌛</div><span class="admin-stat-change">{{ $fundingSummary['awaitingCount'] }} with super admin</span></div><h3>{{ $pendingCount }}</h3><p>Pending requests</p></article>
@@ -69,7 +66,7 @@
             <div class="admin-card-body admin-chart" data-chart="donations" aria-label="Monthly donations line chart"></div>
         </article>
         <article class="admin-card">
-            <div class="admin-card-head"><div><h3>Funding trend</h3><p><span class="admin-legend" style="--c:#3b82f6">Requested</span> <span class="admin-legend" style="--c:#10b981">Granted</span></p></div><span class="admin-status in-progress">Last 6 months</span></div>
+            <div class="admin-card-head"><div><h3>Funding trend</h3><p><span class="admin-legend" style="--c:#1976D2">Requested</span> <span class="admin-legend" style="--c:#10b981">Granted</span></p></div><span class="admin-status in-progress">Last 6 months</span></div>
             <div class="admin-card-body admin-chart" data-chart="funding" aria-label="Requested versus granted funding chart"></div>
         </article>
     </div>
@@ -120,12 +117,18 @@
     <div class="admin-grid admin-two-col admin-updates-grid">
         <article class="admin-card">
             <div class="admin-card-head"><div><h3>New update</h3><p>Write an announcement or compile the current funding requests</p></div></div>
-            <form class="admin-card-body admin-post-form" method="POST" action="{{ route('admin.posts.store') }}" data-post-form>
+            <form class="admin-card-body admin-post-form" method="POST" action="{{ route('admin.posts.store') }}" enctype="multipart/form-data" data-post-form>
                 @csrf
                 <div class="admin-field"><label for="post-type">Type</label><select id="post-type" class="admin-select" name="type" style="width:100%" data-post-type>@foreach ($postTypes as $value => $label)<option value="{{ $value }}" @selected(old('type') === $value)>{{ $label }}</option>@endforeach</select></div>
                 <div class="admin-field"><label for="post-audience">Who can see it</label><select id="post-audience" class="admin-select" name="audience" style="width:100%"><option value="public" @selected(old('audience', 'public') === 'public')>Everyone: landing page and user pages</option><option value="users" @selected(old('audience') === 'users')>Signed-in users only</option></select></div>
                 <div class="admin-field"><label for="post-title">Title</label><input id="post-title" class="admin-input" name="title" maxlength="150" required value="{{ old('title') }}" data-post-title></div>
                 <div class="admin-field"><label for="post-body">Message</label><textarea id="post-body" class="admin-textarea" name="body" rows="10" maxlength="10000" required data-post-body>{{ old('body') }}</textarea></div>
+                <div class="admin-field">
+                    <label for="post-image">Photo <span style="font-weight:400">(optional)</span></label>
+                    <input id="post-image" type="file" name="image" accept="image/jpeg,image/png,image/webp" class="admin-input" style="width:100%;height:auto;padding:9px" data-post-image>
+                    <p class="admin-field-hint">JPG, PNG or WebP, up to 5 MB. Two or more updates play as a slideshow on user pages and the landing page.</p>
+                    <img class="admin-post-image" data-post-image-preview alt="Selected photo" hidden>
+                </div>
                 <div class="admin-field admin-compile-options">
                     <label>Compile from charity home requests</label>
                     <div class="admin-actions">
@@ -149,6 +152,7 @@
                 @forelse ($posts as $post)
                     <article class="admin-post">
                         <div class="admin-post-head"><div><strong>{{ $post['title'] }}</strong><small>{{ $post['author'] }} · {{ $when($post['date']) }}</small></div><div class="admin-actions"><span class="admin-status {{ $post['audience'] === 'public' ? 'approved' : 'cancelled' }}">{{ $post['audience'] === 'public' ? 'Public' : 'Users only' }}</span><span class="admin-status in-progress">{{ $postTypes[$post['type']] ?? 'Update' }}</span></div></div>
+                        @if ($post['image'])<img class="admin-post-image" src="{{ $post['image'] }}" alt="Photo for {{ $post['title'] }}" loading="lazy">@endif
                         <p>{{ $post['body'] }}</p>
                         @if ($post['author_id'] === (string) $admin->getAuthIdentifier())
                             <form method="POST" action="{{ route('admin.posts.destroy', $post['id']) }}" data-delete-post>
@@ -166,15 +170,16 @@
 </section>
 
 <section class="admin-page" data-admin-page="funding">
-    <div class="admin-page-head"><div><h2>Funding management</h2><p>Review requests. Your approvals and rejections go to the super admin for finalization.</p></div><button class="admin-button primary" data-reload>↻ Refresh list</button></div>
+    <div class="admin-page-head"><div><h2>Funding management</h2><p>Assess, decide, release, and check liquidations. Approvals and rejections go to the super admin for finalization.</p></div><button class="admin-button primary" data-reload>↻ Refresh list</button></div>
     <div class="admin-grid admin-funding-summary">
-        <article><span>Pending value</span><strong>{{ $peso($fundingSummary['pendingValue']) }}</strong><small>{{ $fundingSummary['pendingCount'] }} request(s) awaiting your review</small></article>
+        <article><span>Assessments due</span><strong>{{ $fundingSummary['needsAssessment'] }}</strong><small>{{ $fundingSummary['overdue'] }} overdue item(s) · interview within {{ config('funding.assessment_days') }} days</small></article>
+        <article><span>Pending value</span><strong>{{ $peso($fundingSummary['pendingValue']) }}</strong><small>{{ $fundingSummary['pendingCount'] }} request(s) in assessment or awaiting decision</small></article>
         <article><span>With super admin</span><strong>{{ $peso($fundingSummary['awaitingValue']) }}</strong><small>{{ $fundingSummary['awaitingCount'] }} request(s) awaiting finalization</small></article>
         <article><span>Granted this month</span><strong>{{ $peso($fundingSummary['grantedMonth']) }}</strong><small>{{ $fundingSummary['grantedMonthCount'] }} request(s) · {{ $peso($fundingSummary['grantedTotal']) }} all time</small></article>
         <article><span>Approval rate</span><strong>{{ is_null($fundingSummary['approvalRate']) ? '—' : $fundingSummary['approvalRate'] . '%' }}</strong><small>{{ $fundingSummary['decidedCount'] }} finalized decision(s)</small></article>
     </div>
     <div class="admin-tabs" data-funding-tabs>
-        @foreach (['all' => 'All requests', 'pending' => 'Pending', 'awaiting' => 'Awaiting super admin', 'approved' => 'Approved', 'rejected' => 'Rejected', 'completed' => 'Completed'] as $key => $label)<button class="admin-tab {{ $key === 'all' ? 'is-active' : '' }}" data-status-tab="{{ $key }}">{{ $label }}</button>@endforeach
+        @foreach (['all' => 'All requests', 'assessment' => 'Assessment (' . $fundingSummary['needsAssessment'] . ')', 'decision' => 'Ready for decision', 'awaiting' => 'Awaiting super admin', 'release' => 'To release (' . $fundingSummary['toRelease'] . ')', 'liquidation' => 'Liquidation (' . $fundingSummary['liquidationPending'] . ')', 'completed' => 'Completed', 'rejected' => 'Rejected'] as $key => $label)<button class="admin-tab {{ $key === 'all' ? 'is-active' : '' }}" data-status-tab="{{ $key }}">{{ $label }}</button>@endforeach
     </div>
     <div class="admin-card">
         <div class="admin-card-body">
@@ -195,7 +200,7 @@
 <section class="admin-page" data-admin-page="reports">
     <div class="admin-page-head"><div><h2>Reports center</h2><p>Operational and funding performance from live records.</p></div><div class="admin-actions"><button class="admin-button" data-export-csv>▦ Export CSV</button><button class="admin-button primary" data-print>⌑ Print / PDF</button></div></div>
     <div class="admin-report-tabs">
-        @foreach (['iot' => 'IoT reports', 'funding' => 'Funding reports', 'funded' => 'Funded projects', 'finished' => 'Finished projects'] as $key => $label)<button class="admin-report-tab {{ $key === 'iot' ? 'is-active' : '' }}" data-report-tab="{{ $key }}">{{ $label }}</button>@endforeach
+        @foreach (['iot' => 'IoT reports', 'funding' => 'Funding reports', 'funded' => 'Funded projects', 'finished' => 'Finished projects', 'prices' => 'Price reference'] as $key => $label)<button class="admin-report-tab {{ $key === 'iot' ? 'is-active' : '' }}" data-report-tab="{{ $key }}">{{ $label }}</button>@endforeach
     </div>
     <div class="admin-toolbar"><input class="admin-input admin-search" type="search" placeholder="Search current report…" data-report-search><label class="admin-field"><span>Start date</span><input class="admin-input admin-date" type="date" data-report-from></label><label class="admin-field"><span>End date</span><input class="admin-input admin-date" type="date" data-report-to></label><button class="admin-button" data-report-clear>Clear filters</button></div>
 
@@ -237,12 +242,34 @@
             @endforelse
         </tbody></table></div></article>
     </div>
+    <div class="admin-report-panel" data-report-panel="prices">
+        @php($lastRun = $priceRun)
+        <article class="admin-card" style="margin-bottom:18px"><div class="admin-card-body">
+            <span class="admin-eyebrow">Read only · managed by the super admin</span>
+            <h3 style="margin:6px 0">Price list for per-person budgets</h3>
+            <p class="admin-field-hint" style="margin:0">Items are grouped into Food, Medical and Cleaning materials. Only the super admin adds items or changes prices; the AI also refreshes prices every month from the <a href="https://www.dti.gov.ph/dti-consumer-space/dti-latest-srps-basic-necessities-prime-commodities" target="_blank" rel="noopener">DTI SRP bulletin</a> and the <a href="https://tgp.com.ph/" target="_blank" rel="noopener">TGP</a> store. When you build a budget you choose items and quantities; the prices below are applied automatically.</p>
+            <p style="margin:10px 0 0;font-size:12px">@if ($lastRun) Last AI update {{ \Carbon\Carbon::parse($lastRun['ran_at'])->diffForHumans() }}: <strong>{{ count((array) ($lastRun['updated'] ?? [])) }}</strong> price(s) changed. @else The AI price update has not run yet. @endif Need an item that is not listed? Ask the super admin.</p>
+        </div></article>
+        @foreach ($priceGroups as $group)
+        <article class="admin-card" style="margin-bottom:18px" id="prices-{{ $group['key'] }}"><div class="admin-card-head"><div><h3>{{ $group['label'] }}</h3><p>{{ count($group['items']) }} item(s)</p></div><span class="admin-status in-progress">₱{{ number_format(config('funding.default_per_person_allocation')) }} usual allocation per person</span></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Type</th><th>Item</th><th>Size</th><th>Budget price</th><th>Range</th><th>Source</th><th>Updated</th></tr></thead><tbody>
+            @forelse ($group['items'] as $item)
+                <tr><td>{{ $item['type'] }}</td><td>{{ $item['name'] }}@if ($item['matched_product'])<small title="{{ $item['matched_product'] }}">{{ \Illuminate\Support\Str::limit($item['matched_product'], 60) }}</small>@endif</td><td>{{ $item['size'] }}</td>
+                    <td><strong>₱{{ number_format($item['price'], 2) }}</strong>@if ($item['previous_price'] !== null)<small>was ₱{{ number_format($item['previous_price'], 2) }}</small>@endif</td>
+                    <td>₱{{ number_format($item['min'], 2) }}–₱{{ number_format($item['max'], 2) }}</td>
+                    <td>@if ($item['source_url'])<a href="{{ $item['source_url'] }}" target="_blank" rel="noopener">{{ $item['source'] }}</a>@else{{ $item['source'] ?? '—' }}@endif</td>
+                    <td>{{ $item['updated_at'] ? \Carbon\Carbon::parse($item['updated_at'])->format('M d, Y') : '—' }}</td></tr>
+            @empty
+                <tr data-empty><td colspan="7">No items in this group yet.</td></tr>
+            @endforelse
+        </tbody></table></div></article>
+        @endforeach
+    </div>
 </section>
 
 <section class="admin-page" data-admin-page="settings">
     <div class="admin-page-head"><div><h2>Settings</h2><p>Your account details, preferences, and security.</p></div></div>
     <div class="admin-grid admin-settings-grid">
-        <aside class="admin-card admin-settings-nav"><button class="is-active" data-settings-tab="information">◉ My information</button><button data-settings-tab="profile">♙ Profile photo</button><button data-settings-tab="preferences">◐ Preferences</button><button data-settings-tab="security">◇ Security</button></aside>
+        <aside class="admin-card admin-settings-nav"><button class="is-active" data-settings-tab="information">◉ My information</button><button data-settings-tab="profile">♙ Profile photo</button><button data-settings-tab="preferences">◐ Preferences</button><button data-settings-tab="security">◇ Security</button><button data-settings-tab="ai">✦ AI providers</button></aside>
         <div class="admin-card"><div class="admin-card-body">
             <div class="admin-settings-panel is-active" data-settings-panel="information"><div class="admin-card-head" style="padding:0 0 18px;margin-bottom:20px"><div><h3>My information</h3><p>As stored on your Gift of Hope account</p></div></div><div class="admin-form-grid">
                 <div class="admin-field"><label>Full name</label><input value="{{ trim(($admin->fname ?? '') . ' ' . ($admin->mname ?? '') . ' ' . ($admin->lname ?? '')) ?: ($admin->name ?? '—') }}" readonly></div>
@@ -264,9 +291,20 @@
                 <p class="admin-field-hint" data-profile-hint>Pick a photo to preview it, then save.</p>
             </div>
             <div class="admin-settings-panel" data-settings-panel="preferences"><div class="admin-card-head" style="padding:0 0 18px"><div><h3>Preferences</h3><p>Saved in this browser</p></div></div><div class="admin-setting-row"><div><strong>Dark mode</strong><span>Use a darker color theme throughout the admin workspace</span></div><label class="admin-switch"><input type="checkbox" data-dark-switch><i></i></label></div><div class="admin-setting-row"><div><strong>Compact tables</strong><span>Reduce table row height to show more records</span></div><label class="admin-switch"><input type="checkbox" data-compact-switch><i></i></label></div></div>
+            <div class="admin-settings-panel" data-settings-panel="ai"><div class="admin-card-head" style="padding:0 0 18px;margin-bottom:16px"><div><h3>AI providers</h3><p>Free tiers tried in order; a provider that hits its limit is skipped automatically. Keys are set in .env (see config/ai.php).</p></div></div>
+                <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Provider</th><th>Model</th><th>Status</th><th>Used today</th></tr></thead><tbody>
+                    @foreach ($aiProviders as $provider)
+                        <tr><td><strong>{{ ucfirst($provider['name']) }}</strong>@unless ($provider['in_order'])<small>not in AI_PROVIDER_ORDER</small>@endunless</td><td>{{ $provider['model'] }}</td>
+                            <td>@if (!$provider['configured'])<span class="admin-status cancelled">No API key</span>@elseif ($provider['unavailable'])<span class="admin-status">{{ $provider['unavailable'] }}</span>@else<span class="admin-status approved">Ready</span>@endif @if ($provider['last_error'])<small title="{{ $provider['last_error'] }}">{{ \Illuminate\Support\Str::limit($provider['last_error'], 70) }}</small>@endif</td>
+                            <td>{{ $provider['used_today'] }}{{ $provider['daily_limit'] ? ' / ' . $provider['daily_limit'] : '' }}</td></tr>
+                    @endforeach
+                </tbody></table></div>
+                <p class="admin-field-hint">Without any key, recommendations fall back to the rule-based allocation. Run <code>php artisan ai:status --ping</code> to test each provider.</p>
+            </div>
             <div class="admin-settings-panel" data-settings-panel="security"><div class="admin-card-head" style="padding:0 0 18px;margin-bottom:16px"><div><h3>Security</h3><p>Sign-in and approval verification</p></div></div>
                 <div class="admin-security-item"><div>@</div><div><strong>Email address</strong><span>{{ $admin->email ?? '—' }}</span></div></div>
-                <div class="admin-security-item"><div>☎</div><div><strong>Phone number</strong><span>{{ $admin->phone ?? 'Not set' }}</span></div></div>
+                <div class="admin-security-item"><div>☎</div><div><strong>Phone number</strong><span>{{ $admin->phone ?? 'Not set' }} · <a href="{{ route('user.edit') }}">Edit details</a></span></div></div>
+                <div class="admin-security-item"><div>⚿</div><div><strong>Password</strong><span>Never displayed · <a href="{{ route('change-password.form') }}">Change password</a></span></div></div>
                 @php($twoFactor = filter_var($admin->email_notifications ?? true, FILTER_VALIDATE_BOOLEAN))
                 <form class="admin-setting-row" method="POST" action="{{ route('settings.update') }}" data-two-factor-form>
                     @csrf

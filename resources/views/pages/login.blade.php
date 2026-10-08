@@ -3,11 +3,11 @@
 @section('title', 'Login - Gift of Hope')
 
 @section('content')
-    <div class="min-h-screen bg-gray-50 flex items-center justify-center px-8">
+    <div class="brand-auth">
         <div class="max-w-md w-full">
             <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
                 <div class="text-center mb-8">
-                    <div class="bg-[#3B82F6] w-16 h-16 rounded-full mx-auto mb-4"></div>
+                    <img src="{{ asset('images/logo-full.png') }}" alt="Gift of Hope, charity home platform" width="768" height="538" class="mx-auto mb-4 h-28 w-auto">
                     <h1 class="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
                     <p class="text-gray-600">Sign in to your Gift of Hope account</p>
                 </div>
@@ -30,37 +30,43 @@
                     @endif
 
                     <div class="mb-5">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                        <label for="login-email" class="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
                         <input
+                            id="login-email"
                             name="email"
+                            required
+                            autocomplete="email"
                             type="email"
                             value="{{ old('email', request()->cookie('remembered_email')) }}"
                             placeholder="username@gmail.com"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1976D2]"
                         />
                     </div>
 
                     <div class="mb-6">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+                        <label for="login-password" class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
                         <input
+                            id="login-password"
                             name="password"
+                            required
+                            autocomplete="current-password"
                             type="password"
                             placeholder="Enter your password"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1976D2]"
                         />
                     </div>
 
                     <div class="flex items-center justify-between mb-6">
                         <label class="flex items-center">
-                            <input name="remember" type="checkbox" @checked(request()->cookie('remembered_email')) class="w-4 h-4 text-[#3B82F6] border-gray-300 rounded focus:ring-[#3B82F6]" />
+                            <input name="remember" type="checkbox" @checked(request()->cookie('remembered_email')) class="w-4 h-4 text-[#1976D2] border-gray-300 rounded focus:ring-[#1976D2]" />
                             <span class="ml-2 text-sm text-gray-600">Remember me</span>
                         </label>
-                        <a href="{{ route('forgot-password') }}" class="text-sm text-[#3B82F6] hover:underline">Forgot password?</a>
+                        <a href="{{ route('forgot-password') }}" class="text-sm text-[#1976D2] hover:underline">Forgot password?</a>
                     </div>
 
                     <button
                         type="submit"
-                        class="w-full bg-[#1E3A8A] text-white py-3 rounded-lg font-bold hover:bg-[#2d4a9e] transition-colors flex items-center justify-center gap-2"
+                        class="w-full bg-[#0D47A1] text-white py-3 rounded-lg font-bold hover:bg-[#1565C0] transition-colors flex items-center justify-center gap-2"
                     >
                         Sign In
                     </button>
@@ -69,7 +75,7 @@
                 <div class="mt-6 text-center">
                     <p class="text-sm text-gray-600">
                         Don't have an account?
-                        <a href="{{ route('register') }}" class="text-[#3B82F6] font-semibold hover:underline">Sign up</a>
+                        <a href="{{ route('register') }}" class="text-[#1976D2] font-semibold hover:underline">Sign up</a>
                     </p>
                 </div>
                 @if(session('alert_error'))
@@ -79,39 +85,10 @@
                 @endif
             </div>
 
-            <p class="text-xs text-gray-500 text-center mt-6">
+            <p class="text-xs text-blue-50 text-center mt-6">
                 By signing in, you agree to our Terms of Service and Privacy Policy
             </p>
         </div>
     </div>
-<script>
-        function validatePassword() {
-            const passwordInput = document.querySelector('input[name="password"]');
-            const password = passwordInput.value;
-            const errorMessage = document.getElementById('password-error');
-
-            // Password validation criteria
-            
-
-            if (password.length < minLength || !hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
-                errorMessage.textContent = 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.';
-                return false; // Prevent form submission
-            } else {
-                errorMessage.textContent = ''; // Clear error message
-                return true; // Allow form submission
-            }
-        }
-        const form = document.querySelector('form');
-        form.addEventListener('submit', function(event) {
-            if (!validatePassword()) {
-                event.preventDefault();
-            }
-        });
-    </script>
-    @if (session('alert_error'))
-        <script>
-            alert("{{ session('alert_error') }}");
-        </script>
-    @endif
 @endsection
 

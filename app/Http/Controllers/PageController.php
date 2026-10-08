@@ -1,22 +1,16 @@
 <?php
 namespace App\Http\Controllers;
 use Illuminate\Http\Request;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\PasswordResetCode;
 use App\Services\FundingService;
+use App\Services\FundingRequestPresenter;
+use App\Services\FundingRules;
 use App\Services\NotificationService;
 use App\Services\VerificationService;
 use App\Repositories\FirebaseUserRepository;
 use App\Repositories\FirebaseAdminPostRepository;
-use Illuminate\Support\Str;
-use app\Services\FirebaseService;
 class PageController extends Controller
 {
-    protected $firebaseService;
 
     public function __construct(
         private VerificationService $verificationService,
@@ -29,10 +23,6 @@ class PageController extends Controller
     public function landing()
     {
         return view('pages.landing', ['posts' => $this->adminPostsFor(3, publicOnly: true)]);
-    }
-    public function dashboard()
-    {
-        return view('pages.dashboard');
     }
     public function dashboardUser()
     {
@@ -48,27 +38,32 @@ class PageController extends Controller
 
     public function requestStatus()
     {
-        $requests = array_map(function (array $request): array {
-            $status = match ((int) ($request['status_id'] ?? 0)) {
-                2 => 'Approved',
-                3 => 'Denied',
-                default => ucfirst(strtolower((string) ($request['status_name'] ?? $request['status'] ?? 'Pending'))),
+        $presenter = app(FundingRequestPresenter::class);
+        $requests = array_map(function (array $request) use ($presenter): array {
+            $status = match ($this->fundingService->statusOf($request)) {
+                'approved' => 'Approved',
+                'rejected' => 'Denied',
+                'completed' => 'Completed',
+                default => 'Pending',
             };
-            $status = $status === 'Rejected' ? 'Denied' : $status;
             $color = match ($status) {
                 'Approved', 'Completed' => 'green',
                 'Denied' => 'red',
                 default => 'gold',
             };
+            $view = $presenter->present($request);
 
             return [
                 'id' => (string) ($request['id'] ?? ''),
                 'title' => $request['title'] ?? $request['org_name'] ?? 'Funding request',
                 'category' => $request['category_name'] ?? $request['category'] ?? 'General',
-                'amount' => (float) ($request['amount_requested'] ?? $request['amount'] ?? 0),
+                'amount' => $this->fundingService->grantedAmountOf($request),
                 'status' => $status,
+                'stage' => $view['stage']['label'],
                 'color' => $color,
                 'date' => $request['updated_at'] ?? $request['created_at'] ?? now()->toIso8601String(),
+                'timeline' => $view['timeline'],
+                'reason' => $view['rejection_reason'],
                 'appeals' => (int) ($request['appeals'] ?? 0),
             ];
         }, $this->fundingService->getRequestsByUser(Auth::id()));
@@ -104,7 +99,10 @@ class PageController extends Controller
 
         $successfulRequests = array_filter($requests, fn (array $request): bool => in_array($getStatus($request), ['Approved', 'Completed'], true));
         $totalRequests = count($requests);
-        $receivedAmount = array_sum(array_map(static fn (array $request): float => (float) ($request['amount_requested'] ?? $request['amount'] ?? 0), $successfulRequests));
+        // Funds count as received once the foundation records the release, at the amount released.
+        $releasedRequests = array_filter($requests, static fn (array $request): bool => ! empty($request['disbursement']['released_at'] ?? null));
+        $releasedAmount = fn (array $request): float => (float) ($request['disbursement']['amount'] ?? $this->fundingService->grantedAmountOf($request));
+        $receivedAmount = array_sum(array_map($releasedAmount, $releasedRequests));
         $deniedRequests = count(array_filter($requests, fn (array $request): bool => $getStatus($request) === 'Denied'));
 
         $months = [];
@@ -118,20 +116,15 @@ class PageController extends Controller
             $monthCursor->addMonth();
         }
 
-        foreach ($successfulRequests as $request) {
-            $date = $request['updated_at'] ?? $request['created_at'] ?? null;
-            if ($date === null) {
-                continue;
-            }
-
+        foreach ($releasedRequests as $request) {
             try {
-                $key = \Carbon\Carbon::parse($date)->format('Y-m');
+                $key = \Carbon\Carbon::parse($request['disbursement']['released_at'])->format('Y-m');
             } catch (\Exception) {
                 continue;
             }
 
             if (isset($months[$key])) {
-                $months[$key]['amount'] += (float) ($request['amount_requested'] ?? $request['amount'] ?? 0);
+                $months[$key]['amount'] += $releasedAmount($request);
             }
         }
 
@@ -150,14 +143,31 @@ class PageController extends Controller
         ]);
     }
 
+    /**
+     * Open a notification: it moves to the history and the page it is about opens (the request,
+     * the price list...). Without a link, back to the notifications page.
+     */
     public function markNotificationRead(string $id)
     {
-        $marked = $this->notificationService->markAsRead($id, Auth::id());
+        $notification = $this->notificationService->markAsRead($id, Auth::id());
+        if ($notification === null) {
+            return redirect()->route('notifications')->with('alert_error', 'Notification could not be found.');
+        }
 
-        return redirect()->route('dashboarduser')->with(
-            $marked ? 'status' : 'alert_error',
-            $marked ? 'Notification moved to history.' : 'Notification could not be found.'
-        );
+        $link = NotificationService::safeLink($notification['link'] ?? null)
+            ?? (! empty($notification['request_id']) && Auth::user()->isUser() ? route('fund-request.show', $notification['request_id'], false) : null);
+
+        return $link ? redirect()->to($link) : redirect()->route('notifications')->with('status', 'Notification marked as read.');
+    }
+
+    public function markAllNotificationsRead(Request $request)
+    {
+        $count = $this->notificationService->markAllAsRead(Auth::id());
+        $message = $count ? "{$count} notification(s) marked as read." : 'You are all caught up.';
+
+        return $request->expectsJson()
+            ? response()->json(['ok' => true, 'count' => $count, 'message' => $message])
+            : back()->with('status', $message);
     }
     public function user()
     {
@@ -168,7 +178,7 @@ class PageController extends Controller
             );
         }
 
-        return view('users.user', ['posts' => $this->adminPostsFor(5)]);
+        return view('users.user');
     }
 
     /**
@@ -185,10 +195,6 @@ class PageController extends Controller
     public function iotMonitor()
     {
         return view('pages.iot-monitor');
-    }
-    public function reports()
-    {
-        return view('pages.reports');
     }
     public function about()
     {
@@ -216,14 +222,19 @@ class PageController extends Controller
         $request->session()->regenerateToken();
         return redirect()->route('landing');
     }
-    public function register()
+    public function fundRequest(FundingRules $rules)
     {
-        return view('pages.register');
-    }
+        $categories = collect($rules->categories())->map(fn (array $category, string $key): array => [
+            'key' => $key,
+            'label' => $category['label'],
+            'requirements' => $rules->requirementsFor($key),
+            'per_person_cap' => $category['per_person_cap'],
+        ])->values()->all();
 
-    public function fundRequest()
-    {
-        return view('FundPage.fund-request');
+        return view('FundPage.fund-request', [
+            'categories' => $categories,
+            'denialReason' => $this->fundingService->requestDenialReason(Auth::id()),
+        ]);
     }
 
     public function showFundRequest(string $id)
@@ -235,59 +246,12 @@ class PageController extends Controller
             404
         );
 
-        return view('FundPage.fund-request-detail', compact('fundRequest'));
-    }
+        $view = app(FundingRequestPresenter::class)->present($fundRequest);
+        $messages = app(\App\Services\RequestMessageService::class);
+        $thread = $messages->thread($id, 'requester');
+        $messages->markRead($id, 'requester');
 
-    public function showFundRequestVerifyForm()
-    {
-        if (!session()->has('pending_fund_request')) {
-            return redirect()->route('fund-request')->with('alert_error', 'No pending transaction found.');
-        }
-        return view('FundPage.fund-request-verify', ['email' => Auth::user()->email]);
-    }
-
-    public function initiateApprovalAction(Request $request, $id)
-    {
-        $request->validate([
-            'action' => 'required|in:approved,rejected',
-            'notes' => 'nullable|string',
-        ]);
-
-        $funding = $this->fundingService->getRequestById($id);
-        abort_if($funding === null, 404);
-        $user = Auth::user();
-
-        if (! filter_var($user->email_notifications ?? true, FILTER_VALIDATE_BOOLEAN)) {
-            return back()->with('alert_error', 'Email notifications are disabled for this account.');
-        }
-
-        // Generate a random 6-digit code
-        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        $this->verificationService->store($user->email, $code, 'approval_verification_codes');
-
-        // Send the code via email
-        Mail::to($user->email)->send(new \App\Mail\ApprovalVerificationCode($code, $user->fname, $request->action));
-
-        // Save pending approval details to session
-        session([
-            'pending_approval' => [
-                'request_id' => (string) $id,
-                'action' => $request->action,
-                'notes' => $request->notes,
-            ]
-        ]);
-
-        return redirect()->route('admin.fund-request.verify.form')
-            ->with('status', 'A 6-digit approval verification code has been sent to your email.');
-    }
-
-    public function showApprovalVerifyForm()
-    {
-        if (!session()->has('pending_approval')) {
-            return redirect()->route('admin')->with('alert_error', 'No pending approval found.');
-        }
-        return view('pages.admin-approval-verify', ['email' => Auth::user()->email]);
+        return view('FundPage.fund-request-detail', compact('fundRequest', 'view', 'thread'));
     }
 
     public function settings()
@@ -295,18 +259,53 @@ class PageController extends Controller
         return view('pages.settings');
     }
 
-    public function updateSettings(Request $request)
+    /**
+     * Preferences save as soon as a switch changes (one field per request); the settings form
+     * without JavaScript sends both. Fetch requests get JSON back.
+     */
+    public function updateSettings(Request $request, \App\Services\MailSettingsService $mail, \App\Services\AuditLogger $audit)
     {
         $request->validate([
-            'email_notifications' => 'nullable|boolean',
-            'dark_mode' => 'nullable|boolean',
+            'email_notifications' => 'sometimes|boolean',
+            'dark_mode' => 'sometimes|boolean',
         ]);
 
-        $this->firebaseUsers->update(Auth::user()->getAuthIdentifier(), [
-            'email_notifications' => $request->boolean('email_notifications'),
-            'dark_mode' => $request->boolean('dark_mode'),
-        ]);
+        $user = Auth::user();
+        $changes = [];
+        foreach (['email_notifications', 'dark_mode'] as $field) {
+            if ($request->has($field)) {
+                $changes[$field] = $request->boolean($field);
+            }
+        }
 
-        return back()->with('status', 'Preferences updated successfully.');
+        $enablingCodes = ($changes['email_notifications'] ?? false) && ! filter_var($user->email_notifications ?? true, FILTER_VALIDATE_BOOLEAN);
+        if ($enablingCodes && ! $mail->canSend()) {
+            // The code could not be delivered, so turning this on would lock the account out.
+            $message = 'Email sending is not set up yet, so sign-in codes cannot be delivered. Ask the super admin to configure the verification email first.';
+
+            return $request->expectsJson()
+                ? response()->json(['saved' => false, 'message' => $message], 422)
+                : back()->with('alert_error', $message);
+        }
+
+        if ($changes !== []) {
+            $this->firebaseUsers->update($user->getAuthIdentifier(), $changes);
+        }
+        if (array_key_exists('email_notifications', $changes)
+            && $changes['email_notifications'] !== filter_var($user->email_notifications ?? true, FILTER_VALIDATE_BOOLEAN)) {
+            $audit->record('account', 'Email verification turned ' . ($changes['email_notifications'] ? 'on' : 'off'), (string) $user->getAuthIdentifier());
+        }
+
+        $message = match (true) {
+            array_key_exists('email_notifications', $changes) && count($changes) === 1 => $changes['email_notifications']
+                ? 'Email verification is on. Sign-in will ask for a code sent to ' . $user->email . '.'
+                : 'Email verification is off.',
+            array_key_exists('dark_mode', $changes) && count($changes) === 1 => 'Dark mode ' . ($changes['dark_mode'] ? 'on.' : 'off.'),
+            default => 'Preferences saved.',
+        };
+
+        return $request->expectsJson()
+            ? response()->json(['saved' => true, 'message' => $message, 'preferences' => $changes])
+            : back()->with('status', $message);
     }
 }
