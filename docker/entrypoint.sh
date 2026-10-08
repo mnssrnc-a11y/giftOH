@@ -6,6 +6,20 @@ cd /var/www/html
 # Apache must listen on the port the host gives us (Render: $PORT, default 10000).
 sed -i "s/^Listen 80$/# Listen 80 (replaced by docker\/apache.conf)/" /etc/apache2/ports.conf
 
+# This image is only ever a deployment. A public site must never show debug error pages (stack
+# traces, request headers), so APP_DEBUG=true or APP_ENV=local copied from a local .env are
+# corrected unless ALLOW_DEBUG_IN_PRODUCTION=true is set on purpose.
+if [ "$ALLOW_DEBUG_IN_PRODUCTION" != "true" ]; then
+    if [ "$APP_DEBUG" = "true" ] || [ "$APP_DEBUG" = "1" ]; then
+        echo "WARNING: APP_DEBUG=true is not allowed on the live site; starting with APP_DEBUG=false." >&2
+    fi
+    export APP_DEBUG=false
+    if [ "${APP_ENV:-production}" != "production" ]; then
+        echo "WARNING: APP_ENV=$APP_ENV on the live site; starting with APP_ENV=production." >&2
+        export APP_ENV=production
+    fi
+fi
+
 if [ -z "$APP_KEY" ]; then
     echo "ERROR: APP_KEY is not set. Generate one with: php artisan key:generate --show" >&2
     exit 1
