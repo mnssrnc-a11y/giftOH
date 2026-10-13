@@ -9,6 +9,8 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminRequestController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\FundingFileController;
+use App\Http\Controllers\HelpController;
+use App\Http\Controllers\PayoutController;
 use App\Http\Controllers\PublicFileController;
 use App\Http\Controllers\RequestConversationController;
 use App\Http\Controllers\SuperAdminPriceController;
@@ -16,6 +18,8 @@ use App\Http\Controllers\SuperAdminController;
 // Public routes
 Route::get('/config/firebase', [ConfigController::class, 'firebaseConfig'])->name('config.firebase');
 Route::get('/', [PageController::class, 'landing'])->name('landing');
+// Result of an automatic transfer, sent by the payout provider (checked with its webhook token).
+Route::post('/webhooks/payouts', [PayoutController::class, 'webhook'])->middleware('throttle:120,1')->name('webhooks.payouts');
 // Public uploads (profile pictures) when they are kept in Firebase instead of public/storage.
 Route::get('/storage/{path}', [PublicFileController::class, 'show'])->where('path', '.*')->name('storage.public');
 Route::get('/login', [PageController::class, 'login'])->name('login');
@@ -36,6 +40,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/notifications/{id}/read', [PageController::class, 'markNotificationRead'])->name('notifications.read');
     Route::post('/notifications/read-all', [PageController::class, 'markAllNotificationsRead'])->name('notifications.read-all');
     Route::get('/notifications', [AccountController::class, 'notifications'])->name('notifications');
+    // Help & tour: how the system works, and the guided tour for new users.
+    Route::get('/help', [HelpController::class, 'show'])->name('help');
+    Route::post('/tour/complete', [HelpController::class, 'completeTour'])->middleware('throttle:20,1')->name('tour.complete');
     Route::get('/settings', [PageController::class, 'settings'])->name('settings');
     Route::post('/settings', [PageController::class, 'updateSettings'])->name('settings.update');
     Route::post('/settings/profile-picture', [AccountController::class, 'updateProfilePicture'])->middleware('throttle:10,1')->name('settings.profile-picture');
@@ -74,6 +81,8 @@ Route::middleware(['auth', 'role:user'])->group(function(){
     Route::get('/fund-request/{id}', [PageController::class, 'showFundRequest'])->name('fund-request.show');
     Route::post('/fund-request/{id}/liquidation', [FundController::class, 'submitLiquidation'])->middleware('throttle:5,1')->name('fund-request.liquidation');
     Route::post('/fund-request/{id}/appeal', [FundController::class, 'appeal'])->middleware('throttle:5,1')->name('fund-request.appeal');
+    // After approval: the people who will receive the help (Add person: last, first, middle name).
+    Route::post('/fund-request/{id}/beneficiaries', [FundController::class, 'submitBeneficiaries'])->middleware('throttle:10,1')->name('fund-request.beneficiaries');
     Route::post('/fund-request/{id}/interview-response', [RequestConversationController::class, 'interviewResponse'])->name('fund-request.interview-response');
     Route::post('/fund-request/{id}/documents/{field}', [RequestConversationController::class, 'resubmitDocument'])->middleware('throttle:10,1')->name('fund-request.document');
 
@@ -113,6 +122,9 @@ Route::middleware(['auth', 'role:super_admin'])->group(function () {
     // Full request (requester, documents, assessment, budget, notes, conversation) for the final check.
     Route::get('/superadmin/fund-request/{id}', [SuperAdminController::class, 'showRequest'])->name('superadmin.fund-request.show');
     Route::post('/superadmin/fund-request/{id}/finalize', [SuperAdminController::class, 'finalize'])->name('superadmin.fund-request.finalize');
+    // Automatic transfer of the approved funds, confirmed with an emailed code.
+    Route::post('/superadmin/fund-request/{id}/payout', [PayoutController::class, 'start'])->middleware('throttle:5,10')->name('superadmin.payout.start');
+    Route::post('/superadmin/fund-request/{id}/payout/confirm', [PayoutController::class, 'confirm'])->middleware('throttle:10,10')->name('superadmin.payout.confirm');
     Route::post('/superadmin/accounts/{id}', [SuperAdminController::class, 'updateAccount'])->name('superadmin.accounts.update');
     Route::post('/superadmin/settings/scores', [SuperAdminController::class, 'updateScores'])->name('superadmin.settings.scores');
     Route::post('/superadmin/settings/interval', [SuperAdminController::class, 'updateInterval'])->name('superadmin.settings.interval');

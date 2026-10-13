@@ -5,8 +5,11 @@ import './admin-ui';
 import './user-flow';
 import './superadmin-ui';
 import './fund-request';
+import './people-list';
 import './request-thread';
 import './notify';
+import './tabbar';
+import './tour';
 import './announcements';
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";

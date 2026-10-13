@@ -17,7 +17,7 @@
     $people = $assessment['verified_beneficiaries'] ?? $view['beneficiary_count'];
     $guideline = $cap !== null && $people ? $people * $cap : null;
     $stageClass = match (true) {
-        in_array($stage['key'], ['completed', 'to_release', 'released'], true) => 'approved',
+        in_array($stage['key'], ['completed', 'awaiting_recipients', 'to_release', 'released'], true) => 'approved',
         $stage['key'] === 'rejected' => 'rejected',
         $stage['key'] === 'awaiting_final' => 'awaiting',
         default => 'in-progress',
@@ -111,6 +111,8 @@
             </div>
         @elseif ($stage['key'] === 'awaiting_final')
             <p style="margin:0">Sent to the super admin: {{ $view['admin_review']['decision'] === 'approved' ? 'approve ' . $peso($view['admin_review']['amount']) : 'reject' }} ({{ $view['admin_review']['by'] ?? 'admin' }}, {{ $day($view['admin_review']['at']) }}).</p>
+        @elseif ($stage['key'] === 'awaiting_recipients')
+            <p style="margin:0">Approved for <strong>{{ $peso($view['granted'] ?? $view['amount']) }}</strong>. Waiting for the requester to list the people who will receive the help (up to {{ $view['people_limit'] }}). You will get a notification; then record the release here.</p>
         @elseif ($stage['key'] === 'to_release')
             <form method="POST" action="{{ route('admin.fund-request.disbursement', $view['id']) }}" enctype="multipart/form-data" class="admin-form-grid">
                 @csrf
@@ -121,7 +123,7 @@
                 <div class="admin-field"><label for="proof">Proof (bank transfer slip)</label><input id="proof" type="file" name="proof" required accept=".jpg,.jpeg,.png,.pdf" style="height:auto;padding:9px"></div>
                 <div class="admin-field"><label for="release_notes">Notes <span style="font-weight:400">(optional)</span></label><input id="release_notes" name="notes" maxlength="2000" value="{{ old('notes') }}"></div>
                 <div style="grid-column:1/-1">
-                    <p class="admin-field-hint">Send by bank transfer to <strong>{{ $disbursement['bank_name'] }}</strong> · {{ $disbursement['account_name'] }} · <strong>{{ $disbursement['account_number'] }}</strong>. The account name must be the receiver's.</p>
+                    <p class="admin-field-hint">Send by {{ $disbursement['mode'] === 'e_wallet' ? 'e-wallet transfer' : 'bank transfer' }} to <strong>{{ $disbursement['provider'] }}</strong> · {{ $disbursement['account_name'] }} · <strong>{{ $disbursement['account_number'] }}</strong>. The account name must be the receiver's.</p>
                     <button class="admin-button success" type="submit">Record release & request liquidation</button>
                 </div>
             </form>
@@ -246,6 +248,7 @@
         <div class="admin-card-head"><div><h3>Purpose & beneficiaries</h3><p>{{ count($view['beneficiaries']) }} listed @if (isset($assessment['verified_beneficiaries'])) · {{ $assessment['verified_beneficiaries'] }} verified @endif</p></div></div>
         <div class="admin-card-body">
             <p style="margin-top:0;white-space:pre-line">{{ $view['purpose'] }}</p>
+            @if (! $view['beneficiaries'])<p class="admin-field-hint">The requester lists the names after approval, at the release of funds.</p>@endif
             @if ($view['beneficiaries'])
                 <details><summary style="cursor:pointer;font-size:12px;font-weight:700">Show list of people</summary>
                     <ol style="columns:2;font-size:12px;padding-left:20px">@foreach ($view['beneficiaries'] as $name)<li>{{ $name }}</li>@endforeach</ol>
@@ -257,8 +260,8 @@
     <article class="admin-card">
         <div class="admin-card-head"><div><h3>Release of funds</h3><p>{{ $disbursement['method_label'] }}</p></div></div>
         <div class="admin-card-body admin-list">
-            @if ($disbursement['bank_name'])
-                <div class="admin-list-row"><div class="admin-list-copy"><strong>Bank account</strong><span>{{ $disbursement['bank_name'] }} · {{ $disbursement['account_name'] }} · {{ $disbursement['account_number'] }}</span></div></div>
+            @if ($disbursement['provider'])
+                <div class="admin-list-row"><div class="admin-list-copy"><strong>{{ $disbursement['mode'] === 'e_wallet' ? 'E-wallet' : 'Bank account' }}</strong><span>{{ $disbursement['provider'] }} · {{ $disbursement['account_name'] }} · {{ $disbursement['account_number'] }}</span></div></div>
             @endif
             @if ($disbursement['released_at'])
                 <div class="admin-list-row"><div class="admin-list-copy"><strong>Released</strong><span>{{ $peso($disbursement['amount']) }} · {{ $day($disbursement['released_at']) }} · ref. {{ $disbursement['reference_no'] ?? '—' }} · by {{ $disbursement['recorded_by'] ?? 'admin' }}</span></div>@if ($disbursement['proof'])<div class="admin-list-meta"><a class="admin-button" href="{{ $disbursement['proof']['url'] }}" target="_blank" rel="noopener">Proof</a></div>@endif</div>

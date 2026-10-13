@@ -6,131 +6,165 @@
 @php
     $limits = config('funding.beneficiaries');
     $assessmentDays = config('funding.assessment_days');
-    $liquidationDays = config('funding.liquidation_days');
+    $modes = config('funding.transfer_modes');
+    $organizations = config('funding.known_organizations');
+    $steps = [1 => 'Organization', 2 => 'Address', 3 => 'Your need', 4 => 'Receiving funds', 5 => 'Documents', 6 => 'Review & submit'];
+    // Which step each field is on, so every error can point to its step.
+    $fieldStep = ['org_choice' => 1, 'org_name_other' => 1, 'contact_person' => 1, 'contact_email' => 1, 'phone' => 1, 'tax_id' => 1,
+        'street' => 2, 'barangay' => 2, 'municipality' => 2,
+        'categories' => 3, 'purpose' => 3, 'beneficiary_count' => 3,
+        'transfer_mode' => 4, 'provider' => 4, 'account_name' => 4, 'account_number' => 4] + array_fill_keys(array_keys(config('funding.requirements')), 5);
+    $errorList = collect($errors->getMessages())->map(fn ($messages, $key) => ['field' => explode('.', $key)[0], 'step' => $fieldStep[explode('.', $key)[0]] ?? 6, 'message' => $messages[0]])
+        ->unique('field')->sortBy('step')->values();
+    $oldChoice = old('org_choice');
     $formData = [
-        'categories' => $categories,
         'limits' => $limits,
+        'modes' => collect($modes)->map(fn ($mode) => ['label' => $mode['label'], 'providers' => $mode['providers'], 'account' => $mode['account']])->all(),
+        'oldProvider' => old('provider'),
+        'steps' => $steps,
+        'fieldStep' => $fieldStep,
+        'startStep' => $errorList->min('step') ?? 1,
     ];
-    $input = 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1976D2] bg-white';
-    $label = 'block text-sm font-semibold text-gray-700 mb-2';
 @endphp
 <script>window.giftOfHopeFundForm = @json($formData);</script>
 
-<div class="hope-page">
+<div class="hope-page fr">
     <div class="hope-heading">
         <div>
             <div class="hope-eyebrow">FUND REQUEST</div>
             <h1>Ask for help for your community.</h1>
-            <p>Any organization may request assistance for {{ $limits['min'] }}–{{ $limits['max'] }} people.</p>
+            <p>Six short steps. Any organization may ask for help for {{ $limits['min'] }}–{{ $limits['max'] }} people.</p>
         </div>
     </div>
 
-    <div>
-        <div class="max-w-4xl space-y-6">
-            <ol class="grid grid-cols-2 gap-3 rounded-xl border border-gray-100 bg-white p-5 text-xs text-gray-600 shadow-sm md:grid-cols-5">
-                @foreach ([['1', 'Submit request', 'With the required documents'], ['2', 'Interview & assessment', "By a social worker within {$assessmentDays} days"], ['3', 'Approval', 'Admin review, then final approval'], ['4', 'Release of funds', 'Bank transfer to your account'], ['5', 'Liquidation', "Receipts + list of recipients within {$liquidationDays} days"]] as [$n, $title, $text])
-                    <li class="flex gap-2"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0D47A1] text-white font-bold">{{ $n }}</span><span><strong class="block text-gray-900">{{ $title }}</strong>{{ $text }}</span></li>
-                @endforeach
-            </ol>
+    @if ($denialReason)
+        <div class="hope-preview hope-preview-error" role="alert"><strong>You can't submit a new request right now.</strong><br>{{ $denialReason }}</div>
+    @endif
 
-            @if ($denialReason)
-                <div class="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800" role="alert">
-                    <strong class="block">You can't submit a new request right now.</strong>{{ $denialReason }}
+    {{-- Everything that is missing or wrong, in one list, each linked to its step. --}}
+    <div class="fr-errors" data-fr-errors role="alert" tabindex="-1" @if ($errorList->isEmpty()) hidden @endif>
+        <strong data-fr-errors-title>Please complete {{ $errorList->count() }} {{ \Illuminate\Support\Str::plural('item', $errorList->count()) }}:</strong>
+        <ul data-fr-errors-list>
+            @foreach ($errorList as $error)
+                <li><a href="#step-{{ $error['step'] }}" data-goto-step="{{ $error['step'] }}" data-focus="{{ $error['field'] }}">Step {{ $error['step'] }} · {{ $steps[$error['step']] }}</a>: {{ $error['message'] }}</li>
+            @endforeach
+        </ul>
+        @if ($errorList->isNotEmpty())
+            <p class="fr-note">For your security, attached documents are not kept after a failed submit. Attach them again in step 5.</p>
+        @endif
+    </div>
+
+    <form method="POST" action="{{ route('fund-request.store') }}" enctype="multipart/form-data" class="fr-form" data-fund-form novalidate>
+        @csrf
+        <ol class="fr-stepper" aria-label="Steps">
+            @foreach ($steps as $n => $name)
+                <li><a href="#step-{{ $n }}" class="fr-step" data-goto-step="{{ $n }}" data-step-link="{{ $n }}"><span class="fr-step-num">{{ $n }}</span><span class="fr-step-name">{{ $name }}</span></a></li>
+            @endforeach
+        </ol>
+        <p class="fr-legend">Fields marked <span class="fr-req">*</span> are required.</p>
+
+        <fieldset class="fr-fieldset" @disabled($denialReason)>
+            <section class="fr-panel" id="step-1" data-step="1" aria-labelledby="step-1-title">
+                <h2 id="step-1-title">1. Organization</h2>
+                <p>Who is asking for help, and how the foundation can reach you.</p>
+                <div class="fr-grid">
+                    <x-fr-field name="org_choice" label="Organization" wide>
+                        <select id="org_choice" name="org_choice" required aria-describedby="org_choice-error" data-org-choice>
+                            <option value="">Choose your organization…</option>
+                            @foreach ($organizations as $organization)<option value="{{ $organization }}" @selected($oldChoice === $organization)>{{ $organization }}</option>@endforeach
+                            <option value="other" @selected($oldChoice === 'other')>Others (not on the list)</option>
+                        </select>
+                    </x-fr-field>
+                    <x-fr-field name="org_name_other" label="Name of your organization" wide maxlength="255" autocomplete="organization" placeholder="Type the full name" data-org-other data-receiver-name />
+                    <x-fr-field name="contact_person" label="Contact person" maxlength="255" autocomplete="name" placeholder="Full name" data-receiver-name />
+                    <x-fr-field name="contact_email" label="Contact email" type="email" :value="auth()->user()->email" maxlength="255" autocomplete="email" />
+                    <x-fr-field name="phone" label="Contact number" type="tel" :value="auth()->user()->phone" inputmode="tel" maxlength="13" autocomplete="tel" placeholder="09171234567" pattern="(\+?63|0)9[0-9]{9}" />
+                    <x-fr-field name="tax_id" label="Tax ID / registration no." :required="false" maxlength="255" />
                 </div>
-            @endif
+            </section>
 
-            @if ($errors->any())
-                <div class="rounded-xl border border-red-200 bg-red-50 p-5" role="alert">
-                    <p class="mb-2 text-sm font-semibold text-red-800">Please fix the following:</p>
-                    <ul class="list-disc space-y-1 pl-5 text-sm text-red-700">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+            <section class="fr-panel" id="step-2" data-step="2" aria-labelledby="step-2-title">
+                <h2 id="step-2-title">2. Address</h2>
+                <p>Where the organization is. It is saved as one address: street, barangay, municipality.</p>
+                <div class="fr-grid">
+                    <x-fr-field name="street" label="Street / house no." wide maxlength="150" autocomplete="address-line1" placeholder="e.g. 123 Rizal St." data-address-part />
+                    <x-fr-field name="barangay" label="Barangay" maxlength="100" placeholder="e.g. San Jose" data-address-part />
+                    <x-fr-field name="municipality" label="Municipality / city" maxlength="100" autocomplete="address-level2" placeholder="e.g. City of San Fernando" data-address-part />
                 </div>
-            @endif
+                <p class="fr-preview" data-address-preview aria-live="polite"></p>
+            </section>
 
-            <form method="POST" action="{{ route('fund-request.store') }}" enctype="multipart/form-data" data-fund-form novalidate>
-                @csrf
-                <fieldset class="space-y-6" @disabled($denialReason)>
-
-                {{-- Organization --}}
-                <section class="rounded-xl border border-gray-100 bg-white p-8 shadow-sm">
-                    <h2 class="mb-1 text-xl font-bold text-gray-900">1. Organization & contact</h2>
-                    <p class="mb-6 text-sm text-gray-500">All organizations are welcome: charity homes, schools, parishes, community groups, and others.</p>
-                    <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-                        <div class="md:col-span-2">
-                            <label class="{{ $label }}" for="org_name">Organization name</label>
-                            <input id="org_name" name="org_name" list="known-orgs" required maxlength="255" value="{{ old('org_name') }}" class="{{ $input }}" placeholder="Type your organization's name" data-receiver-name>
-                            <datalist id="known-orgs">@foreach (config('funding.known_organizations') as $organization)<option value="{{ $organization }}">@endforeach</datalist>
-                        </div>
-                        <div><label class="{{ $label }}" for="contact_person">Contact person</label><input id="contact_person" name="contact_person" required maxlength="255" value="{{ old('contact_person') }}" class="{{ $input }}" data-receiver-name></div>
-                        <div><label class="{{ $label }}" for="contact_email">Contact email</label><input id="contact_email" name="contact_email" type="email" required value="{{ old('contact_email', auth()->user()->email) }}" class="{{ $input }}"></div>
-                        <div><label class="{{ $label }}" for="phone">Contact number</label><input id="phone" name="phone" required maxlength="30" value="{{ old('phone', auth()->user()->phone) }}" class="{{ $input }}" placeholder="09123456789"></div>
-                        <div><label class="{{ $label }}" for="tax_id">Tax ID / registration no. <span class="font-normal text-gray-400">(optional)</span></label><input id="tax_id" name="tax_id" maxlength="255" value="{{ old('tax_id') }}" class="{{ $input }}"></div>
-                        <div class="md:col-span-2"><label class="{{ $label }}" for="address">Address</label><input id="address" name="address" required maxlength="255" value="{{ old('address') }}" class="{{ $input }}" placeholder="Street, barangay, city, province"></div>
-                    </div>
-                </section>
-
-                {{-- Category & purpose --}}
-                <section class="rounded-xl border border-gray-100 bg-white p-8 shadow-sm">
-                    <h2 class="mb-1 text-xl font-bold text-gray-900">2. What is the request for?</h2>
-                    <p class="mb-6 text-sm text-gray-500">Choose what the help is for. Every request needs a formal letter and a Certificate of Indigency.</p>
-                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2" role="radiogroup" aria-label="Category">
+            <section class="fr-panel" id="step-3" data-step="3" aria-labelledby="step-3-title">
+                <h2 id="step-3-title">3. Your need</h2>
+                <p>Choose every kind of help you need. You can pick more than one.</p>
+                @php($chosen = (array) old('categories', []))
+                <x-fr-field name="categories" label="Kinds of help" wide>
+                    <div class="fr-choices" role="group" aria-labelledby="categories-label" aria-describedby="categories-error" data-categories>
                         @foreach ($categories as $category)
-                            <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-4 hover:border-[#1976D2] has-[:checked]:border-[#1976D2] has-[:checked]:bg-blue-50">
-                                <input type="radio" name="category" value="{{ $category['key'] }}" required class="mt-1" @checked(old('category') === $category['key']) data-category-input>
-                                <span><strong class="block text-sm text-gray-900">{{ $category['label'] }}</strong></span>
-                            </label>
+                            <label class="fr-choice"><input type="checkbox" name="categories[]" value="{{ $category['key'] }}" @checked(in_array($category['key'], $chosen, true))><span>{{ $category['label'] }}</span></label>
                         @endforeach
                     </div>
-                    <div class="mt-6">
-                        <label class="{{ $label }}" for="purpose">Purpose of the request</label>
-                        <textarea id="purpose" name="purpose" required rows="5" maxlength="5000" class="{{ $input }}" placeholder="As stated in your formal letter: what the money will buy, for whom, and why it is needed.">{{ old('purpose') }}</textarea>
-                        <p class="mt-2 text-xs text-gray-500">The foundation decides the budget per person after the social worker's assessment, based on your letter and its price reference.</p>
-                    </div>
-                </section>
+                </x-fr-field>
+                <div class="fr-grid">
+                    <x-fr-field name="purpose" label="Purpose of the request" wide hint="As stated in your formal letter: what the help is for and why it is needed.">
+                        <textarea id="purpose" name="purpose" required rows="5" maxlength="5000" aria-describedby="purpose-error purpose-hint">{{ old('purpose') }}</textarea>
+                    </x-fr-field>
+                    <x-fr-field name="beneficiary_count" label="How many people will receive the help?" type="number" inputmode="numeric" min="{{ $limits['min'] }}" max="{{ $limits['max'] }}" step="1"
+                        hint="Between {{ $limits['min'] }} and {{ $limits['max'] }}. You list their names after approval, when the funds are released." />
+                </div>
+            </section>
 
-                {{-- Beneficiaries --}}
-                <section class="rounded-xl border border-gray-100 bg-white p-8 shadow-sm">
-                    <h2 class="mb-1 text-xl font-bold text-gray-900">3. People who will receive the help</h2>
-                    <p class="mb-4 text-sm text-gray-500">List each person who will receive the assistance. One full name per line, between {{ $limits['min'] }} and {{ $limits['max'] }} people.</p>
-                    <textarea id="beneficiaries" name="beneficiaries" required rows="10" class="{{ $input }} font-mono text-sm" placeholder="Juan Dela Cruz&#10;Maria Santos&#10;…" data-beneficiaries>{{ old('beneficiaries') }}</textarea>
-                    <p class="mt-2 text-sm" data-beneficiary-count aria-live="polite"></p>
-                </section>
-
-                {{-- Bank --}}
-                <section class="rounded-xl border border-gray-100 bg-white p-8 shadow-sm">
-                    <h2 class="mb-1 text-xl font-bold text-gray-900">4. Where to send the funds</h2>
-                    <p class="mb-6 text-sm text-gray-500">Funds are sent by bank-to-bank transfer to any bank, as long as the account is in the receiver's name: the organization or the contact person above.</p>
-                    <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
-                        <div><label class="{{ $label }}" for="bank_name">Bank</label><input id="bank_name" name="bank_name" maxlength="120" value="{{ old('bank_name') }}" class="{{ $input }}" placeholder="e.g. BDO, Landbank, GCash" required></div>
-                        <div><label class="{{ $label }}" for="account_name">Account name</label><input id="account_name" name="account_name" maxlength="255" value="{{ old('account_name') }}" class="{{ $input }}" required data-account-name></div>
-                        <div><label class="{{ $label }}" for="account_number">Account number</label><input id="account_number" name="account_number" inputmode="numeric" maxlength="30" value="{{ old('account_number') }}" class="{{ $input }}" required></div>
-                    </div>
-                    <p class="mt-2 text-xs" data-account-hint aria-live="polite"></p>
-                </section>
-
-                {{-- Requirements --}}
-                <section class="rounded-xl border border-gray-100 bg-white p-8 shadow-sm">
-                    <h2 class="mb-1 text-xl font-bold text-gray-900">5. Requirements</h2>
-                    <p class="mb-6 text-sm text-gray-500">JPG, PNG or PDF, up to 10 MB each. Every file is scanned for malware before it is accepted.</p>
-                        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-                            @foreach (config('funding.requirements') as $field => $document)
-                                <div>
-                                    <label class="mb-1 block text-sm font-semibold text-gray-700" for="{{ $field }}">{{ $document['label'] }} <span class="text-red-500">*</span></label>
-                                    <p class="mb-2 text-xs text-gray-400">{{ $document['hint'] }}</p>
-                                    <label for="{{ $field }}" class="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-5 transition-colors hover:border-[#1976D2] hover:bg-blue-50">
-                                        <span class="text-sm text-gray-400" data-file-name>Click to upload</span>
-                                    </label>
-                                    <input type="file" id="{{ $field }}" name="{{ $field }}" accept=".jpg,.jpeg,.png,.pdf" required class="sr-only" data-file-input>
-                                    @error($field)<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
-                                </div>
+            <section class="fr-panel" id="step-4" data-step="4" aria-labelledby="step-4-title">
+                <h2 id="step-4-title">4. Receiving the funds</h2>
+                <p>The funds go to a bank account or e-wallet in the receiver's name: the organization or the contact person.</p>
+                <div class="fr-grid">
+                    <x-fr-field name="transfer_mode" label="Receive through">
+                        <select id="transfer_mode" name="transfer_mode" required aria-describedby="transfer_mode-error" data-transfer-mode>
+                            <option value="">Choose bank or e-wallet…</option>
+                            @foreach ($modes as $key => $mode)<option value="{{ $key }}" @selected(old('transfer_mode') === $key)>{{ $mode['label'] }}</option>@endforeach
+                        </select>
+                    </x-fr-field>
+                    <x-fr-field name="provider" label="Bank or e-wallet">
+                        <select id="provider" name="provider" required aria-describedby="provider-error" data-provider>
+                            <option value="">Choose “Receive through” first</option>
+                            @foreach ($modes as $key => $mode)
+                                <optgroup label="{{ $mode['label'] }}">@foreach ($mode['providers'] as $provider)<option value="{{ $provider }}" @selected(old('provider') === $provider)>{{ $provider }}</option>@endforeach</optgroup>
                             @endforeach
-                        </div>
-                </section>
+                        </select>
+                    </x-fr-field>
+                    <x-fr-field name="account_name" label="Account name" maxlength="255" hint="Exactly as on the account. It must match the organization name or the contact person." data-account-name />
+                    <x-fr-field name="account_number" label="Account number" maxlength="255" autocomplete="off" data-account-number />
+                </div>
+                <p class="fr-preview" data-account-hint aria-live="polite"></p>
+            </section>
 
-                <button type="submit" class="w-full rounded-xl bg-[#0D47A1] py-3.5 font-bold text-white transition-colors hover:bg-[#1565C0] disabled:opacity-50">Submit request</button>
-                <p class="text-center text-xs text-gray-500">After you submit, a social worker will contact you to schedule an interview and assessment within {{ $assessmentDays }} days.</p>
-                </fieldset>
-            </form>
-        </div>
-    </div>
+            <section class="fr-panel" id="step-5" data-step="5" aria-labelledby="step-5-title">
+                <h2 id="step-5-title">5. Documents</h2>
+                <p>JPG, PNG or PDF, up to 10 MB each. Every file is scanned for malware.</p>
+                <div class="fr-grid">
+                    @foreach (config('funding.requirements') as $field => $document)
+                        <x-fr-field :name="$field" :label="$document['label']" :hint="$document['hint']">
+                            <label class="fr-file" for="{{ $field }}"><span data-file-name>Choose a file</span></label>
+                            <input type="file" id="{{ $field }}" name="{{ $field }}" accept=".jpg,.jpeg,.png,.pdf" required class="sr-only" aria-describedby="{{ $field }}-error {{ $field }}-hint" data-file-input data-max-mb="10">
+                        </x-fr-field>
+                    @endforeach
+                </div>
+            </section>
+
+            <section class="fr-panel" id="step-6" data-step="6" aria-labelledby="step-6-title">
+                <h2 id="step-6-title">6. Review & submit</h2>
+                <p>Check your answers. Select a step above to change something.</p>
+                <dl class="fr-review" data-fr-review><div><dt>Your answers</dt><dd>Turn on JavaScript to see a summary, or check each step above.</dd></div></dl>
+                <p class="fr-note">After you submit, your request is <strong>Under assessment</strong>: a social worker contacts you for an interview within {{ $assessmentDays }} days.</p>
+                <button type="submit" class="hope-button fr-submit">Submit request</button>
+            </section>
+
+            <div class="fr-nav" data-fr-nav>
+                <button type="button" class="hope-button secondary" data-fr-prev>← Back</button>
+                <span class="fr-nav-count" data-fr-count></span>
+                <button type="button" class="hope-button" data-fr-next>Next →</button>
+            </div>
+        </fieldset>
+    </form>
 </div>
 @endsection

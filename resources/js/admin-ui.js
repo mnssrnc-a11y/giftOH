@@ -11,7 +11,7 @@ const STAGE_TABS = {
     assessment: item => item.stage.step === 1,
     decision: item => item.stage.key === 'ready_for_decision',
     awaiting: item => item.stage.key === 'awaiting_final',
-    release: item => item.stage.key === 'to_release',
+    release: item => ['awaiting_recipients', 'to_release'].includes(item.stage.key),
     liquidation: item => ['released', 'liquidation_review', 'liquidation_returned'].includes(item.stage.key),
     completed: item => item.stage.key === 'completed',
     rejected: item => item.stage.key === 'rejected',
@@ -67,11 +67,12 @@ function initAdminUI() {
         modalContent.querySelector('[data-dialog-confirm]').addEventListener('click', onConfirm, { once: true });
     };
 
-    function navigate(page) {
+    // Each section is its own history entry, so the phone's Back button returns to the previous one.
+    function navigate(page, { push = true } = {}) {
         // "#reports-prices" opens the Reports page on the Price reference tab.
         const [base, tab] = String(page).split('-');
         if (base === 'reports' && tab) {
-            navigate('reports');
+            navigate('reports', { push });
             app.querySelector(`[data-report-tab="${tab}"]`)?.click();
             return;
         }
@@ -81,7 +82,8 @@ function initAdminUI() {
         app.querySelector('[data-page-kicker]').textContent = pageMeta[safePage][0];
         app.querySelector('[data-page-title]').textContent = pageMeta[safePage][1];
         app.classList.remove('sidebar-open');
-        if (location.hash !== `#${safePage}`) history.replaceState(null, '', `#${safePage}`);
+        if (location.hash !== `#${safePage}`) history[push ? 'pushState' : 'replaceState'](null, '', `#${safePage}`);
+        window.dispatchEvent(new CustomEvent('ws:section', { detail: safePage }));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -105,7 +107,7 @@ function initAdminUI() {
     }
 
     function stageBadge(item) {
-        const kind = ['completed', 'to_release', 'released'].includes(item.stage.key) ? 'approved'
+        const kind = ['completed', 'awaiting_recipients', 'to_release', 'released'].includes(item.stage.key) ? 'approved'
             : item.stage.key === 'rejected' ? 'rejected' : item.stage.key === 'awaiting_final' ? 'awaiting' : 'in-progress';
         return `<span class="admin-status ${kind}">${escapeHtml(item.stage.label)}</span>${item.overdue ? '<small style="color:#dc2626;font-weight:700">Overdue</small>' : ''}`;
     }
@@ -452,8 +454,9 @@ function initAdminUI() {
     app.querySelectorAll('[data-compact-switch]').forEach(toggle => toggle.checked = storedDensity === 'compact');
 
     if (app.querySelectorAll('[data-admin-page]').length > 0) {
-        window.addEventListener('hashchange', () => navigate(location.hash.slice(1)));
-        navigate(adminData.initialPage || location.hash.slice(1) || 'dashboard');
+        window.addEventListener('hashchange', () => navigate(location.hash.slice(1), { push: false }));
+        window.addEventListener('popstate', () => navigate(location.hash.slice(1) || 'dashboard', { push: false }));
+        navigate(adminData.initialPage || location.hash.slice(1) || 'dashboard', { push: false });
         if (adminData.initialPage === 'settings') app.querySelector('[data-settings-tab="profile"]')?.click();
         renderFunding();
         renderCharts();

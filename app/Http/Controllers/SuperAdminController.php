@@ -77,7 +77,7 @@ class SuperAdminController extends Controller
      * the admin's budget, review and verification notes, the AI assessment, the conversation and
      * the history. Read only, except for the final decision.
      */
-    public function showRequest(string $id, FundingRequestPresenter $presenter, RequestMessageService $messages)
+    public function showRequest(string $id, FundingRequestPresenter $presenter, RequestMessageService $messages, \App\Services\Payouts\PayoutService $payouts)
     {
         $request = $this->fundingService->getRequestById($id);
         abort_if($request === null, 404);
@@ -102,6 +102,9 @@ class SuperAdminController extends Controller
             'thread' => $messages->thread($id, 'staff'),
             'availableFunds' => $this->iotService->getAvailableFunds(),
             'outcomes' => $this->outcomes(),
+            'transfer' => in_array($view['stage']['key'], ['awaiting_recipients', 'to_release', 'released'], true) || ! empty($view['disbursement']['payout'])
+                ? $payouts->readiness($request) + ['enabled' => $payouts->enabled(), 'code_sent' => session('pending_payout') === $id]
+                : null,
         ]);
     }
 

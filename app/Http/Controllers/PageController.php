@@ -44,7 +44,9 @@ class PageController extends Controller
                 'approved' => 'Approved',
                 'rejected' => 'Denied',
                 'completed' => 'Completed',
-                default => 'Pending',
+                FundingService::STATUS_UNDER_REVIEW => 'Under review',
+                // A submitted request is with the social worker first.
+                default => 'Under assessment',
             };
             $color = match ($status) {
                 'Approved', 'Completed' => 'green',
@@ -56,7 +58,7 @@ class PageController extends Controller
             return [
                 'id' => (string) ($request['id'] ?? ''),
                 'title' => $request['title'] ?? $request['org_name'] ?? 'Funding request',
-                'category' => $request['category_name'] ?? $request['category'] ?? 'General',
+                'category' => $view['category'],
                 'amount' => $this->fundingService->grantedAmountOf($request),
                 'status' => $status,
                 'stage' => $view['stage']['label'],
@@ -72,7 +74,7 @@ class PageController extends Controller
 
         $requestCounts = [
             'Total requests' => count($requests),
-            'Pending review' => count(array_filter($requests, static fn (array $request): bool => $request['status'] === 'Pending')),
+            'In progress' => count(array_filter($requests, static fn (array $request): bool => in_array($request['status'], ['Under assessment', 'Under review'], true))),
             'Approved / completed' => count(array_filter($requests, static fn (array $request): bool => in_array($request['status'], ['Approved', 'Completed'], true))),
             'Denied' => count(array_filter($requests, static fn (array $request): bool => $request['status'] === 'Denied')),
         ];

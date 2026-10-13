@@ -28,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
         // One Firebase connection per request. Every repository and service shares it instead of
         // opening (and signing in to Google) on its own, which cost about 0.9 s each.
         $this->app->singleton(\App\Services\FirebaseService::class);
+        // Automatic transfers go through Xendit once it is set up (config/payouts.php).
+        $this->app->bind(\App\Services\Payouts\PayoutGateway::class, \App\Services\Payouts\XenditPayoutGateway::class);
         // Snapshots of Firebase nodes are per request only.
         $this->app->terminating(fn () => \App\Repositories\FirebaseRepository::flushSnapshots());
     }

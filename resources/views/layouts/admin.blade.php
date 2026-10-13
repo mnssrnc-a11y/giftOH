@@ -8,18 +8,19 @@
             <a class="ws-brand" href="{{ route('admin') }}#dashboard"><span class="brand-tile"><img src="{{ asset('images/logo-mark.png') }}" alt="" width="466" height="322"></span><span>Gift of Hope<small>Admin</small></span></a>
             <button type="button" class="admin-sidebar-close" data-sidebar-toggle aria-label="Close navigation">&times;</button>
         </div>
-        <nav class="ws-nav" aria-label="Admin navigation">
+        <nav class="ws-nav" aria-label="Admin navigation" data-tour="nav">
             <p class="ws-nav-label">WORKSPACE</p>
             <a href="{{ route('admin') }}#dashboard" data-admin-nav="dashboard" class="{{ request()->routeIs('admin') ? 'is-active' : '' }}"><span aria-hidden="true">⌂</span>Dashboard</a>
-            <a href="{{ route('admin') }}#funding" data-admin-nav="funding" class="{{ request()->routeIs('admin.fund-request.*') ? 'is-active' : '' }}"><span aria-hidden="true">₱</span>Funding @if ($pendingCount ?? 0)<b data-pending-count>{{ $pendingCount }}</b>@endif</a>
-            <a href="{{ route('admin') }}#updates" data-admin-nav="updates"><span aria-hidden="true">✎</span>Updates</a>
-            <a href="{{ route('admin') }}#reports" data-admin-nav="reports"><span aria-hidden="true">▥</span>Reports</a>
+            <a href="{{ route('admin') }}#funding" data-admin-nav="funding" data-tour="nav-funding" class="{{ request()->routeIs('admin.fund-request.*') ? 'is-active' : '' }}"><span aria-hidden="true">₱</span>Funding @if ($pendingCount ?? 0)<b data-pending-count>{{ $pendingCount }}</b>@endif</a>
+            <a href="{{ route('admin') }}#updates" data-admin-nav="updates" data-tour="nav-updates"><span aria-hidden="true">✎</span>Updates</a>
+            <a href="{{ route('admin') }}#reports" data-admin-nav="reports" data-tour="nav-reports"><span aria-hidden="true">▥</span>Reports</a>
             <p class="ws-nav-label">MONITORING</p>
             <a href="{{ route('iot-monitor') }}" class="{{ request()->routeIs('iot-monitor') ? 'is-active' : '' }}"><span aria-hidden="true">◫</span>IoT box monitor</a>
             <a href="{{ route('donations') }}" class="{{ request()->routeIs('donations') ? 'is-active' : '' }}"><span aria-hidden="true">♡</span>Donations</a>
             <p class="ws-nav-label">ACCOUNT</p>
             <a href="{{ route('notifications') }}" class="{{ request()->routeIs('notifications') ? 'is-active' : '' }}"><span aria-hidden="true">◔</span>Notifications @if ($navCount)<b>{{ $navCount }}</b>@endif</a>
             <a href="{{ route('admin') }}#settings" data-admin-nav="settings"><span aria-hidden="true">⚙</span>Settings</a>
+            <a href="{{ route('help') }}" data-tour="help" class="{{ request()->routeIs('help') ? 'is-active' : '' }}"><span aria-hidden="true">?</span>Help &amp; tour</a>
         </nav>
         <div class="ws-person">
             <x-avatar class="ws-avatar" fallback="A" />
@@ -45,6 +46,12 @@
         <div class="admin-content ws-content">@yield('content')</div>
     </main>
 
+    @include('partials.tour')
+    @include('partials.tabbar', ['tabs' => [
+        ['href' => route('admin') . '#dashboard', 'icon' => '⌂', 'label' => 'Home', 'section' => 'dashboard', 'attrs' => 'data-admin-nav="dashboard"'],
+        ['href' => route('admin') . '#funding', 'icon' => '₱', 'label' => 'Funding', 'section' => 'funding', 'attrs' => 'data-admin-nav="funding"', 'route' => 'admin.fund-request.*'],
+        ['href' => route('admin') . '#updates', 'icon' => '✎', 'label' => 'Updates', 'section' => 'updates', 'attrs' => 'data-admin-nav="updates"'],
+    ]])
     <div class="admin-snackbar" data-snackbar-box role="status" aria-live="polite"></div>
     <div class="admin-modal" data-modal hidden>
         <button class="admin-modal-backdrop" data-modal-close aria-label="Close dialog"></button>

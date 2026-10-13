@@ -43,7 +43,7 @@
             <button class="admin-button primary" data-admin-go="funding">Review requests</button>
         </div>
     </div>
-    <div class="admin-grid admin-stat-grid">
+    <div class="admin-grid admin-stat-grid" data-tour="stats">
         <article class="admin-stat warn"><div class="admin-stat-top"><div class="admin-stat-icon">⌛</div><span class="admin-stat-change">{{ $fundingSummary['awaitingCount'] }} with super admin</span></div><h3>{{ $pendingCount }}</h3><p>Pending requests</p></article>
         <article class="admin-stat" data-admin-iot-monitor><div class="admin-stat-top"><div class="admin-stat-icon">▣</div><span class="admin-stat-change" data-admin-iot-online-label>{{ !is_null($onlineBoxCount) ? $onlineBoxCount . ' online' : 'Live status unavailable' }}</span></div><h3 data-admin-iot-total>{{ $smartBoxCount ?? '—' }}</h3><p>Smart boxes</p></article>
         <article class="admin-stat green"><div class="admin-stat-top"><div class="admin-stat-icon">↗</div><span class="admin-stat-change">{{ is_null($donationOverview) ? 'Unavailable' : 'Boxes + donations' }}</span></div><h3>{{ is_null($donationOverview) ? '—' : $peso($donationOverview) }}</h3><p>Donation overview</p></article>

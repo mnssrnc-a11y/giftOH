@@ -58,7 +58,8 @@ PROMPT;
 
         $prompt = implode("\n", array_filter([
             "Organization: " . ($request['org_name'] ?? 'Unknown'),
-            "Category: {$category}",
+            // Requests may name several kinds of help; the first is the main category.
+            'Kinds of help: ' . app(FundingRules::class)->categoryLabels((array) ($request['categories'] ?? [$category])),
             'Purpose: ' . ($request['purpose'] ?? $request['mission'] ?? ''),
             'Beneficiaries: ' . ($request['beneficiary_count'] ?? 'not stated'),
             isset($budget['per_person']) ? "Per-person budget: ₱{$budget['per_person']}" : null,

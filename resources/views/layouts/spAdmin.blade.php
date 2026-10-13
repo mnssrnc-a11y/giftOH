@@ -12,17 +12,18 @@
 <div class="sa-shell ws-shell" data-superadmin>
     <aside class="ws-sidebar" id="sa-navigation">
         <a class="ws-brand" href="{{ route('superadmin') }}#dashboard"><span class="brand-tile"><img src="{{ asset('images/logo-mark.png') }}" alt="" width="466" height="322"></span><span>Gift of Hope<small>Super admin</small></span></a>
-        <nav class="ws-nav" aria-label="Superadmin navigation">
+        <nav class="ws-nav" aria-label="Superadmin navigation" data-tour="nav">
             @foreach ($saNav as $group => $links)
                 <p class="ws-nav-label">{{ $group }}</p>
                 @foreach ($links as $key => [$icon, $label])
-                    <a href="{{ route('superadmin') }}#{{ $key }}" data-sa-nav="{{ $key }}" data-sa-label="{{ $label }}" @if ($saSection === $key) aria-current="page" @endif><span aria-hidden="true">{{ $icon }}</span>{{ $label }}@if ($key === 'requests' && $awaitingCount)<b>{{ $awaitingCount }}</b>@endif</a>
+                    <a href="{{ route('superadmin') }}#{{ $key }}" data-sa-nav="{{ $key }}" data-sa-label="{{ $label }}" data-tour="nav-{{ $key }}" @if ($saSection === $key) aria-current="page" @endif><span aria-hidden="true">{{ $icon }}</span>{{ $label }}@if ($key === 'requests' && $awaitingCount)<b>{{ $awaitingCount }}</b>@endif</a>
                 @endforeach
             @endforeach
             <p class="ws-nav-label">MORE</p>
             <a href="{{ route('iot-monitor') }}" @if (request()->routeIs('iot-monitor')) aria-current="page" @endif><span aria-hidden="true">◫</span>IoT box monitor</a>
             <a href="{{ route('notifications') }}" @if (request()->routeIs('notifications')) aria-current="page" @endif><span aria-hidden="true">◔</span>Notifications @if ($navCount)<b>{{ $navCount }}</b>@endif</a>
             <a href="{{ route('settings') }}" @if (request()->routeIs('settings', 'user.edit', 'change-password.form')) aria-current="page" @endif><span aria-hidden="true">○</span>My account</a>
+            <a href="{{ route('help') }}" data-tour="help" @if (request()->routeIs('help')) aria-current="page" @endif><span aria-hidden="true">?</span>Help &amp; tour</a>
         </nav>
         <div class="ws-person">
             <x-avatar class="ws-avatar" fallback="S" />
@@ -43,6 +44,12 @@
             @yield('content')
         </main>
     </div>
+    @include('partials.tour')
+    @include('partials.tabbar', ['tabs' => [
+        ['href' => route('superadmin') . '#dashboard', 'icon' => '▦', 'label' => 'Home', 'section' => 'dashboard'],
+        ['href' => route('superadmin') . '#requests', 'icon' => '₱', 'label' => 'Requests', 'section' => 'requests', 'route' => 'superadmin.fund-request.show'],
+        ['href' => route('superadmin') . '#prices', 'icon' => '▤', 'label' => 'Prices', 'section' => 'prices'],
+    ]])
     <dialog class="sa-dialog" data-sa-dialog aria-labelledby="sa-dialog-title"><button class="sa-dialog-close" type="button" data-sa-close aria-label="Close dialog">×</button><div data-sa-dialog-content></div></dialog>
     {{-- Result of the last action, visible wherever the page is scrolled to. --}}
     @php($flashError = session('alert_error') ?? ($errors->any() ? $errors->first() : null))

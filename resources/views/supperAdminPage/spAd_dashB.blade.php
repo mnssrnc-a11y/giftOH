@@ -53,7 +53,7 @@
     <div class="sa-heading"><div><span class="sa-eyebrow">{{ $eyebrow }}</span><h1>{{ $title }}</h1><p>{{ $description }}</p></div></div>
 
     @if ($key === 'dashboard' || $key === 'monitor')
-    <div class="sa-stats">
+    <div class="sa-stats" @if ($key === 'dashboard') data-tour="stats" @endif>
         <article class="sa-stat"><div class="sa-stat-top">Total accounts<span class="sa-stat-icon">♧</span></div><strong>{{ $accountSummary['total'] }}</strong><small>{{ $accountSummary['admins'] }} admin(s) · {{ $accountSummary['disabled'] }} disabled</small></article>
         <article class="sa-stat"><div class="sa-stat-top">Connected devices<span class="sa-stat-icon">◉</span></div><strong>{{ $online }} <span class="sa-stat-of">/ {{ count($devices) }}</span></strong><small>{{ count($devices) - $online }} offline</small></article>
         <article class="sa-stat"><div class="sa-stat-top">Awaiting your decision<span class="sa-stat-icon">₱</span></div><strong>{{ $outcomes['awaiting'] }}</strong><small>Reviewed by admins</small></article>
@@ -63,7 +63,7 @@
 
     @if ($key === 'dashboard')
     <div class="sa-grid">
-        <article class="sa-card">
+        <article class="sa-card" data-tour="awaiting">
             <div class="sa-card-head"><div><h2>Requests needing your decision</h2><p>Reviewed by an admin and waiting for you. Open one for the final check.</p></div><a class="sa-link" href="#requests">View all ↗</a></div>
             <div class="sa-table-wrap"><table class="sa-table"><thead><tr><th>Organization / reviewed by</th><th>Amount</th><th>Review</th></tr></thead><tbody data-sa-request-preview></tbody></table></div>
         </article>

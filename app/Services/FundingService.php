@@ -291,13 +291,14 @@ class FundingService
                 ! empty($assessment['assessed_at']) && ($assessment['outcome'] ?? '') === 'recommended' => ['ready_for_decision', 'Assessed · awaiting admin decision', 2],
                 ! empty($assessment['assessed_at']) => ['ready_for_decision', 'Assessed · not recommended', 2],
                 ! empty($assessment['interview_at']) => ['interview_scheduled', 'Interview scheduled', 1],
-                default => ['needs_assessment', 'Awaiting social worker assessment', 1],
+                default => ['needs_assessment', 'Under assessment', 1],
             },
             self::STATUS_UNDER_REVIEW => ['awaiting_final', 'Awaiting final approval', 3],
             'approved' => match (true) {
                 ($liquidation['status'] ?? '') === 'submitted' => ['liquidation_review', 'Liquidation under review', 5],
                 ($liquidation['status'] ?? '') === 'returned' => ['liquidation_returned', 'Liquidation needs changes', 5],
                 ! empty($request['disbursement']['released_at'] ?? null) => ['released', 'Funds released · liquidation due', 5],
+                ! $this->hasBeneficiaryList($request) => ['awaiting_recipients', 'Approved · list the people who will receive the help', 4],
                 default => ['to_release', 'Approved · awaiting release', 4],
             },
             'completed' => ['completed', 'Completed', 6],
@@ -516,7 +517,8 @@ class FundingService
     public function recordDisbursement(string $requestId, array $disbursement, string|int $adminId): ?array
     {
         $request = $this->getRequestById($requestId);
-        if ($request === null || $this->statusOf($request) !== 'approved' || ! empty($request['disbursement']['released_at'] ?? null)) {
+        if ($request === null || $this->statusOf($request) !== 'approved' || ! empty($request['disbursement']['released_at'] ?? null)
+            || ! $this->hasBeneficiaryList($request)) {
             return null;
         }
 
@@ -533,6 +535,59 @@ class FundingService
             . "Please submit the receipts and the list of recipients within {$days} days.");
 
         return $updated;
+    }
+
+    /**
+     * State of the automatic transfer of a request's funds (see Payouts\PayoutService).
+     */
+    public function setPayout(string $requestId, array $payout): ?array
+    {
+        $request = $this->getRequestById($requestId);
+        if ($request === null) {
+            return null;
+        }
+
+        return $this->fundingRequests->update($requestId, [
+            'disbursement' => array_merge((array) ($request['disbursement'] ?? []), ['payout' => $payout]),
+        ]);
+    }
+
+    /**
+     * Whether the people who will receive the help are listed (after approval, or on older
+     * requests, at submission).
+     */
+    public function hasBeneficiaryList(array $request): bool
+    {
+        return array_filter((array) ($request['beneficiaries'] ?? [])) !== [];
+    }
+
+    /**
+     * How many people the approved budget covers (what the requester may list at release).
+     */
+    public function approvedPeople(array $request): int
+    {
+        return (int) ($request['budget']['people'] ?? $request['assessment']['verified_beneficiaries'] ?? $request['beneficiary_count'] ?? config('funding.beneficiaries.max'));
+    }
+
+    /**
+     * The requester's list of people (last, first, middle name), sent after approval and before
+     * the funds are released.
+     *
+     * @param  array<int, array{last: string, first: string, middle: string}>  $people
+     */
+    public function submitBeneficiaries(string $requestId, array $people): ?array
+    {
+        $request = $this->getRequestById($requestId);
+        if ($request === null || $this->statusOf($request) !== 'approved' || ! empty($request['disbursement']['released_at'] ?? null)
+            || $people === [] || count($people) > $this->approvedPeople($request)) {
+            return null;
+        }
+
+        return $this->fundingRequests->update($requestId, [
+            'recipients' => $people,
+            'beneficiaries' => array_map(fn (array $person): string => $this->rules->personName($person), $people),
+            'beneficiaries_submitted_at' => now()->toIso8601String(),
+        ]);
     }
 
     /**

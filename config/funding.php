@@ -56,6 +56,35 @@ return [
 
     'disbursement_methods' => [
         'bank_transfer' => 'Bank-to-bank transfer',
+        'e_wallet' => 'E-wallet transfer',
+    ],
+
+    /*
+     | Where the requester wants to receive the funds: a bank account or an e-wallet in the
+     | receiver's name. "account" says what the account number field holds for that provider.
+     */
+    'transfer_modes' => [
+        'bank' => [
+            'label' => 'Bank',
+            'method' => 'bank_transfer',
+            'providers' => [
+                'BDO Unibank', 'Land Bank of the Philippines', 'Bank of the Philippine Islands (BPI)', 'Metrobank',
+                'Philippine National Bank (PNB)', 'Security Bank', 'China Banking Corporation (China Bank)', 'RCBC',
+                'UnionBank of the Philippines', 'EastWest Bank', 'Development Bank of the Philippines (DBP)',
+                'PSBank', 'Asia United Bank (AUB)', 'Maybank Philippines', 'Philippine Bank of Communications (PBCOM)',
+                'Bank of Commerce', 'Philippine Veterans Bank', 'CTBC Bank Philippines', 'Sterling Bank of Asia',
+                'CIMB Bank Philippines', 'SeaBank Philippines', 'GoTyme Bank', 'Tonik Digital Bank', 'Maya Bank',
+                'UNOBank', 'Overseas Filipino Bank (OFBank)', 'Netbank',
+            ],
+            'account' => 'number',
+        ],
+        'e_wallet' => [
+            'label' => 'E-wallet',
+            'method' => 'e_wallet',
+            'providers' => ['GCash', 'Maya', 'PayPal'],
+            // GCash and Maya accounts are mobile numbers; PayPal accounts are email addresses.
+            'account' => ['GCash' => 'mobile', 'Maya' => 'mobile', 'PayPal' => 'email'],
+        ],
     ],
 
     'assessment_modes' => [

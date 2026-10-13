@@ -95,7 +95,7 @@ class PriceListRolesTest extends TestCase
         $this->assertArrayNotHasKey('Education', $rules->categories());
         $this->assertSame(['Medical', 'Food', 'Hygiene & Cleaning Supplies', 'Shelter', 'Emergency Relief', 'Community Development'], array_keys($rules->categories()));
         $this->assertSame(['formal_letter', 'indigency_cert'], array_keys($rules->requirementsFor('Education')));
-        $this->assertSame(['bank_transfer'], array_keys(config('funding.disbursement_methods')));
+        $this->assertSame(['bank_transfer', 'e_wallet'], array_keys(config('funding.disbursement_methods')));
         $this->assertFalse(app('router')->has('admin.fund-request.scholarship-suggestion'));
     }
 

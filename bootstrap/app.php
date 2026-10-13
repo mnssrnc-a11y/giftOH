@@ -22,6 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Hosts like Render end HTTPS at their load balancer and forward plain HTTP; trusting the
         // forwarded headers keeps generated links, assets and secure cookies on https://.
         $middleware->trustProxies(at: '*');
+        // Payout providers post their results without a CSRF token; the webhook checks its own token.
+        $middleware->validateCsrfTokens(except: ['webhooks/*']);
         // Disabled accounts are signed out on their next request; background fetches keep flash messages;
         // every upload is scanned for malware; every response gets browser security headers.
         $middleware->web(append: [EnsureActiveAccount::class, KeepFlashForBackgroundRequests::class, ScanUploadedFiles::class, SecurityHeaders::class]);

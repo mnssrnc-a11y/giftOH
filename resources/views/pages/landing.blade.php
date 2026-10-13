@@ -15,6 +15,11 @@
                 <h1>Give hope, change lives.</h1>
                 <p class="brand-hero-lead">A transparent charity platform with smart IoT donation boxes. Every donation is tracked, verified, and makes a real difference.</p>
                 <button type="button" class="brand-btn brand-btn-light" data-start-open aria-controls="account-choice" aria-haspopup="dialog">Get started</button>
+                {{-- Verification indicator: the organization is verified through SACOP. --}}
+                <a class="brand-verified" href="https://sacop.ph/" target="_blank" rel="noopener" aria-label="Verified organization: Social Action Center of Pampanga (SACOP). Opens sacop.ph in a new tab.">
+                    <span class="brand-verified-check" aria-hidden="true">✓</span>
+                    <span><strong>Verified organization</strong><small>Social Action Center of Pampanga (SACOP) ↗</small></span>
+                </a>
             </div>
             <div class="landing-logo">
                 <img src="{{ asset('images/logo-full.png') }}" alt="Gift of Hope, charity home platform" width="768" height="538">
@@ -31,6 +36,19 @@
             <div class="brand-updates">@include('partials.announcements', ['posts' => $posts])</div>
         </section>
     @endif
+
+    <section class="brand-section" aria-labelledby="how-title">
+        <div class="brand-section-head">
+            <h2 id="how-title">How it works</h2>
+            <p>From asking for help to the help reaching people.</p>
+        </div>
+        <ol class="brand-how">
+            <li><h3>Ask for help</h3><p>Create an account and send a fund request in six short steps, with a formal letter and a Certificate of Indigency.</p></li>
+            <li><h3>Interview and assessment</h3><p>A social worker interviews your organization within {{ config('funding.assessment_days') }} days and checks your documents.</p></li>
+            <li><h3>Approval and release</h3><p>The foundation sets a budget per person and approves it. You list the people, and the funds go to your bank or e-wallet.</p></li>
+            <li><h3>Report back</h3><p>Within {{ config('funding.liquidation_days') }} days, share the receipts and the list of people who received the help.</p></li>
+        </ol>
+    </section>
 
     <section class="brand-section brand-section-tint">
         <div class="brand-section-head">

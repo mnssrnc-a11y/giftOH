@@ -12,7 +12,7 @@
     $liquidation = $view['liquidation'];
     $canLiquidate = in_array($stage['key'], ['released', 'liquidation_returned'], true);
     $badge = match (true) {
-        in_array($stage['key'], ['completed', 'to_release', 'released'], true) => 'bg-green-100 text-green-800',
+        in_array($stage['key'], ['completed', 'awaiting_recipients', 'to_release', 'released'], true) => 'bg-green-100 text-green-800',
         $stage['key'] === 'rejected' => 'bg-red-100 text-red-800',
         in_array($stage['key'], ['liquidation_returned'], true) => 'bg-amber-100 text-amber-800',
         default => 'bg-blue-100 text-blue-800',
@@ -37,7 +37,7 @@
         @if ($errors->any())<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert"><ul class="list-disc pl-5">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
         {{-- Progress --}}
-        <section class="{{ $card }}">
+        <section class="{{ $card }}" id="progress">
             <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <h2 class="text-lg font-bold text-gray-900">Progress</h2>
                 <span class="rounded-full px-4 py-1.5 text-sm font-semibold {{ $badge }}">{{ $stage['label'] }}</span>
@@ -57,10 +57,11 @@
                     <p class="mt-3 text-sm text-gray-600">This request has been appealed {{ \App\Services\FundingService::MAX_APPEALS }} times, the most allowed.</p>
                 @endif
             @else
+                @php($stepTargets = ['#details', '#progress', '#progress', '#progress', '#release', '#liquidation', '#history'])
                 <ol class="grid grid-cols-2 gap-3 md:grid-cols-7">
                     @foreach (\App\Services\FundingRequestPresenter::STEPS as $i => $step)
                         @php($state = $i < $stage['step'] || $stage['key'] === 'completed' ? 'done' : ($i === $stage['step'] ? 'current' : 'todo'))
-                        <li class="text-xs"><span class="mb-1 block h-1.5 rounded-full {{ $state === 'done' ? 'bg-green-500' : ($state === 'current' ? 'bg-[#1976D2]' : 'bg-gray-200') }}"></span><span class="{{ $state === 'todo' ? 'text-gray-400' : 'font-semibold text-gray-800' }}">{{ $step }}</span></li>
+                        <li class="text-xs"><a href="{{ $stepTargets[$i] }}" class="block rounded-md p-1 hover:bg-blue-50" @if ($state === 'current') aria-current="step" @endif><span class="mb-1 block h-1.5 rounded-full {{ $state === 'done' ? 'bg-green-500' : ($state === 'current' ? 'bg-[#1976D2]' : 'bg-gray-200') }}"></span><span class="{{ $state === 'todo' ? 'text-gray-400' : 'font-semibold text-gray-800' }}">{{ $step }}</span></a></li>
                     @endforeach
                 </ol>
             @endif
@@ -72,7 +73,7 @@
                     <strong>Interview:</strong> {{ \Carbon\Carbon::parse($assessment['interview_at'])->format('l, M d, Y g:i A') }}
                     · {{ $assessment['mode_label'] ?? '' }}@if (!empty($assessment['location'])) · {{ $assessment['location'] }}@endif
                     @if (!empty($assessment['social_worker']))<br>Social worker: {{ $assessment['social_worker'] }}@endif
-                    <br><span class="text-blue-700">Please have the original documents and the list of beneficiaries ready.</span>
+                    <br><span class="text-blue-700">Please have the original documents ready.</span>
                     @php($answer = $assessment['interview_response'] ?? null)
                     @if (! $answer)
                         <div class="mt-4 flex flex-wrap items-start gap-3">
@@ -94,10 +95,26 @@
                         <p class="mt-3 font-semibold text-amber-700">You asked for {{ \Carbon\Carbon::parse($answer['preferred_at'])->format('M d, Y g:i A') }}. The social worker will set a new schedule.</p>
                     @endif
                 </div>
+            @elseif ($stage['key'] === 'awaiting_recipients')
+                <p class="mt-5 text-sm text-gray-600">Approved for <strong>{{ $peso($view['granted'] ?? $view['amount']) }}</strong>. Next: <a class="font-semibold text-blue-700 underline" href="#release">list the people who will receive the help</a>, then the foundation releases the funds.</p>
             @elseif ($stage['key'] === 'to_release')
                 <p class="mt-5 text-sm text-gray-600">Approved for <strong>{{ $peso($view['granted'] ?? $view['amount']) }}</strong>. The foundation will release the funds by {{ strtolower($disbursement['method_label']) }}.</p>
             @endif
         </section>
+
+        @if ($stage['key'] === 'awaiting_recipients')
+            <section class="{{ $card }}" id="release">
+                <h2 class="mb-1 text-lg font-bold text-gray-900">Release of funds: who will receive the help?</h2>
+                <p class="mb-4 text-sm text-gray-600">Add each person with <strong>Add person</strong>: last name, first name and middle name. The approved budget covers <strong>{{ $view['people_limit'] }}</strong> {{ \Illuminate\Support\Str::plural('person', $view['people_limit']) }}. The funds are released once the list is in.</p>
+                @error('people')<p class="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{{ $message }}</p>@enderror
+                @if ($errors->has('people.*'))<ul class="mb-3 list-disc rounded-lg bg-red-50 p-3 pl-8 text-sm text-red-800" role="alert">@foreach ($errors->get('people.*') as $messages)<li>{{ $messages[0] }}</li>@endforeach</ul>@endif
+                <form method="POST" action="{{ route('fund-request.beneficiaries', $view['id']) }}">
+                    @csrf
+                    @include('partials.people-list', ['name' => 'people', 'people' => old('people', []), 'limit' => $view['people_limit']])
+                    <button class="mt-4 rounded-xl bg-[#0D47A1] px-6 py-3 font-bold text-white hover:bg-[#1565C0]">Send the list</button>
+                </form>
+            </section>
+        @endif
 
         {{-- Liquidation --}}
         @if ($canLiquidate || $liquidation)
@@ -124,7 +141,9 @@
                         <div><label class="mb-1 block text-sm font-semibold text-gray-700" for="recipient_list">Signed list of recipients <span class="text-red-500">*</span></label><input id="recipient_list" type="file" name="recipient_list" required accept="image/*,.pdf" class="block w-full text-sm"><p class="mt-1 text-xs text-gray-400">Photo or scan of the list with names and signatures.</p></div>
                         <div><label class="mb-1 block text-sm font-semibold text-gray-700" for="amount_spent">Amount spent (₱) <span class="text-red-500">*</span></label><input id="amount_spent" type="number" step="0.01" min="0" name="amount_spent" required value="{{ old('amount_spent') }}" class="w-full rounded-lg border border-gray-300 px-4 py-2"></div>
                         <div><label class="mb-1 block text-sm font-semibold text-gray-700" for="photos">Distribution photos <span class="font-normal text-gray-400">(optional)</span></label><input id="photos" type="file" name="photos[]" multiple accept="image/*" class="block w-full text-sm"></div>
-                        <div class="md:col-span-2"><label class="mb-1 block text-sm font-semibold text-gray-700" for="recipient_names">Names of recipients <span class="font-normal text-gray-400">(optional, one per line)</span></label><textarea id="recipient_names" name="recipient_names" rows="5" class="w-full rounded-lg border border-gray-300 px-4 py-2 font-mono text-sm">{{ old('recipient_names', implode("\n", $view['beneficiaries'])) }}</textarea></div>
+                        @php($listed = $view['recipients'] ?: array_map(fn ($name) => ['last' => '', 'first' => $name, 'middle' => ''], $view['beneficiaries']))
+                        <div class="md:col-span-2"><span class="mb-1 block text-sm font-semibold text-gray-700">People who received the donation <span class="font-normal text-gray-400">(check the list; add or remove people)</span></span>
+                            @include('partials.people-list', ['name' => 'recipients', 'people' => old('recipients', $listed), 'limit' => 100, 'required' => false])</div>
                         <div class="md:col-span-2"><label class="mb-1 block text-sm font-semibold text-gray-700" for="notes">Notes <span class="font-normal text-gray-400">(optional)</span></label><textarea id="notes" name="notes" rows="2" maxlength="2000" class="w-full rounded-lg border border-gray-300 px-4 py-2">{{ old('notes') }}</textarea></div>
                         <div class="md:col-span-2"><button class="rounded-xl bg-[#0D47A1] px-6 py-3 font-bold text-white hover:bg-[#1565C0]">Submit liquidation</button></div>
                     </form>
@@ -139,7 +158,7 @@
         @endif
 
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <section class="{{ $card }}">
+            <section class="{{ $card }}" id="details">
                 <h2 class="mb-4 text-lg font-bold text-gray-900">Request</h2>
                 <dl class="space-y-3 text-sm">
                     <div><dt class="text-gray-500">Purpose</dt><dd class="whitespace-pre-line text-gray-900">{{ $view['purpose'] ?: '—' }}</dd></div>
@@ -153,12 +172,12 @@
                 </dl>
             </section>
 
-            <section class="{{ $card }}">
+            <section class="{{ $card }}" @if ($stage['key'] !== 'awaiting_recipients') id="release" @endif>
                 <h2 class="mb-4 text-lg font-bold text-gray-900">Release of funds</h2>
                 <dl class="space-y-3 text-sm">
                     <div><dt class="text-gray-500">Method</dt><dd class="font-semibold">{{ $disbursement['method_label'] }}</dd></div>
-                    @if ($disbursement['bank_name'])
-                        <div><dt class="text-gray-500">Bank account</dt><dd>{{ $disbursement['bank_name'] }} · {{ $disbursement['account_name'] }} · {{ $disbursement['account_number'] }}</dd></div>
+                    @if ($disbursement['provider'])
+                        <div><dt class="text-gray-500">{{ $disbursement['mode'] === 'e_wallet' ? 'E-wallet' : 'Bank account' }}</dt><dd>{{ $disbursement['provider'] }} · {{ $disbursement['account_name'] }} · {{ $disbursement['account_number'] }}</dd></div>
                     @endif
                     @if ($disbursement['released_at'])
                         <div><dt class="text-gray-500">Released</dt><dd>{{ $peso($disbursement['amount']) }} on {{ $day($disbursement['released_at']) }}@if ($disbursement['reference_no']) · ref. {{ $disbursement['reference_no'] }}@endif</dd></div>
@@ -205,7 +224,7 @@
                     @endforeach
                 </ul>
             </section>
-            <section class="{{ $card }}">
+            <section class="{{ $card }}" id="history">
                 <h2 class="mb-4 text-lg font-bold text-gray-900">History</h2>
                 <ol class="space-y-3 border-l-2 border-gray-200 pl-4 text-sm">
                     @foreach ($view['timeline'] as $event)

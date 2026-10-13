@@ -89,6 +89,7 @@ if (root) {
             if (current) $('[data-sa-title]').textContent = el.dataset.saLabel;
         });
         document.title = `${$(`[data-sa-nav="${page}"]`)?.dataset.saLabel ?? 'Superadmin'} - Superadmin - Gift of Hope`;
+        window.dispatchEvent(new CustomEvent('ws:section', { detail: page }));
         const target = anchor !== page ? document.getElementById(anchor) : null;
         if (target) target.scrollIntoView({ block: 'start' });
         else if (changed) window.scrollTo({ top: 0 });

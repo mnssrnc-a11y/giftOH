@@ -20,7 +20,7 @@
     $stageBadge = match (true) {
         $awaiting => 'amber',
         $stage['key'] === 'rejected' => 'red',
-        in_array($stage['key'], ['completed', 'to_release', 'released', 'liquidation_review', 'liquidation_returned'], true) => '',
+        in_array($stage['key'], ['completed', 'awaiting_recipients', 'to_release', 'released', 'liquidation_review', 'liquidation_returned'], true) => '',
         default => 'gray',
     };
     $fileLink = fn (array $file) => $file['url']
@@ -44,7 +44,7 @@
 
 {{-- Decision summary: what the admin recommends and what to check before finalizing. --}}
 <article class="sa-card sa-decision">
-    <div class="sa-card-head"><div><h2>{{ $awaiting ? 'Your final decision' : 'Decision' }}</h2><p>{{ $awaiting ? 'Check the details below, then approve or reject. The requester and the admins are notified.' : 'This request has moved past final approval.' }}</p></div></div>
+    <div class="sa-card-head"><div><h2>{{ $awaiting ? 'Your final decision' : 'Decision' }}</h2><p>{{ $awaiting ? 'Check the details below, then approve or reject. The requester and the admins are notified.' : ($view['status'] === 'pending' ? 'Not ready for your decision yet: the admins are still assessing this request.' : 'This request has moved past final approval.') }}</p></div></div>
     <div class="sa-card-body">
         <dl class="sa-facts">
             <div><dt>Admin recommendation</dt><dd>@if ($review){{ $review['decision'] === 'approved' ? 'Approve ' . $peso($review['amount']) : 'Reject' }}<small>{{ $review['by'] ?? 'Admin' }} · {{ $day($review['at']) }}</small>@else — @endif</dd></div>
@@ -77,6 +77,39 @@
     </div>
 </article>
 
+@if ($transfer)
+    @php($payoutState = $transfer['payout']['status'] ?? null)
+    <article class="sa-card" id="transfer">
+        <div class="sa-card-head"><div><h2>Transfer of funds</h2><p>Send the approved amount to the receiver's {{ $disbursement['mode'] === 'e_wallet' ? 'e-wallet' : 'bank account' }}.</p></div>
+            <span class="sa-badge {{ match ($payoutState) { 'succeeded' => '', 'processing' => 'amber', 'failed' => 'red', default => 'gray' } }}">{{ match ($payoutState) { 'succeeded' => 'Sent', 'processing' => 'Waiting for the bank', 'failed' => 'Failed', default => $transfer['ready'] ? 'Ready to send' : 'Not ready' } }}</span></div>
+        <div class="sa-card-body">
+            <dl class="sa-facts" style="margin-bottom:16px">
+                <div><dt>Amount</dt><dd>{{ $peso($transfer['amount']) }}</dd></div>
+                <div><dt>To</dt><dd>{{ $transfer['provider'] ?? '—' }}<small>{{ $disbursement['account_name'] ?? '' }} · {{ $disbursement['account_number'] ?? '' }}</small></dd></div>
+                <div><dt>Foundation funds</dt><dd>{{ $availableFunds !== null ? $peso($availableFunds) . ' unallocated' : 'Unavailable' }}<small>After every approved amount</small></dd></div>
+                @if (! empty($transfer['payout']['payout_id']))<div><dt>Provider reference</dt><dd>{{ $transfer['payout']['payout_id'] }}<small>{{ $transfer['payout']['provider_status'] ?? '' }}{{ ! empty($transfer['payout']['failure_code']) ? ' · ' . $transfer['payout']['failure_code'] : '' }}</small></dd></div>@endif
+            </dl>
+            @if ($payoutState === 'processing')
+                <div class="sa-note">The transfer was sent {{ \Carbon\Carbon::parse($transfer['payout']['requested_at'])->diffForHumans() }}. The release is recorded automatically when the bank or e-wallet confirms it.</div>
+            @elseif ($transfer['code_sent'] && $transfer['ready'])
+                <form method="POST" action="{{ route('superadmin.payout.confirm', $view['id']) }}" class="sa-decision-form" style="max-width:420px">
+                    @csrf
+                    <label class="sa-field">Code from your email<input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
+                    <div class="sa-actions" style="justify-content:flex-start;margin-top:0"><button class="sa-button secondary" name="cancel" value="1" formnovalidate>Cancel</button><button class="sa-button">Send {{ $peso($transfer['amount']) }}</button></div>
+                </form>
+            @elseif ($transfer['ready'])
+                <form method="POST" action="{{ route('superadmin.payout.start', $view['id']) }}" data-sa-confirm="Send {{ $peso($transfer['amount']) }} to {{ $transfer['provider'] }} ({{ $disbursement['account_name'] ?? '' }})? We will email you a code to confirm. Money that is sent cannot be taken back.">
+                    @csrf
+                    <button class="sa-button">Send {{ $peso($transfer['amount']) }} now</button>
+                </form>
+            @elseif ($payoutState !== 'succeeded')
+                <div class="sa-note">@if (! $transfer['enabled'])<strong>Automatic transfers are not connected yet.</strong> Until the payout provider account is set up, an admin sends the money from the foundation's bank and records the release with the proof.@else<strong>Not ready to send:</strong>@endif
+                    <ul>@foreach ($transfer['problems'] as $problem)@if ($transfer['enabled'] || ! str_starts_with($problem, 'Automatic transfers are not connected'))<li>{{ $problem }}</li>@endif @endforeach</ul></div>
+            @endif
+        </div>
+    </article>
+@endif
+
 <div class="sa-grid equal">
     <article class="sa-card">
         <div class="sa-card-head"><div><h2>Requester account</h2><p>Who submitted this request</p></div></div>
@@ -107,14 +140,14 @@
         <div class="sa-card-body">
             <dl class="sa-facts">
                 @foreach ($view['contact'] as $label => $value)<div><dt>{{ $label }}</dt><dd>{{ $value ?: '—' }}</dd></div>@endforeach
-                <div><dt>Receiving bank</dt><dd>{{ $disbursement['bank_name'] ?? '—' }}<small>{{ $disbursement['account_name'] ?? '' }} · {{ $disbursement['account_number'] ?? '' }}</small></dd></div>
+                <div><dt>Receives through</dt><dd>{{ $disbursement['provider'] ?? '—' }}<small>{{ $disbursement['mode'] === 'e_wallet' ? 'E-wallet' : 'Bank' }} · {{ $disbursement['account_name'] ?? '' }} · {{ $disbursement['account_number'] ?? '' }}</small></dd></div>
             </dl>
         </div>
     </article>
 </div>
 
 <article class="sa-card">
-    <div class="sa-card-head"><div><h2>Purpose & beneficiaries</h2><p>{{ count($view['beneficiaries']) }} listed @if (isset($assessment['verified_beneficiaries'])) · {{ $assessment['verified_beneficiaries'] }} verified by the social worker @endif</p></div></div>
+    <div class="sa-card-head"><div><h2>Purpose & beneficiaries</h2><p>{{ $view['beneficiary_count'] }} people asked for · {{ count($view['beneficiaries']) ?: 'names not yet' }} listed @if (isset($assessment['verified_beneficiaries'])) · {{ $assessment['verified_beneficiaries'] }} verified by the social worker @endif</p></div></div>
     <div class="sa-card-body">
         <p class="sa-prose">{{ $view['purpose'] ?: '—' }}</p>
         @if ($view['beneficiaries'])

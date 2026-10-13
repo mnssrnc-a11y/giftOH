@@ -70,6 +70,8 @@ class FundingRequestPresenter
     private function build(array $request, bool $forAdmin): array
     {
         $category = $request['category_name'] ?? $request['category'] ?? 'General';
+        // Requests can name several kinds of help; older ones have one category.
+        $categories = array_values((array) ($request['categories'] ?? [$category]));
         $stage = $this->funding->stageOf($request);
         $budget = (array) ($request['budget'] ?? []);
         $disbursement = (array) ($request['disbursement'] ?? []);
@@ -79,7 +81,8 @@ class FundingRequestPresenter
         return [
             'id' => (string) $request['id'],
             'organization' => $request['org_name'] ?? '—',
-            'category' => $category,
+            'category' => $this->rules->categoryLabels($categories),
+            'categories' => $categories,
             'status' => $this->funding->statusOf($request),
             'stage' => $stage,
             'purpose' => $request['purpose'] ?? $request['mission'] ?? '',
@@ -93,6 +96,8 @@ class FundingRequestPresenter
                 'Tax ID' => $request['tax_id'] ?? null,
             ],
             'beneficiaries' => array_values((array) ($request['beneficiaries'] ?? [])),
+            'recipients' => array_values((array) ($request['recipients'] ?? [])),
+            'people_limit' => $this->funding->approvedPeople($request),
             'beneficiary_count' => (int) ($request['beneficiary_count'] ?? count((array) ($request['beneficiaries'] ?? []))),
             'budget' => [
                 'per_person' => isset($budget['per_person']) ? (float) $budget['per_person'] : null,
@@ -187,6 +192,9 @@ class FundingRequestPresenter
         return [
             'method' => $method,
             'method_label' => config("funding.disbursement_methods.{$method}") ?? '—',
+            'mode' => $disbursement['mode'] ?? ($method === 'e_wallet' ? 'e_wallet' : 'bank'),
+            'provider' => $disbursement['provider'] ?? $disbursement['bank_name'] ?? null,
+            'payout' => (array) ($disbursement['payout'] ?? []),
             'bank_name' => $disbursement['bank_name'] ?? null,
             'account_name' => $disbursement['account_name'] ?? null,
             'account_number' => $forAdmin

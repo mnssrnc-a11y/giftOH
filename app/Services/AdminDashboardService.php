@@ -279,7 +279,7 @@ class AdminDashboardService
             // Process stages from the foundation interview.
             'needsAssessment' => count(array_filter($requests, static fn (array $row): bool => $row['stage']['step'] === 1)),
             'overdue' => count(array_filter($requests, static fn (array $row): bool => $row['overdue'])),
-            'toRelease' => count(array_filter($requests, static fn (array $row): bool => $row['stage']['key'] === 'to_release')),
+            'toRelease' => count(array_filter($requests, static fn (array $row): bool => in_array($row['stage']['key'], ['awaiting_recipients', 'to_release'], true))),
             'liquidationPending' => count(array_filter($requests, static fn (array $row): bool => in_array($row['stage']['key'], ['released', 'liquidation_review', 'liquidation_returned'], true))),
             'liquidationToReview' => count(array_filter($requests, static fn (array $row): bool => $row['stage']['key'] === 'liquidation_review')),
         ];

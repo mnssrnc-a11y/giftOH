@@ -1,6 +1,6 @@
 {{-- Notification bell for every workspace topbar: unread count, the latest few, and a link to all. --}}
 @php($bellCount = count($navNotifications ?? []))
-<div class="notify" data-notify>
+<div class="notify" data-notify data-tour="bell">
     <button type="button" class="notify-button" data-notify-toggle aria-haspopup="true" aria-expanded="false" aria-controls="notify-panel"
         aria-label="Notifications{{ $bellCount ? " ({$bellCount} unread)" : '' }}">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>

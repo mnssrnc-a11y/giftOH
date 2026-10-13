@@ -131,19 +131,6 @@ class FundingRules
     }
 
     /**
-     * One name per line, de-duplicated, blank lines ignored.
-     */
-    public function parseBeneficiaries(?string $text): array
-    {
-        $names = array_map(
-            static fn (string $line): string => trim(preg_replace('/^\s*\d+[\.\)]\s*/', '', $line)),
-            preg_split('/\r\n|\r|\n/', (string) $text)
-        );
-
-        return array_values(array_unique(array_filter($names, static fn (string $name): bool => $name !== '')));
-    }
-
-    /**
      * Funds are only sent to an account in the receiver's name: the organization or its contact person.
      */
     public function accountNameMatches(string $accountName, array $receiverNames): bool
@@ -158,6 +145,66 @@ class FundingRules
         }
 
         return false;
+    }
+
+    /**
+     * Banks or e-wallets the requester can choose for the given mode ("bank" or "e_wallet").
+     */
+    public function transferProviders(?string $mode): array
+    {
+        return (array) config("funding.transfer_modes.{$mode}.providers", []);
+    }
+
+    /**
+     * What the account field holds for this provider: "number" (bank account), "mobile"
+     * (GCash / Maya number) or "email" (PayPal).
+     */
+    public function accountKind(?string $mode, ?string $provider): string
+    {
+        $kind = config("funding.transfer_modes.{$mode}.account", 'number');
+
+        return is_array($kind) ? ($kind[$provider] ?? 'number') : $kind;
+    }
+
+    /**
+     * "Medical assistance / medicines, Food packs / groceries" for the chosen category keys.
+     */
+    public function categoryLabels(array $keys): string
+    {
+        $categories = $this->categories();
+
+        return implode(', ', array_map(fn ($key) => $categories[$key]['label'] ?? (string) $key, $keys));
+    }
+
+    /**
+     * A person entered with "Add person" (last, first, middle name) as one display name.
+     */
+    public function personName(array $person): string
+    {
+        return trim(preg_replace('/\s+/', ' ', ($person['first'] ?? '') . ' ' . ($person['middle'] ?? '') . ' ' . ($person['last'] ?? '')));
+    }
+
+    /**
+     * Rows from the "Add person" fields, trimmed, without empty or repeated people.
+     *
+     * @return array<int, array{last: string, first: string, middle: string}>
+     */
+    public function cleanPeople(array $rows): array
+    {
+        $people = [];
+        foreach ($rows as $row) {
+            $person = [
+                'last' => trim((string) ($row['last'] ?? '')),
+                'first' => trim((string) ($row['first'] ?? '')),
+                'middle' => trim((string) ($row['middle'] ?? '')),
+            ];
+            if ($person['last'] === '' && $person['first'] === '') {
+                continue;
+            }
+            $people[strtolower($this->personName($person))] = $person;
+        }
+
+        return array_values($people);
     }
 
     public function maskAccountNumber(?string $number): string

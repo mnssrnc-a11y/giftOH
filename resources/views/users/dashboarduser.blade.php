@@ -17,20 +17,20 @@
             <h1>Welcome back, {{ $user->fname ?: 'friend' }}.</h1>
             <p>News from the foundation and the latest on your requests.</p>
         </div>
-        <a class="hope-button" href="{{ route('fund-request') }}" data-prerender>+ Create fund request</a>
+        <a class="hope-button" href="{{ route('fund-request') }}" data-prerender data-tour="new-request">+ Create fund request</a>
     </div>
 
     @if (session('status'))<div class="hope-preview" role="status">{{ session('status') }}</div>@endif
     @if (session('alert_error'))<div class="hope-preview hope-preview-error" role="alert">{{ session('alert_error') }}</div>@endif
 
-    <nav class="hope-summary" aria-label="Your account at a glance">
+    <nav class="hope-summary" aria-label="Your account at a glance" data-tour="summary">
         <a href="{{ route('request-status') }}" data-prerender><span>Fund requests</span><strong>{{ $fundRequestCount }}</strong><small>{{ $inProgress }} in progress · View status →</small></a>
         <a href="{{ route('notifications') }}" data-prerender><span>Notifications</span><strong>{{ $notificationCount }}</strong><small>Unread updates · See all →</small></a>
         <a href="{{ route('user') }}" data-prerender><span>Member since</span><strong>{{ $memberSince }}</strong><small>My profile →</small></a>
     </nav>
 
     <div class="hope-feed-layout">
-        <section class="hope-panel" aria-labelledby="home-feed-title">
+        <section class="hope-panel" aria-labelledby="home-feed-title" data-tour="updates">
             <header class="hope-panel-head">
                 <div><h2 id="home-feed-title">Updates from Gift of Hope</h2><p>News and funding updates posted by the administrators.</p></div>
             </header>

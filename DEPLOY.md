@@ -89,6 +89,42 @@ was taken), change `APP_URL` in **Environment** to that address and save.
 
 Every `git push` to `main` redeploys automatically.
 
+## Automatic transfers (optional, real money)
+
+Until this is set up, an admin sends each grant from the foundation's bank or e-wallet and records
+the release with the proof (the "manual" process). With a payout provider connected, the super
+admin sends the approved amount from the request page with one click, confirmed by an emailed code;
+the provider reports the result and the release is recorded by itself.
+
+The app is built for **Xendit Payouts** (Philippines: InstaPay / PESONet to banks, and GCash). What
+you need:
+
+1. A **Xendit business account** that has passed verification (KYB): the foundation's SEC (or DTI)
+   registration, BIR Certificate of Registration, articles/by-laws, IDs of the authorized
+   signatories, and the foundation's own bank account for settlement.
+2. **Money-out enabled** and a **funded Xendit balance** (top it up from the foundation's bank);
+   transfers are paid from this balance.
+3. A **secret API key** with "Money-out" write permission (Settings → API keys), first the test key,
+   then the live key.
+4. The **webhook verification token** (Settings → Webhooks), and the payout webhook URL set to
+   `https://<your-site>/webhooks/payouts`.
+5. The **channel code** of each bank / e-wallet you want to send to, copied from Xendit's channel
+   list into `config/payouts.php` (BDO, BPI, Security Bank, UnionBank and GCash are filled in).
+   PayPal is not a Xendit channel; PayPal grants stay manual.
+
+Then set, in `.env` and on Render:
+
+```
+PAYOUT_DRIVER=xendit
+XENDIT_SECRET_KEY=xnd_development_...   # test key first
+XENDIT_WEBHOOK_TOKEN=...
+```
+
+Test with the test key (no real money moves), then switch to the live key. For every transfer the
+app sends the receiver's account number and account name (exactly as on the account), the channel
+code, the amount in pesos and a reference (`goh-<request id>`); an account in another person's name
+is refused by the bank.
+
 ## Good to know
 
 - **Sleep:** a free service sleeps after 15 minutes without visitors. The first visit after that
