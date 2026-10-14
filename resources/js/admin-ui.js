@@ -14,7 +14,7 @@ const STAGE_TABS = {
     release: item => ['awaiting_recipients', 'to_release'].includes(item.stage.key),
     liquidation: item => ['released', 'liquidation_review', 'liquidation_returned'].includes(item.stage.key),
     completed: item => item.stage.key === 'completed',
-    rejected: item => item.stage.key === 'rejected',
+    rejected: item => ['rejected', 'cancelled'].includes(item.stage.key),
 };
 const STATUS_LABELS = { awaiting: 'Awaiting super admin', pending: 'Pending', approved: 'Approved', rejected: 'Rejected', completed: 'Completed', cancelled: 'Cancelled' };
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#039;', '"':'&quot;' })[char]);
@@ -69,7 +69,7 @@ function initAdminUI() {
 
     // Each section is its own history entry, so the phone's Back button returns to the previous one.
     function navigate(page, { push = true } = {}) {
-        // "#reports-prices" opens the Reports page on the Price reference tab.
+        // "#reports-funded" opens the Reports page on the Funded projects tab.
         const [base, tab] = String(page).split('-');
         if (base === 'reports' && tab) {
             navigate('reports', { push });
@@ -108,7 +108,7 @@ function initAdminUI() {
 
     function stageBadge(item) {
         const kind = ['completed', 'awaiting_recipients', 'to_release', 'released'].includes(item.stage.key) ? 'approved'
-            : item.stage.key === 'rejected' ? 'rejected' : item.stage.key === 'awaiting_final' ? 'awaiting' : 'in-progress';
+            : ['rejected', 'cancelled'].includes(item.stage.key) ? 'rejected' : item.stage.key === 'awaiting_final' ? 'awaiting' : 'in-progress';
         return `<span class="admin-status ${kind}">${escapeHtml(item.stage.label)}</span>${item.overdue ? '<small style="color:#dc2626;font-weight:700">Overdue</small>' : ''}`;
     }
 
@@ -123,7 +123,7 @@ function initAdminUI() {
         body.innerHTML = visible.map(item => `<tr>
             <td><a href="${escapeHtml(routeFor('show', item.id))}"><strong>${escapeHtml(item.project)}</strong></a>${item.unread_messages ? `<a href="${escapeHtml(routeFor('show', item.id))}#messages" class="admin-status in-progress" style="margin:3px 0">✉ ${item.unread_messages} new message${item.unread_messages > 1 ? 's' : ''}</a>` : ''}<small>${escapeHtml(item.id.slice(0, 8))} · ${escapeHtml(item.requester)} · ${item.beneficiary_count || '—'} people</small></td>
             <td>${escapeHtml(item.organization)}</td><td>${escapeHtml(item.category)}</td>
-            <td>${item.amount > 0 ? `<strong>${money(item.amount)}</strong>` : '<small>Budget not set</small>'}${item.granted !== null ? `<small>${money(item.granted)} granted</small>` : ''}</td>
+            <td>${item.amount > 0 ? `<strong>${money(item.amount)}</strong>` : '<small>Amount not set</small>'}${item.granted !== null ? `<small>${money(item.granted)} granted</small>` : ''}</td>
             <td>${stageBadge(item)}</td><td>${formatDate(item.date)}</td><td><div class="admin-table-actions">${fundingActions(item)}</div></td>
         </tr>`).join('');
         app.querySelector('[data-funding-table-wrap]').style.display = rows.length ? '' : 'none';
@@ -461,77 +461,7 @@ function initAdminUI() {
         renderFunding();
         renderCharts();
     }
-    initBudgetBuilder(app);
     initAdminIotMonitor(app, () => applyReportFilters());
-}
-
-/**
- * Per-person budget builder on the admin request page. Items come from the AI-maintained price
- * list and their prices are fixed: the admin only chooses items and quantities.
- */
-function initBudgetBuilder(app) {
-    const form = app.querySelector('[data-budget-builder]');
-    const config = adminData.budget;
-    if (!form || !config) return;
-
-    const catalog = Object.fromEntries(Object.values(config.catalog).flat().map(item => [item.key, item]));
-    // Only price-list items can be budgeted (older custom lines are dropped).
-    const rows = (config.rows ?? []).filter(row => catalog[row.ref]).map(row => ({ ref: row.ref, qty: row.qty }));
-    const updated = item => item.updated_at ? `updated ${new Date(item.updated_at).toLocaleDateString('en-PH', { month: 'short', year: 'numeric' })}` : 'initial reference';
-    const subtotal = row => (Number(row.qty) || 0) * (catalog[row.ref]?.price || 0);
-
-    function render() {
-        form.querySelector('[data-budget-rows]').innerHTML = rows.length ? rows.map((row, index) => {
-            const item = catalog[row.ref];
-            return `<tr data-budget-row="${index}">
-                <td><input type="hidden" name="budget[${index}][ref]" value="${escapeHtml(row.ref)}"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.size)} · ${escapeHtml(item.source || 'price list')}</small></td>
-                <td><input class="admin-input" style="width:100%" type="number" min="0.25" step="0.25" required name="budget[${index}][qty]" value="${escapeHtml(row.qty)}" data-budget-field="qty" aria-label="Quantity per person"></td>
-                <td class="admin-price-fixed">${money(item.price)}<small>${escapeHtml(updated(item))}</small></td>
-                <td data-budget-subtotal>${money(subtotal(row))}</td>
-                <td><button type="button" class="admin-table-action" data-budget-remove="${index}" aria-label="Remove item">×</button></td></tr>`;
-        }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--admin-muted)">No items yet. Add items for one person\'s package.</td></tr>';
-        totals();
-    }
-
-    function totals() {
-        const perPerson = rows.reduce((sum, row) => sum + subtotal(row), 0);
-        form.querySelector('[data-budget-per-person]').textContent = money(perPerson);
-        form.querySelector('[data-budget-total]').textContent = money(perPerson * (config.people || 0));
-        const capNote = form.querySelector('[data-budget-cap-note]');
-        if (capNote) capNote.textContent = config.cap && perPerson > config.cap ? `This package is ${money(perPerson - config.cap)} above the usual allocation.` : '';
-    }
-
-    form.querySelector('[data-budget-picker]').insertAdjacentHTML('beforeend', Object.entries(config.catalog).map(([group, items]) =>
-        `<optgroup label="${escapeHtml(group)}">${items.map(item => `<option value="${escapeHtml(item.key)}">${escapeHtml(`${item.name} (${item.size}) · ${money(item.price)}`)}</option>`).join('')}</optgroup>`).join(''));
-
-    form.addEventListener('change', event => {
-        if (!event.target.matches('[data-budget-picker]') || !event.target.value) return;
-        const existing = rows.find(row => row.ref === event.target.value);
-        if (existing) existing.qty = Number(existing.qty) + 1;
-        else rows.push({ ref: event.target.value, qty: 1 });
-        event.target.value = '';
-        render();
-    });
-    form.addEventListener('input', event => {
-        if (event.target.dataset.budgetField !== 'qty') return;
-        const tr = event.target.closest('[data-budget-row]');
-        const row = rows[Number(tr.dataset.budgetRow)];
-        row.qty = event.target.value;
-        // Update in place so typing keeps focus.
-        tr.querySelector('[data-budget-subtotal]').textContent = money(subtotal(row));
-        totals();
-    });
-    form.addEventListener('click', event => {
-        if (event.target.dataset.budgetRemove !== undefined) {
-            rows.splice(Number(event.target.dataset.budgetRemove), 1);
-            render();
-        }
-    });
-    form.addEventListener('submit', event => {
-        if (rows.length === 0) { event.preventDefault(); alert('Add at least one item to the per-person budget.'); }
-    });
-
-    render();
 }
 
 /**

@@ -26,7 +26,6 @@
     "notifications": { ".indexOn": ["user_id", "created_at"] },
     "notification_history": { ".indexOn": ["user_id", "created_at", "read_at"] },
     "admin_posts": { ".indexOn": ["created_at"] },
-    "request_messages": { ".indexOn": ["request_id", "created_at"] },
-    "price_list": { "$group": { "items": { ".indexOn": ["type", "name"] } } }
+    "request_messages": { ".indexOn": ["request_id", "created_at"] }
   }
 }

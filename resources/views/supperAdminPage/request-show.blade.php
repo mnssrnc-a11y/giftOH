@@ -16,10 +16,10 @@
     $people = $assessment['verified_beneficiaries'] ?? $view['beneficiary_count'];
     $requiredDocs = collect($view['documents'])->where('required', true);
     $verifiedDocs = $requiredDocs->where('status', 'verified')->count();
-    $statusLabel = ['pending' => 'In review', 'approved' => 'Approved', 'rejected' => 'Rejected', 'completed' => 'Completed'];
+    $statusLabel = ['pending' => 'In review', 'approved' => 'Approved', 'rejected' => 'Rejected', 'completed' => 'Completed', 'cancelled' => 'Cancelled'];
     $stageBadge = match (true) {
         $awaiting => 'amber',
-        $stage['key'] === 'rejected' => 'red',
+        in_array($stage['key'], ['rejected', 'cancelled'], true) => 'red',
         in_array($stage['key'], ['completed', 'awaiting_recipients', 'to_release', 'released', 'liquidation_review', 'liquidation_returned'], true) => '',
         default => 'gray',
     };
@@ -44,12 +44,12 @@
 
 {{-- Decision summary: what the admin recommends and what to check before finalizing. --}}
 <article class="sa-card sa-decision">
-    <div class="sa-card-head"><div><h2>{{ $awaiting ? 'Your final decision' : 'Decision' }}</h2><p>{{ $awaiting ? 'Check the details below, then approve or reject. The requester and the admins are notified.' : ($view['status'] === 'pending' ? 'Not ready for your decision yet: the admins are still assessing this request.' : 'This request has moved past final approval.') }}</p></div></div>
+    <div class="sa-card-head"><div><h2>{{ $awaiting ? 'Your final decision' : 'Decision' }}</h2><p>{{ $awaiting ? 'Check the details below, then approve or reject. The requester and the admins are notified.' : ($view['status'] === 'pending' ? 'Not ready for your decision yet: the admins are still assessing this request.' : ($view['cancelled'] ? 'Cancelled by the requester on ' . $day($view['cancelled']['at']) . '. Everything still to come was stopped, including the release of funds.' . ($view['cancelled']['reason'] ? ' Reason: “' . $view['cancelled']['reason'] . '”' : '') : 'This request has moved past final approval.')) }}</p></div></div>
     <div class="sa-card-body">
         <dl class="sa-facts">
             <div><dt>Admin recommendation</dt><dd>@if ($review){{ $review['decision'] === 'approved' ? 'Approve ' . $peso($review['amount']) : 'Reject' }}<small>{{ $review['by'] ?? 'Admin' }} · {{ $day($review['at']) }}</small>@else — @endif</dd></div>
             <div><dt>AI recommendation</dt><dd>{{ ($review['ai_amount'] ?? null) !== null ? $peso($review['ai_amount']) : '—' }}@if ($view['ai'])<small>Criticality {{ $view['ai']['score'] }}/100 · {{ $view['ai']['recommendation'] ?? 'scored' }}</small>@endif</dd></div>
-            <div><dt>Budget</dt><dd>{{ $view['budget']['per_person'] ? $peso($view['budget']['per_person']) . ' × ' . ($view['budget']['people'] ?? $people) . ' people' : 'Not set' }}<small>Total {{ $peso($view['amount']) }}</small></dd></div>
+            <div><dt>Amount needed</dt><dd>{{ $view['need']['amount'] !== null ? $peso($view['need']['amount']) : 'Not set' }}<small>From the social worker's assessment</small></dd></div>
             <div><dt>Checks</dt><dd>{{ ($assessment['outcome'] ?? '') === 'recommended' ? 'Social worker recommends' : (! empty($assessment['assessed_at']) ? 'Social worker does not recommend' : 'Not assessed') }}<small>{{ $verifiedDocs }} of {{ $requiredDocs->count() }} required documents verified · {{ $assessment['verified_beneficiaries'] ?? '—' }} of {{ $view['beneficiary_count'] }} people verified</small></dd></div>
             <div><dt>Unallocated funds</dt><dd>{{ $availableFunds !== null ? $peso($availableFunds) : 'Unavailable' }}<small>Available to grant right now</small></dd></div>
             @if ($view['granted'] !== null)<div><dt>Approved amount</dt><dd>{{ $peso($view['granted']) }}</dd></div>@endif
@@ -202,19 +202,12 @@
     </article>
 </div>
 
-<article class="sa-card" id="budget">
-    <div class="sa-card-head"><div><h2>Budget per person</h2><p>Items and quantities chosen by the admin, priced from your price list</p></div><strong>{{ $view['budget']['per_person'] ? $peso($view['budget']['per_person']) . ' / person' : 'Not set' }}</strong></div>
-    @if ($view['budget']['items'])
-        <div class="sa-table-wrap"><table class="sa-table"><thead><tr><th>Item</th><th>Qty / person</th><th>Unit price</th><th>Price check</th><th>Subtotal</th></tr></thead><tbody>
-            @foreach ($view['budget']['items'] as $item)
-                <tr><td><strong>{{ $item['name'] }}</strong></td><td>{{ $item['qty'] }}</td><td>{{ $peso($item['unit_price']) }}</td>
-                    <td>@if ($item['check'])<span class="sa-badge {{ $item['check'] === 'above' ? 'red' : ($item['check'] === 'within' ? '' : 'gray') }}">{{ $item['check'] }}</span><small>{{ $peso($item['reference_min']) }}–{{ $peso($item['reference_max']) }}</small>@else<small>—</small>@endif</td>
-                    <td>{{ $peso($item['subtotal']) }}</td></tr>
-            @endforeach
-        </tbody></table></div>
-        <p class="sa-section-footer">{{ $view['budget']['people'] ?? $people }} people × {{ $peso($view['budget']['per_person']) }} = <strong>{{ $peso($view['amount']) }}</strong>@if ($view['per_person_cap']) · foundation guideline about {{ $peso($view['per_person_cap']) }} per person @endif</p>
+<article class="sa-card" id="amount">
+    <div class="sa-card-head"><div><h2>Amount needed</h2><p>Decided by the admin / social worker from the assessment</p></div><strong>{{ $view['need']['amount'] !== null ? $peso($view['need']['amount']) : 'Not set' }}</strong></div>
+    @if ($view['need']['amount'] !== null)
+        <p class="sa-section-footer">{{ $view['need']['people'] }} people verified @if ($view['need']['per_person'])· about {{ $peso($view['need']['per_person']) }} per person @endif @if ($view['need']['basis'])<br>{{ $view['need']['basis'] }}@endif</p>
     @else
-        <p class="sa-empty">The admin has not set a budget yet.</p>
+        <p class="sa-empty">The social worker has not recorded the amount yet.</p>
     @endif
 </article>
 

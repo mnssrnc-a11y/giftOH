@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Services\AiScoringService;
+use App\Services\AuditLogger;
+use App\Services\RequestMessageService;
 use App\Services\FundingRules;
 use App\Services\FundingService;
 use App\Services\NotificationService;
+use App\Support\Pampanga;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -34,6 +37,7 @@ class FundController extends Controller
         $max = (int) config('funding.beneficiaries.max');
         $mode = (string) $request->input('transfer_mode');
         $accountKind = $this->rules->accountKind($mode, (string) $request->input('provider'));
+        $place = Pampanga::rules($request->input('municipality'));
         // "0917 123 4567" and "0917-123-4567" are the same number.
         $request->merge(array_filter([
             'phone' => $request->filled('phone') ? preg_replace('/[\s\-]/', '', (string) $request->input('phone')) : null,
@@ -49,8 +53,8 @@ class FundController extends Controller
             'phone' => ['required', 'string', 'regex:/^(\+?63|0)9\d{9}$/'],
             'tax_id' => 'nullable|string|max:255',
             'street' => 'required|string|max:150',
-            'barangay' => 'required|string|max:100',
-            'municipality' => 'required|string|max:100',
+            'municipality' => $place['town'],
+            'barangay' => $place['barangay'],
             'categories' => 'required|array|min:1',
             'categories.*' => [Rule::in($categories)],
             'purpose' => 'required|string|max:5000',
@@ -66,6 +70,8 @@ class FundController extends Controller
         ], collect($requirements)->mapWithKeys(fn ($doc, $field) => [$field => "required|{$documentRule}"])->all()), [
             'org_choice.required' => 'Choose your organization, or "Others" to type its name.',
             'org_name_other.required_if' => 'Type the name of your organization.',
+            'municipality.in' => 'Choose a city or town in Pampanga from the list.',
+            'barangay.in' => 'Choose a barangay of the chosen city or town.',
             'phone.regex' => 'Enter a mobile number like 09171234567.',
             'categories.required' => 'Choose at least one kind of help you need.',
             'categories.*.in' => 'Choose from the listed kinds of help.',
@@ -106,7 +112,7 @@ class FundController extends Controller
         // The first need chosen is the main category (scores, priorities); every need is kept.
         $chosen = array_values(array_intersect($categories, $validated['categories']));
         $primary = $chosen[0];
-        $address = ['street' => trim($validated['street']), 'barangay' => trim($validated['barangay']), 'municipality' => trim($validated['municipality'])];
+        $address = ['street' => trim($validated['street']), 'barangay' => $validated['barangay'], 'municipality' => $validated['municipality'], 'province' => Pampanga::PROVINCE];
         $created = $this->fundingService->createRequest([
             'user_id' => Auth::id(),
             'status_id' => 1,
@@ -119,7 +125,7 @@ class FundController extends Controller
             'contact_person' => $validated['contact_person'],
             'contact_email' => $validated['contact_email'],
             'contact_phone' => $validated['phone'],
-            'address' => implode(', ', $address),
+            'address' => Pampanga::address($address['street'], $address['barangay'], $address['municipality']),
             'address_parts' => $address,
             'tax_id' => $validated['tax_id'] ?? null,
             'purpose' => $validated['purpose'],
@@ -127,7 +133,7 @@ class FundController extends Controller
             // The names of the people are listed when the funds are released.
             'beneficiaries' => [],
             'beneficiary_count' => (int) $validated['beneficiary_count'],
-            // The per-person budget (and so the amount) is decided by an admin after the assessment.
+            // The amount is decided by the social worker / admin in the assessment.
             'amount_requested' => 0,
             'documents' => $documents,
             'disbursement' => [
@@ -170,7 +176,7 @@ class FundController extends Controller
             'people.*.middle' => 'nullable|string|max:80',
         ], [
             'people.required' => 'Add the people who will receive the help.',
-            'people.max' => "The approved budget covers {$limit} people. Remove the extra names.",
+            'people.max' => "The approval covers {$limit} people. Remove the extra names.",
             'people.*.last.required' => 'Enter the last name of person #:position.',
             'people.*.first.required' => 'Enter the first name of person #:position.',
         ]);
@@ -220,6 +226,37 @@ class FundController extends Controller
 
         return redirect()->route('fund-request.show', $id)
             ->with('success', 'Your appeal was sent. The foundation will review your request again and notify you of the decision.');
+    }
+
+    /**
+     * The requester cancels the request before the funds go out. Everything still to come stops
+     * (interview, decision, release of funds); the admins and super admins are told.
+     */
+    public function cancel(Request $request, string $id, AuditLogger $audit, RequestMessageService $messages)
+    {
+        $fundRequest = $this->fundingService->getRequestById($id);
+        abort_if($fundRequest === null || (string) ($fundRequest['user_id'] ?? '') !== (string) Auth::id(), 404);
+
+        $validated = $request->validate([
+            'cancel_reason' => 'nullable|string|max:1000',
+            'confirm' => 'accepted',
+        ], ['confirm.accepted' => 'Tick the box to confirm that the request will be cancelled.']);
+        $reason = filled($validated['cancel_reason'] ?? null) ? trim($validated['cancel_reason']) : null;
+
+        if ($this->fundingService->cancelRequest($id, Auth::id(), $reason) === null) {
+            return redirect()->route('fund-request.show', $id)
+                ->with('alert_error', 'This request can no longer be cancelled: the funds have already been sent, or the request is closed.');
+        }
+
+        $org = $fundRequest['org_name'] ?? 'A requester';
+        $message = "{$org} cancelled the request." . ($reason ? ' Reason: ' . mb_strimwidth($reason, 0, 140, '…') : '') . ' Nothing more needs to be done on it.';
+        $this->notifications->notifyAdmins($id, 'request_cancelled', 'Request cancelled', $message);
+        $this->notifications->notifySuperAdmins($id, 'request_cancelled', 'Request cancelled', $message);
+        $messages->system($id, 'The requester cancelled this request.' . ($reason ? " Reason: {$reason}" : ''), 'staff');
+        $audit->record('funding', 'Request cancelled by the requester', $id, ['organization' => $org, 'reason' => $reason]);
+
+        return redirect()->route('fund-request.show', $id)
+            ->with('success', 'Your request was cancelled. Nothing more will happen on it, and no funds will be released.');
     }
 
     /**

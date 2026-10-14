@@ -83,52 +83,6 @@ class AiClient
     }
 
     /**
-     * Ask Gemini with Google Search grounding (free tier on the Flash models). Returns
-     * ['data' => array, 'sources' => [url, ...], 'model' => string] or null when unavailable.
-     */
-    public function searchJson(string $system, string $prompt): ?array
-    {
-        $gemini = $this->provider('gemini');
-        $model = config('ai.search.model');
-        $usageKey = 'ai:usage:gemini-search:' . now()->format('Y-m-d');
-        if ($gemini === null || ! $model || Cache::get('ai:cooldown:gemini-search')
-            || (int) Cache::get($usageKey, 0) >= (int) config('ai.search.daily_limit', 400)) {
-            return null;
-        }
-
-        try {
-            $response = Http::timeout(max(45, (int) config('ai.timeout', 25)))
-                ->withHeaders(['x-goog-api-key' => $gemini['api_key']])
-                ->post(rtrim($gemini['base_url'], '/') . "/models/{$model}:generateContent", [
-                    'system_instruction' => ['parts' => [['text' => $system . "\nAnswer with a single JSON object only."]]],
-                    'contents' => [['role' => 'user', 'parts' => [['text' => $prompt]]]],
-                    'tools' => [['google_search' => (object) []]],
-                    'generationConfig' => ['temperature' => 0.1],
-                ]);
-        } catch (ConnectionException $exception) {
-            $this->coolDown('gemini-search', 60, $exception->getMessage());
-
-            return null;
-        }
-
-        if (! $response->successful()) {
-            $this->coolDown('gemini-search', $response->status() === 429 ? 300 : 120, "HTTP {$response->status()}: " . mb_substr($response->body(), 0, 300));
-
-            return null;
-        }
-
-        Cache::add($usageKey, 0, now()->endOfDay());
-        Cache::increment($usageKey);
-
-        $text = collect((array) $response->json('candidates.0.content.parts'))->pluck('text')->filter()->implode("\n");
-        $data = $this->decodeJson($text);
-        $sources = collect((array) $response->json('candidates.0.groundingMetadata.groundingChunks'))
-            ->pluck('web.uri')->filter()->unique()->values()->all();
-
-        return $data === null ? null : ['data' => $data, 'sources' => $sources, 'model' => $model];
-    }
-
-    /**
      * Send a tiny request to one provider to check its key and model.
      *
      * @return array{ok: bool, message: string, ms: int}

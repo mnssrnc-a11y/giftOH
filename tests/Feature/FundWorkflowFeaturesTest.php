@@ -14,9 +14,6 @@ use App\Services\AuditLogger;
 use App\Services\FundingService;
 use App\Services\IotService;
 use App\Services\NotificationService;
-use App\Services\PriceListService;
-use App\Services\PriceUpdateRunner;
-use App\Services\PriceUpdateService;
 use App\Services\SystemSettings;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -42,42 +39,6 @@ class FundWorkflowFeaturesTest extends TestCase
     private function quietBell(): void
     {
         $this->mock(NotificationService::class, fn ($mock) => $mock->shouldReceive('getByUser')->andReturn([]));
-    }
-
-    public function test_the_price_update_runs_in_the_background_and_only_once_at_a_time(): void
-    {
-        $runner = new class extends PriceUpdateRunner {
-            public array $launched = [];
-
-            protected function launch(array $arguments): void
-            {
-                $this->launched[] = $arguments;
-            }
-        };
-        $this->app->instance(PriceUpdateRunner::class, $runner);
-
-        $this->as('super_admin')->post(route('superadmin.prices.update'))
-            ->assertRedirect(route('superadmin') . '#prices')->assertSessionHas('status');
-        $this->assertSame([['prices:update', '--claimed']], $runner->launched, 'the update runs as its own process, not inside the request');
-
-        $this->as('super_admin')->post(route('superadmin.prices.update'))->assertSessionHas('alert_error');
-        $this->assertCount(1, $runner->launched, 'a second run never starts while one is going');
-
-        $this->as('super_admin')->getJson(route('superadmin.prices.status'))->assertOk()->assertJson(['running' => true, 'status' => ['state' => 'running']]);
-        $this->as('admin')->post(route('superadmin.prices.update'))->assertRedirect(route('admin'));
-    }
-
-    public function test_a_failed_price_update_is_recorded_released_and_reported(): void
-    {
-        $this->mock(PriceUpdateService::class, fn ($mock) => $mock->shouldReceive('run')->andThrow(new \RuntimeException('DTI page unreachable')));
-        $this->mock(PriceListService::class, fn ($mock) => $mock->shouldReceive('recordRun')->once()->withArgs(fn ($run) => str_contains($run['failed'], 'DTI page unreachable')));
-        $this->mock(NotificationService::class, fn ($mock) => $mock->shouldReceive('notifyRole')->once()->with('super_admin', 'price_update', 'Price update failed', Mockery::pattern('/DTI page unreachable/'), Mockery::any()));
-
-        $this->artisan('prices:update')->assertExitCode(1);
-
-        $runner = app(PriceUpdateRunner::class);
-        $this->assertFalse($runner->isRunning(), 'the lock is released so the next run can start');
-        $this->assertSame('failed', $runner->status()['state']);
     }
 
     public function test_staff_notifications_reach_only_active_accounts_with_that_role(): void
@@ -125,8 +86,8 @@ class FundWorkflowFeaturesTest extends TestCase
             'beneficiaries' => ['Ana Cruz', 'Ben Reyes'], 'beneficiary_count' => 25, 'amount_requested' => 12500,
             'contact_person' => 'Maria Santos', 'contact_email' => 'maria@example.test', 'created_at' => now()->subDays(9)->toIso8601String(),
             'documents' => ['request_letter' => 'fund_documents/request_letter/letter.pdf'],
-            'assessment' => ['interview_at' => now()->subDays(5)->toIso8601String(), 'social_worker' => 'Liza Ramos', 'assessed_at' => now()->subDays(4)->toIso8601String(), 'outcome' => 'recommended', 'verified_beneficiaries' => 25, 'notes' => 'Visited the home; residents confirmed.'],
-            'budget' => ['per_person' => 500, 'people' => 25, 'items' => [['ref' => 'rice', 'name' => 'Rice 5 kg', 'qty' => 1, 'unit_price' => 500, 'subtotal' => 500]]],
+            'assessment' => ['interview_at' => now()->subDays(5)->toIso8601String(), 'social_worker' => 'Liza Ramos', 'assessed_at' => now()->subDays(4)->toIso8601String(), 'outcome' => 'recommended', 'verified_beneficiaries' => 25, 'notes' => 'Visited the home; residents confirmed.',
+                'amount_needed' => 12500, 'amount_basis' => 'Rice and canned goods for 25 residents for two weeks'],
             'admin_decision' => 'approved', 'admin_recommended_amount' => 12500, 'ai_recommended_amount' => 11000,
             'admin_notes' => 'Barangay confirmed the list.', 'admin_reviewed_by' => 'admin-1', 'admin_reviewed_at' => now()->subDay()->toIso8601String(),
             'staff_notes' => ['n1' => ['body' => 'Called the barangay captain.', 'author_name' => 'Jo Admin', 'at' => now()->subDay()->toIso8601String()]],
@@ -144,7 +105,6 @@ class FundWorkflowFeaturesTest extends TestCase
             ['id' => 'm1', 'side' => 'requester', 'sender_name' => 'Maria Santos', 'body' => 'Is the interview on Monday?', 'created_at' => now()->subDays(6)->toIso8601String()],
         ]));
         $this->mock(IotService::class, fn ($mock) => $mock->shouldReceive('getAvailableFunds')->andReturn(50000.0));
-        $this->mock(PriceListService::class, fn ($mock) => $mock->shouldReceive('items')->andReturn([]));
         $this->mock(SystemSettings::class, fn ($mock) => $mock->shouldReceive('requestIntervalDays')->andReturn(93));
 
         $this->as('super_admin')->get(route('superadmin.fund-request.show', 'req-1'))
@@ -155,7 +115,7 @@ class FundWorkflowFeaturesTest extends TestCase
             ->assertSee('Visited the home; residents confirmed.') // social worker's findings
             ->assertSee('Barangay confirmed the list.')          // admin's note
             ->assertSee('Called the barangay captain.')          // verification note
-            ->assertSee('Rice 5 kg')                             // budget
+            ->assertSee('₱12,500.00')->assertSee('Rice and canned goods for 25 residents for two weeks') // amount needed, from the assessment
             ->assertSee('Is the interview on Monday?')           // conversation
             ->assertSee('Approve request')->assertSee('Reject request');
 

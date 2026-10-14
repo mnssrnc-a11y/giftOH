@@ -16,9 +16,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /**
- * Admin processing of a single funding request: social worker interview and assessment,
- * document verification, verification notes, the per-person budget (items from the super
- * admin's price list), AI scoring, release of funds, and liquidation review.
+ * Admin processing of a single funding request: social worker interview and assessment (with
+ * the amount the request needs), document verification, verification notes, AI scoring, release
+ * of funds, and liquidation review.
  */
 class AdminRequestController extends Controller
 {
@@ -100,54 +100,32 @@ class AdminRequestController extends Controller
 
     public function recordAssessment(Request $request, string $id)
     {
+        // The social worker / admin decides how much the request needs from the assessment.
         $validated = $request->validate([
             'outcome' => 'required|in:recommended,not_recommended',
             'verified_beneficiaries' => 'required|integer|min:0|max:' . config('funding.beneficiaries.max'),
+            'amount_needed' => 'required_if:outcome,recommended|nullable|numeric|min:1|max:10000000',
+            'amount_basis' => 'nullable|string|max:1000',
             'notes' => 'required|string|max:5000',
             'social_worker' => 'nullable|string|max:120',
         ], [
             'notes.required' => 'Summarize the social worker\'s findings.',
-        ]);
+            'amount_needed.required_if' => 'Enter the amount the request needs, based on the assessment.',
+        ], ['amount_needed' => 'amount needed']);
+        if ($validated['outcome'] !== 'recommended') {
+            $validated['amount_needed'] = null;
+        }
 
         $updated = $this->funding->recordAssessment($id, $validated, Auth::id());
         if ($updated) {
-            $this->audit->record('funding', 'Assessment recorded: ' . str_replace('_', ' ', $validated['outcome']), $id, ['verified_people' => $validated['verified_beneficiaries']]);
+            $this->audit->record('funding', 'Assessment recorded: ' . str_replace('_', ' ', $validated['outcome'])
+                . ($validated['amount_needed'] ? ' · amount needed ₱' . number_format((float) $validated['amount_needed'], 2) : ''), $id,
+                ['verified_people' => $validated['verified_beneficiaries']]);
         }
 
         return $this->back($id, $updated, $validated['outcome'] === 'recommended'
-            ? 'Assessment recorded. The request is ready for your decision.'
+            ? 'Assessment recorded with the amount needed. The request is ready for your decision.'
             : 'Assessment recorded as not recommended. You can now reject the request.');
-    }
-
-    /**
-     * Admin decides the budget per person: items and quantities from the super admin's price list.
-     * Prices always come from the list, never from the form, and admins cannot add items.
-     */
-    public function setBudget(Request $request, string $id, FundingRules $rules)
-    {
-        $fundRequest = $this->funding->getRequestById($id);
-        abort_if($fundRequest === null, 404);
-
-        $validated = $request->validate([
-            'budget' => 'required|array|min:1|max:40',
-            'budget.*.ref' => 'required|string|max:120',
-            'budget.*.qty' => 'required|numeric|min:0.25|max:10000',
-        ], [
-            'budget.required' => 'Add at least one item to the per-person budget.',
-            'budget.*.ref.required' => 'Items must come from the price list.',
-        ]);
-        $budget = $rules->buildBudget($validated['budget']);
-
-        if ($budget['items'] === []) {
-            return redirect()->route('admin.fund-request.show', $id)->with('alert_error', 'Add at least one item from the price list with a quantity.');
-        }
-
-        $updated = $this->funding->setBudget($id, $budget, Auth::id());
-        if ($updated) {
-            $this->audit->record('funding', 'Budget set: ₱' . number_format($budget['per_person'], 2) . ' per person', $id, ['organization' => $fundRequest['org_name'] ?? null]);
-        }
-
-        return $this->back($id, $updated, 'Budget saved: ₱' . number_format($budget['per_person'], 2) . ' per person.');
     }
 
     /**

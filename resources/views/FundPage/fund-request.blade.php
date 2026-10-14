@@ -10,7 +10,7 @@
     $organizations = config('funding.known_organizations');
     $steps = [1 => 'Organization', 2 => 'Address', 3 => 'Your need', 4 => 'Receiving funds', 5 => 'Documents', 6 => 'Review & submit'];
     // Which step each field is on, so every error can point to its step.
-    $fieldStep = ['org_choice' => 1, 'org_name_other' => 1, 'contact_person' => 1, 'contact_email' => 1, 'phone' => 1, 'tax_id' => 1,
+    $fieldStep = ['org_choice' => 1, 'org_name_other' => 1, 'contact_person' => 1, 'contact_email' => 1, 'phone' => 1,
         'street' => 2, 'barangay' => 2, 'municipality' => 2,
         'categories' => 3, 'purpose' => 3, 'beneficiary_count' => 3,
         'transfer_mode' => 4, 'provider' => 4, 'account_name' => 4, 'account_number' => 4] + array_fill_keys(array_keys(config('funding.requirements')), 5);
@@ -79,17 +79,28 @@
                     <x-fr-field name="contact_person" label="Contact person" maxlength="255" autocomplete="name" placeholder="Full name" data-receiver-name />
                     <x-fr-field name="contact_email" label="Contact email" type="email" :value="auth()->user()->email" maxlength="255" autocomplete="email" />
                     <x-fr-field name="phone" label="Contact number" type="tel" :value="auth()->user()->phone" inputmode="tel" maxlength="13" autocomplete="tel" placeholder="09171234567" pattern="(\+?63|0)9[0-9]{9}" />
-                    <x-fr-field name="tax_id" label="Tax ID / registration no." :required="false" maxlength="255" />
                 </div>
             </section>
 
             <section class="fr-panel" id="step-2" data-step="2" aria-labelledby="step-2-title">
                 <h2 id="step-2-title">2. Address</h2>
-                <p>Where the organization is. It is saved as one address: street, barangay, municipality.</p>
+                <p>Where the organization is in Pampanga. Choose the city or town, then the barangay.</p>
                 <div class="fr-grid">
-                    <x-fr-field name="street" label="Street / house no." wide maxlength="150" autocomplete="address-line1" placeholder="e.g. 123 Rizal St." data-address-part />
-                    <x-fr-field name="barangay" label="Barangay" maxlength="100" placeholder="e.g. San Jose" data-address-part />
-                    <x-fr-field name="municipality" label="Municipality / city" maxlength="100" autocomplete="address-level2" placeholder="e.g. City of San Fernando" data-address-part />
+                    <div class="fr-field" data-field="province">
+                        <label for="province">Province</label>
+                        <input id="province" value="{{ \App\Support\Pampanga::PROVINCE }}" readonly aria-describedby="province-hint" data-address-part="4">
+                        <small id="province-hint">Help is given in Pampanga only.</small>
+                    </div>
+                    <x-fr-field name="municipality" label="City / municipality">
+                        <select id="municipality" name="municipality" required aria-describedby="municipality-error" data-place-town data-address-part="3">
+                            <option value="">Choose the city or town…</option>
+                            @foreach (\App\Support\Pampanga::towns() as $town)<option @selected(old('municipality') === $town)>{{ $town }}</option>@endforeach
+                        </select>
+                    </x-fr-field>
+                    <x-fr-field name="barangay" label="Barangay">
+                        @include('partials.barangay-select', ['name' => 'barangay', 'town' => old('municipality'), 'extra' => 'aria-describedby="barangay-error" data-address-part="2"'])
+                    </x-fr-field>
+                    <x-fr-field name="street" label="Street / house no." maxlength="150" autocomplete="address-line1" placeholder="e.g. 123 Rizal St." data-address-part="1" />
                 </div>
                 <p class="fr-preview" data-address-preview aria-live="polite"></p>
             </section>

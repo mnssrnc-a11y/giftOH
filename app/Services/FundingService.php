@@ -16,6 +16,7 @@ class FundingService
         'rejected' => 3,
         'completed' => 4,
         self::STATUS_UNDER_REVIEW => 5,
+        'cancelled' => 6,
     ];
 
     public function __construct(
@@ -38,6 +39,10 @@ class FundingService
         $cutoff = now()->subDays($days);
 
         foreach ($this->getRequestsByUser($userId) as $request) {
+            // A cancelled request was never granted: it does not hold up the next one.
+            if ($this->statusOf($request) === 'cancelled') {
+                continue;
+            }
             if (in_array($this->statusOf($request), ['pending', self::STATUS_UNDER_REVIEW], true)) {
                 return 'You already have a request in progress. Only one request can be open at a time.';
             }
@@ -303,6 +308,7 @@ class FundingService
             },
             'completed' => ['completed', 'Completed', 6],
             'rejected' => ['rejected', 'Rejected', 0],
+            'cancelled' => ['cancelled', 'Cancelled by the requester', 0],
             default => ['other', ucfirst($this->statusOf($request)), 0],
         };
 
@@ -431,7 +437,11 @@ class FundingService
     }
 
     /**
-     * Social workers' assessment result. Approval requires a "recommended" outcome.
+     * Social workers' assessment result, with the amount the request needs: the admin / social
+     * worker decides it from the interview and what the people need. Approval requires a
+     * "recommended" outcome and that amount. Recording it again (while pending) replaces it.
+     *
+     * @param  array{outcome: string, verified_beneficiaries: int, notes: string, amount_needed?: ?float, amount_basis?: ?string}  $result
      */
     public function recordAssessment(string $requestId, array $result, string|int $adminId): ?array
     {
@@ -440,44 +450,77 @@ class FundingService
             return null;
         }
 
+        $amount = isset($result['amount_needed']) ? round((float) $result['amount_needed'], 2) : null;
         $assessment = array_merge((array) ($request['assessment'] ?? []), $result, [
+            'amount_needed' => $amount,
             'assessed_by' => (string) $adminId,
             'assessed_at' => now()->toIso8601String(),
         ]);
 
-        $data = ['assessment' => $assessment];
-        // A budget set before the assessment follows the number of people the social worker verified.
-        if (! empty($request['budget']['per_person'])) {
-            $data['amount_requested'] = round((float) $request['budget']['per_person'] * (int) $result['verified_beneficiaries'], 2);
-            $data['budget'] = array_merge((array) $request['budget'], ['people' => (int) $result['verified_beneficiaries']]);
-        }
-
-        return $this->fundingRequests->update($requestId, $data);
+        return $this->fundingRequests->update($requestId, [
+            'assessment' => $assessment,
+            'amount_requested' => $amount ?? 0,
+        ]);
     }
 
     /**
-     * Admin decides the per-person budget. The amount is per person × the people verified by the
-     * social worker (or listed in the request when not yet assessed).
-     *
-     * @param  array{items: array, per_person: float}  $budget  from FundingRules::buildBudget()
+     * The amount the request needs, as set in the assessment (older requests: their per-person
+     * budget). Null until it is decided.
      */
-    public function setBudget(string $requestId, array $budget, string|int $adminId): ?array
+    public function amountNeeded(array $request): ?float
+    {
+        $amount = $request['assessment']['amount_needed'] ?? (! empty($request['budget']['per_person']) ? ($request['amount_requested'] ?? null) : null);
+
+        return is_numeric($amount) && (float) $amount > 0 ? (float) $amount : null;
+    }
+
+    /**
+     * The requester may cancel until the money has gone out: while it is assessed, decided, or
+     * approved and waiting for the release. Not after the release, nor while a transfer is on its way.
+     */
+    public function cancellable(array $request): bool
+    {
+        $payout = $request['disbursement']['payout']['status'] ?? null;
+
+        return in_array($this->statusOf($request), ['pending', self::STATUS_UNDER_REVIEW, 'approved'], true)
+            && empty($request['disbursement']['released_at'] ?? null)
+            && ! in_array($payout, ['processing', 'succeeded'], true);
+    }
+
+    /**
+     * The requester cancels the request: everything still to come stops (interview, decision,
+     * release of funds). Its approved or recommended amount is no longer held for it.
+     */
+    public function cancelRequest(string $requestId, string|int $userId, ?string $reason): ?array
     {
         $request = $this->getRequestById($requestId);
-        if ($request === null || $this->statusOf($request) !== 'pending') {
+        if ($request === null || (string) ($request['user_id'] ?? '') !== (string) $userId || ! $this->cancellable($request)) {
             return null;
         }
 
-        $people = (int) ($request['assessment']['verified_beneficiaries'] ?? $request['beneficiary_count'] ?? 0);
-
-        return $this->fundingRequests->update($requestId, [
-            'budget' => array_merge($budget, [
-                'people' => $people,
-                'set_by' => (string) $adminId,
-                'set_at' => now()->toIso8601String(),
-            ]),
-            'amount_requested' => round($budget['per_person'] * $people, 2),
+        $timestamp = now()->toIso8601String();
+        $updated = $this->fundingRequests->update($requestId, [
+            'status' => 'cancelled',
+            'status_name' => 'cancelled',
+            'status_id' => self::STATUS_IDS['cancelled'],
+            'cancelled_at' => $timestamp,
+            'cancelled_by' => (string) $userId,
+            'cancel_reason' => $reason,
+            'cancelled_stage' => $this->stageOf($request)['label'],
         ]);
+
+        if ($updated !== null) {
+            $this->approvals->create([
+                'request_id' => (string) $requestId,
+                'stage' => 'cancelled',
+                'approved_by' => (string) $userId,
+                'approval_status' => 'cancelled',
+                'approval_notes' => $reason,
+                'decision_at' => $timestamp,
+            ]);
+        }
+
+        return $updated;
     }
 
     /**
@@ -562,7 +605,7 @@ class FundingService
     }
 
     /**
-     * How many people the approved budget covers (what the requester may list at release).
+     * How many people the approval covers (what the requester may list at release).
      */
     public function approvedPeople(array $request): int
     {

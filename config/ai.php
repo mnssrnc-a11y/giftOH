@@ -62,14 +62,6 @@ return [
         ],
     ],
 
-    // Web search for the monthly price update (prices of items the DTI/TGP pages don't list, and
-    // new items admins add). Uses Gemini's free "Grounding with Google Search" on the current
-    // Flash model (the -latest alias follows Google's model updates). Needs GEMINI_API_KEY.
-    'search' => [
-        'model' => env('AI_GEMINI_SEARCH_MODEL', 'gemini-flash-latest'),
-        'daily_limit' => (int) env('AI_SEARCH_DAILY_LIMIT', 400),
-    ],
-
     // Order to try providers in. Remove or reorder names to taste.
     'order' => array_filter(array_map('trim', explode(',', env('AI_PROVIDER_ORDER', 'gemini,groq,openrouter')))),
 ];

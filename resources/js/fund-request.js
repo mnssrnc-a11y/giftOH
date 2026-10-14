@@ -87,9 +87,14 @@ if (form && config) {
         input.placeholder = kind === 'email' ? 'name@example.com' : kind === 'mobile' ? '09171234567' : 'Digits only';
     }
 
+    // Saved as "street, barangay, town, Pampanga" (data-address-part gives the order).
+    const addressText = () => $$('[data-address-part]')
+        .sort((a, b) => Number(a.dataset.addressPart) - Number(b.dataset.addressPart))
+        .map(input => input.value.trim()).filter(Boolean).join(', ');
+
     function addressPreview() {
-        const parts = $$('[data-address-part]').map(input => input.value.trim()).filter(Boolean);
-        $('[data-address-preview]').textContent = parts.length ? `Saved as: ${parts.join(', ')}` : '';
+        const text = addressText();
+        $('[data-address-preview]').textContent = text ? `Saved as: ${text}` : '';
     }
 
     function receiverNames() {
@@ -187,7 +192,7 @@ if (form && config) {
         const needs = $$('[name="categories[]"]:checked').map(box => box.nextElementSibling.textContent).join(', ');
         const rows = [
             [1, 'Organization', org], [1, 'Contact', [value('contact_person'), value('contact_email'), value('phone')].filter(Boolean).join(' · ')],
-            [2, 'Address', $$('[data-address-part]').map(input => input.value.trim()).filter(Boolean).join(', ')],
+            [2, 'Address', addressText()],
             [3, 'Kinds of help', needs], [3, 'People', value('beneficiary_count')], [3, 'Purpose', value('purpose')],
             [4, 'Receive through', [config.modes[value('transfer_mode')]?.label, value('provider'), value('account_name'), value('account_number')].filter(Boolean).join(' · ')],
             [5, 'Documents', $$('[data-file-input]').map(input => input.files?.[0]?.name).filter(Boolean).join(', ')],

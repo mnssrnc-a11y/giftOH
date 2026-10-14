@@ -1,6 +1,6 @@
 // Super admin workspace: section navigation (#hash), the fund request list (each opens the full
-// request for the final check), account management, price list items, table filters, the running
-// price update, and confirmation before settings are saved. All data comes from the server.
+// request for the final check), account management, table filters, and confirmation before
+// settings are saved. All data comes from the server.
 const root = document.querySelector('[data-superadmin]');
 if (root) {
     const $ = (s, scope = root) => scope.querySelector(s);
@@ -11,7 +11,7 @@ if (root) {
     const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content ?? '';
     const sections = $$('[data-sa-page]');
 
-    const STATUS = { awaiting: 'Awaiting you', pending: 'With admins', approved: 'Approved', completed: 'Completed', rejected: 'Rejected' };
+    const STATUS = { awaiting: 'Awaiting you', pending: 'With admins', approved: 'Approved', completed: 'Completed', rejected: 'Rejected', cancelled: 'Cancelled' };
     const requests = (window.giftOfHopeFinalizationQueue ?? []).map(row => ({
         id: row.id,
         title: row.organization !== '—' ? row.organization : row.project,
@@ -30,7 +30,7 @@ if (root) {
 
     const dialog = $('[data-sa-dialog]');
     const content = $('[data-sa-dialog-content]');
-    const badge = status => `<span class="sa-badge ${status === 'Awaiting you' ? 'amber' : ['Rejected', 'Disabled'].includes(status) ? 'red' : ['With admins'].includes(status) ? 'gray' : ''}">${escape(status)}</span>`;
+    const badge = status => `<span class="sa-badge ${status === 'Awaiting you' ? 'amber' : ['Rejected', 'Cancelled', 'Disabled'].includes(status) ? 'red' : ['With admins'].includes(status) ? 'gray' : ''}">${escape(status)}</span>`;
     const open = html => { content.innerHTML = html; if (!dialog.open) dialog.showModal(); content.querySelector('input:not([type=hidden]),select,textarea,button')?.focus(); };
     const actions = text => `<div class="sa-actions"><button type="button" class="sa-button secondary" data-sa-close>Cancel</button><button class="sa-button" type="submit">${escape(text)}</button></div>`;
     const empty = columns => `<tr><td colspan="${columns}" class="sa-empty">No matches found. Try another search or filter.</td></tr>`;
@@ -51,7 +51,7 @@ if (root) {
             .join('') || empty(5);
     }
 
-    // Server-rendered tables (accounts, prices, activity log): filter rows by text and data attributes.
+    // Server-rendered tables (accounts, activity log): filter rows by text and data attributes.
     function filterTable(name) {
         const rows = $$(`[data-sa-filter-body="${name}"] tr[data-text]`);
         if (!rows.length) return;
@@ -72,7 +72,7 @@ if (root) {
         $('[data-sa-menu]')?.setAttribute('aria-expanded', String(open));
     }
 
-    // Sections of the workspace page (#dashboard, #accounts, #prices-food...). Other pages in this
+    // Sections of the workspace page (#dashboard, #accounts, #settings-mail...). Other pages in this
     // layout (a request, settings, notifications) mark their own sidebar item on the server.
     function navigate() {
         setMenu(false);
@@ -93,57 +93,6 @@ if (root) {
         const target = anchor !== page ? document.getElementById(anchor) : null;
         if (target) target.scrollIntoView({ block: 'start' });
         else if (changed) window.scrollTo({ top: 0 });
-    }
-
-    /* ---------- Price list: only the super admin adds, edits or deletes items ---------- */
-
-    const prices = saConfig.prices ?? {};
-    const priceGroups = saConfig.priceGroups ?? {};
-    const priceForm = (item, groupKey) => {
-        const group = item?.group ?? groupKey;
-        const groupOptions = Object.entries(priceGroups).map(([key, g]) => `<option value="${escape(key)}" ${key === group ? 'selected' : ''}>${escape(g.label)}</option>`).join('');
-        const types = (priceGroups[group]?.types ?? []).map(type => `<option value="${escape(type)}">`).join('');
-        return `<div class="sa-fields">
-            <label class="sa-field">Group<select name="group" required>${groupOptions}</select></label>
-            <label class="sa-field">Type <small>(e.g. Rice (per kilo), Medicine (per piece))</small><input name="type" maxlength="80" list="sa-price-types" value="${escape(item?.type ?? '')}"><datalist id="sa-price-types">${types}</datalist></label>
-            <label class="sa-field">Item name<input name="name" maxlength="120" required value="${escape(item?.name ?? '')}"></label>
-            <label class="sa-field">Size / unit<input name="size" maxlength="60" required value="${escape(item?.size ?? '')}" placeholder="e.g. per tablet, 1 kg"></label>
-            <label class="sa-field full">Budget price (₱)<input type="number" name="price" min="0.01" step="0.01" ${item ? 'required' : ''} value="${item ? escape(item.price) : ''}" placeholder="${item ? '' : 'Leave empty to let the AI find the price by web search'}"><small>${item ? `Reference range ₱${escape(item.min)}–₱${escape(item.max)} · source: ${escape(item.source ?? '—')}` : 'Admins use this price in budgets and cannot change it.'}</small></label>
-        </div>`;
-    };
-
-    function addPriceItem(groupKey) {
-        open(`<h2 id="sa-dialog-title">Add item · ${escape(priceGroups[groupKey]?.label ?? '')}</h2><p>New items are available to admins for budgets right away.</p>
-            <form method="POST" action="${escape(saConfig.priceStoreUrl)}" data-price-form><input type="hidden" name="_token" value="${escape(csrf())}"><input type="hidden" name="_section" value="prices-${escape(groupKey)}">${priceForm(null, groupKey)}${actions('Add item')}</form>`);
-        $('[data-price-form]', content).addEventListener('submit', event => event.submitter?.setAttribute('disabled', ''));
-    }
-
-    function editPriceItem(key) {
-        const item = prices[key];
-        if (!item) return;
-        const url = (saConfig.priceItemUrl ?? '').replace('__KEY__', encodeURIComponent(key));
-        open(`<h2 id="sa-dialog-title">Edit item</h2><p>${escape(item.name)} (${escape(item.size)}) · ${escape(item.group_label)}. Budgets already saved keep the price they were saved with.</p>
-            <form method="POST" action="${escape(url)}" data-price-form><input type="hidden" name="_token" value="${escape(csrf())}"><input type="hidden" name="_method" value="PUT"><input type="hidden" name="_section" value="prices-${escape(item.group)}">${priceForm(item)}${actions('Save item')}</form>
-            <form method="POST" action="${escape(url)}" data-price-delete class="sa-dialog-danger"><input type="hidden" name="_token" value="${escape(csrf())}"><input type="hidden" name="_method" value="DELETE">
-                <label class="sa-check"><input type="checkbox" required> Remove ${escape(item.name)} from the price list.</label>
-                <div class="sa-actions" style="justify-content:flex-start"><button class="sa-button secondary" type="submit">Delete item</button></div></form>`);
-        $$('[data-price-form],[data-price-delete]', content).forEach(form => form.addEventListener('submit', event => event.submitter?.setAttribute('disabled', '')));
-    }
-
-    // While the AI price update runs (a background process), check on it and reload when it ends.
-    const priceStatus = $('[data-price-status]');
-    if (priceStatus?.dataset.running === 'true' && saConfig.priceStatusUrl) {
-        const poll = setInterval(async () => {
-            try {
-                const response = await fetch(saConfig.priceStatusUrl, { headers: { Accept: 'application/json' } });
-                const result = await response.json();
-                if (!result.running) {
-                    clearInterval(poll);
-                    priceStatus.textContent = result.status?.state === 'failed' ? 'Update failed' : 'Update finished';
-                    location.reload();
-                }
-            } catch { /* try again on the next tick */ }
-        }, 8000);
     }
 
     function manageAccount(account) {
@@ -185,10 +134,6 @@ if (root) {
         else if (root.classList.contains('nav-open') && !event.target.closest('.ws-sidebar')) setMenu(false);
         const account = event.target.closest('[data-sa-account]');
         if (account) manageAccount(accounts.find(a => a.id === account.dataset.saAccount));
-        const addPrice = event.target.closest('[data-sa-price-add]');
-        if (addPrice) addPriceItem(addPrice.dataset.saPriceAdd);
-        const editPrice = event.target.closest('[data-sa-price-edit]');
-        if (editPrice) editPriceItem(editPrice.dataset.saPriceEdit);
     });
     document.addEventListener('keydown', event => { if (event.key === 'Escape') setMenu(false); });
 

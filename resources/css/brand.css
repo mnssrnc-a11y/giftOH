@@ -427,7 +427,15 @@
 .tour-next { border: 1px solid var(--brand); background: var(--brand); color: #fff; }
 .tour-next:hover { background: var(--brand-strong); }
 .tour-card button:focus-visible { outline: 3px solid var(--brand-cyan); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .tour-spot { transition: none; } }
+/* "Your turn": only the highlighted part (and the card) can be used, and it pulses gently. */
+.tour-layer.is-hands-on { pointer-events: none; }
+.tour-layer.is-hands-on .tour-card { pointer-events: auto; }
+.tour-spot.is-turn { animation: tour-pulse 1.6s ease-in-out infinite; }
+@keyframes tour-pulse { 50% { box-shadow: 0 0 0 7px var(--brand-cyan), 0 0 0 9999px #0b1d3d99; } }
+@media (prefers-reduced-motion: reduce) { .tour-spot { transition: none; } .tour-spot.is-turn { animation: none; } }
+/* The "?" button in the top bar: this page's tutorial. */
+.ws-howto { font: inherit; font-size: 17px; font-weight: 800; color: var(--brand); }
+.ws-howto[hidden] { display: none; }
 
 /* ---------- Help & tour page ---------- */
 .help-steps { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; counter-reset: help; }
@@ -442,8 +450,13 @@
 .help-faq details:last-child { border-bottom: 0; }
 .help-faq summary { cursor: pointer; font-weight: 650; }
 .help-faq p { margin: 8px 0 0; font-size: 13px; }
-.help-tour-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
-.help-tour-cta p { margin: 0; }
+.help-tutorials { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin: 14px 0 0; padding: 0; list-style: none; }
+.help-tutorials li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--line, var(--brand-line)); border-radius: 12px; }
+.help-tutorials strong { display: block; font-size: 14px; }
+.help-tutorials small { display: block; margin-top: 2px; font-size: 12px; color: var(--brand-muted); }
+.help-tutorials .hope-button { min-height: 36px; padding: 7px 14px; }
+.help-done { margin-left: 8px; font-size: 11px; font-weight: 700; color: #2e7d32; }
+.help-later { flex: none; max-width: 110px; text-align: right; }
 
 /* ---------- Landing: how it works ---------- */
 .brand-how { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; padding: 0; list-style: none; counter-reset: how; }
@@ -456,3 +469,6 @@
 
 .help-list { margin: 10px 0 0; padding-left: 20px; list-style: disc; }
 .help-list li { margin: 8px 0; font-size: 13px; line-height: 1.6; color: var(--muted, var(--brand-muted)); }
+
+/* Cancelled requests */
+.hope-badge.gray { background: #eef1f5; color: #4a5568; }

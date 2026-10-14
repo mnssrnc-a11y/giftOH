@@ -18,7 +18,7 @@
     $guideline = $cap !== null && $people ? $people * $cap : null;
     $stageClass = match (true) {
         in_array($stage['key'], ['completed', 'awaiting_recipients', 'to_release', 'released'], true) => 'approved',
-        $stage['key'] === 'rejected' => 'rejected',
+        in_array($stage['key'], ['rejected', 'cancelled'], true) => 'rejected',
         $stage['key'] === 'awaiting_final' => 'awaiting',
         default => 'in-progress',
     };
@@ -26,13 +26,7 @@
         'id' => $view['id'], 'project' => $view['organization'], 'organization' => $view['organization'],
         'amount' => $view['amount'], 'status' => $view['status'], 'date' => $view['created_at'], 'review' => [],
     ]];
-    $budgetConfig = [
-        'catalog' => collect(app(\App\Services\FundingRules::class)->priceCatalog())->groupBy('group_label')->map->values()->all(),
-        'rows' => array_map(fn ($item) => ['ref' => $item['ref'] ?? '', 'name' => $item['name'], 'qty' => $item['qty'], 'unit_price' => $item['unit_price']], $view['budget']['items']),
-        'people' => $people,
-        'cap' => $cap,
-    ];
-    $clientData = ['budget' => $budgetConfig, 'people' => $people, 'routes' => [
+    $clientData = ['people' => $people, 'routes' => [
         'action' => route('admin.fund-request.action', ['id' => '__ID__']),
         'recommendation' => route('admin.fund-request.recommendation', ['id' => '__ID__']),
     ], 'requestId' => $view['id']];
@@ -53,7 +47,7 @@
 <div class="admin-page-head">
     <div>
         <h2>{{ $view['organization'] }}</h2>
-        <p>{{ $view['category'] }} · {{ $view['beneficiary_count'] }} people · {{ $view['amount'] > 0 ? $peso($view['amount']) : 'budget not set' }} · submitted {{ $day($view['created_at']) }}</p>
+        <p>{{ $view['category'] }} · {{ $view['beneficiary_count'] }} people · {{ $view['amount'] > 0 ? $peso($view['amount']) : 'amount not set' }} · submitted {{ $day($view['created_at']) }}</p>
     </div>
     <div class="admin-actions">
         <span class="admin-status {{ $stageClass }}">{{ $stage['label'] }}</span>
@@ -68,7 +62,7 @@
 @endif
 
 {{-- Next step --}}
-<article class="admin-card" style="margin-bottom:18px">
+<article class="admin-card" style="margin-bottom:18px" data-tour="next-step">
     <div class="admin-card-head"><div><h3>Next step</h3><p>{{ $stage['label'] }}</p></div></div>
     <div class="admin-card-body">
         @if ($stage['step'] === 1)
@@ -83,32 +77,31 @@
                     <div class="admin-field"><label for="location">Location / link <span style="font-weight:400">(optional)</span></label><input id="location" name="location" maxlength="255" value="{{ old('location', $assessment['location'] ?? '') }}"></div>
                     <div><button class="admin-button primary" type="submit">{{ empty($assessment['interview_at']) ? 'Schedule & notify requester' : 'Reschedule & notify' }}</button></div>
                 </form>
-                <form method="POST" action="{{ route('admin.fund-request.assessment', $view['id']) }}" class="admin-post-form">
-                    @csrf
+                <div class="admin-post-form">
                     <strong>Record the assessment</strong>
-                    <p class="admin-field-hint" style="margin:0">After the interview, record the social worker's findings. Approval requires "recommended".</p>
-                    <div class="admin-field"><label for="outcome">Outcome</label><select id="outcome" name="outcome" class="admin-select" style="width:100%"><option value="recommended" @selected(old('outcome') === 'recommended')>Recommended for assistance</option><option value="not_recommended" @selected(old('outcome') === 'not_recommended')>Not recommended</option></select></div>
-                    <div class="admin-field"><label for="verified_beneficiaries">People verified as qualified</label><input id="verified_beneficiaries" type="number" name="verified_beneficiaries" min="0" max="{{ config('funding.beneficiaries.max') }}" required value="{{ old('verified_beneficiaries', $view['beneficiary_count']) }}"></div>
-                    <div class="admin-field"><label for="assessment_sw">Assessed by (social worker)</label><input id="assessment_sw" name="social_worker" maxlength="120" value="{{ old('social_worker', $assessment['social_worker'] ?? '') }}"></div>
-                    <div class="admin-field"><label for="assessment_notes">Findings</label><textarea id="assessment_notes" name="notes" class="admin-textarea" style="min-height:90px" required maxlength="5000">{{ old('notes') }}</textarea></div>
-                    <div><button class="admin-button success" type="submit">Save assessment</button></div>
-                </form>
+                    <p class="admin-field-hint" style="margin:0">After the interview, record the social worker's findings and the amount the request needs. Approval requires "recommended".</p>
+                    @include('adminPage.partials.assessment-form')
+                </div>
             </div>
         @elseif ($stage['key'] === 'ready_for_decision')
             @php($verifiedDocs = collect($view['documents'])->where('required', true)->where('status', 'verified')->count())
             @php($requiredDocs = collect($view['documents'])->where('required', true)->count())
-            <p style="margin-top:0">Social worker: <strong>{{ ($assessment['outcome'] ?? '') === 'recommended' ? 'Recommended' : 'Not recommended' }}</strong> · {{ $assessment['verified_beneficiaries'] ?? '—' }} of {{ $view['beneficiary_count'] }} people verified · Documents verified: <strong>{{ $verifiedDocs }} of {{ $requiredDocs }}</strong> · Budget: <strong>{{ $view['budget']['per_person'] ? $peso($view['budget']['per_person']) . ' per person' : 'not set' }}</strong></p>
+            <p style="margin-top:0">Social worker: <strong>{{ ($assessment['outcome'] ?? '') === 'recommended' ? 'Recommended' : 'Not recommended' }}</strong> · {{ $assessment['verified_beneficiaries'] ?? '—' }} of {{ $view['beneficiary_count'] }} people verified · Documents verified: <strong>{{ $verifiedDocs }} of {{ $requiredDocs }}</strong> · Amount needed: <strong>{{ $view['need']['amount'] !== null ? $peso($view['need']['amount']) : 'not set' }}</strong></p>
             @if ($guideline !== null)<p>Guideline: {{ $people }} × {{ $peso($cap) }} per person = <strong>{{ $peso($guideline) }}</strong>. The AI recommendation also shares funds with the other {{ $pendingCount - 1 }} pending request(s).</p>@endif
             <div class="admin-actions">
                 <button class="admin-button danger" data-decision-open="rejected" data-request-id="{{ $view['id'] }}">Reject</button>
-                @if (($assessment['outcome'] ?? '') === 'recommended' && $view['budget']['per_person'] && $view['documents_verified'])
+                @if (($assessment['outcome'] ?? '') === 'recommended' && $view['need']['amount'] !== null && $view['documents_verified'])
                     <button class="admin-button success" data-decision-open="approved" data-request-id="{{ $view['id'] }}">Approve with AI recommendation</button>
                 @elseif (($assessment['outcome'] ?? '') === 'recommended' && ! $view['documents_verified'])
                     <a class="admin-button primary" href="#documents">Verify every document to approve</a>
                 @elseif (($assessment['outcome'] ?? '') === 'recommended')
-                    <a class="admin-button primary" href="#budget">Set the budget per person to approve</a>
+                    <a class="admin-button primary" href="#change-assessment">Record the amount needed to approve</a>
                 @endif
             </div>
+            <details id="change-assessment" style="margin-top:14px" @if ($errors->hasAny(['amount_needed', 'outcome', 'notes', 'verified_beneficiaries']) || ($view['need']['amount'] === null && ($assessment['outcome'] ?? '') === 'recommended')) open @endif>
+                <summary style="cursor:pointer;font-weight:700">Change the assessment or the amount needed</summary>
+                <div style="margin-top:12px">@include('adminPage.partials.assessment-form')</div>
+            </details>
         @elseif ($stage['key'] === 'awaiting_final')
             <p style="margin:0">Sent to the super admin: {{ $view['admin_review']['decision'] === 'approved' ? 'approve ' . $peso($view['admin_review']['amount']) : 'reject' }} ({{ $view['admin_review']['by'] ?? 'admin' }}, {{ $day($view['admin_review']['at']) }}).</p>
         @elseif ($stage['key'] === 'awaiting_recipients')
@@ -138,6 +131,8 @@
             </form>
         @elseif ($stage['key'] === 'liquidation_returned')
             <p style="margin:0">Returned to the requester: “{{ $liquidation['review_remarks'] }}”. Waiting for a corrected liquidation.</p>
+        @elseif ($stage['key'] === 'cancelled')
+            <p style="margin:0">The requester cancelled this request on {{ $day($view['cancelled']['at'] ?? null) }}@if (! empty($view['cancelled']['stage'])) (it was at: {{ $view['cancelled']['stage'] }})@endif. Everything still to come was stopped, including the release of funds.@if (! empty($view['cancelled']['reason'])) Reason: “{{ $view['cancelled']['reason'] }}”@endif</p>
         @elseif ($stage['key'] === 'completed')
             <p style="margin:0">Completed. The liquidation was verified on {{ $day($liquidation['reviewed_at'] ?? null) }}.</p>
         @else
@@ -162,6 +157,7 @@
             @endif
             <div class="admin-list-row"><div class="admin-list-copy"><strong>Social worker</strong><span>{{ $assessment['social_worker'] ?? '—' }}</span></div></div>
             <div class="admin-list-row"><div class="admin-list-copy"><strong>Outcome</strong><span>@if (!empty($assessment['assessed_at'])){{ ($assessment['outcome'] ?? '') === 'recommended' ? 'Recommended' : 'Not recommended' }} · {{ $assessment['verified_beneficiaries'] ?? '—' }} people verified · {{ $day($assessment['assessed_at']) }}@else Not yet assessed @endif</span></div></div>
+            <div class="admin-list-row"><div class="admin-list-copy"><strong>Amount needed</strong><span>@if ($view['need']['amount'] !== null){{ $peso($view['need']['amount']) }}@if ($view['need']['per_person']) · about {{ $peso($view['need']['per_person']) }} per person @endif @if ($view['need']['basis'])<br>{{ $view['need']['basis'] }}@endif @if ($view['granted'] !== null)<br>Approved: <strong>{{ $peso($view['granted']) }}</strong>@endif @else Decided in the assessment @endif</span></div></div>
             @if (!empty($assessment['notes']))<div class="admin-list-row"><div class="admin-list-copy"><strong>Findings</strong><span style="white-space:pre-line">{{ $assessment['notes'] }}</span></div></div>@endif
         </div>
     </article>
@@ -185,7 +181,7 @@
     </article>
 </div>
 
-<div class="admin-grid admin-two-col">
+<div class="admin-grid">
     <article class="admin-card" id="documents">
         <div class="admin-card-head"><div><h3>Requirements</h3><p>Formal request letter and Certificate of Indigency · verify each before approving</p></div><span class="admin-status {{ $view['documents_verified'] ? 'verified' : 'pending-review' }}">{{ $view['documents_verified'] ? 'All verified' : 'Review needed' }}</span></div>
         <div class="admin-card-body admin-form-grid">
@@ -208,39 +204,6 @@
         </div>
     </article>
 
-    <article class="admin-card" id="budget">
-        <div class="admin-card-head"><div><h3>Budget per person</h3><p>Choose items and quantities from the price list. Prices and items are managed by the super admin.</p></div><strong>{{ $view['budget']['per_person'] ? $peso($view['budget']['per_person']) . ' / person' : 'Not set' }}</strong></div>
-        @if ($view['status'] === 'pending')
-            <form method="POST" action="{{ route('admin.fund-request.budget', $view['id']) }}" data-budget-builder>
-                @csrf
-                <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Item</th><th style="width:90px">Qty / person</th><th style="width:120px">Unit price (₱)</th><th style="width:100px">Subtotal</th><th style="width:40px"></th></tr></thead><tbody data-budget-rows></tbody></table></div>
-                <div class="admin-card-body">
-                    <div class="admin-actions" style="margin-bottom:12px">
-                        <select class="admin-select" data-budget-picker aria-label="Add an item from the price list" style="flex:1;min-width:220px"><option value="">+ Add item from the price list…</option></select>
-                        <a class="admin-button" href="{{ route('admin') }}#reports-prices">View price list</a>
-                    </div>
-                    <p style="margin:0">{{ $people }} {{ isset($assessment['verified_beneficiaries']) ? 'verified' : 'listed' }} people × <strong data-budget-per-person>₱0.00</strong> = <strong data-budget-total>₱0.00</strong></p>
-                    <p class="admin-field-hint" style="margin-top:6px">Item missing from the list? Ask the super admin to add it; admins cannot add items or change prices.</p>
-                    @if ($guideline !== null)<p class="admin-field-hint">Foundation guideline: about {{ $peso($cap) }} per person ({{ $peso($guideline) }} for {{ $people }} people). <span data-budget-cap-note></span></p>@endif
-                    <div class="admin-actions" style="margin-top:12px"><button class="admin-button primary" type="submit">Save budget</button></div>
-                </div>
-            </form>
-        @else
-            @if ($view['budget']['items'])
-                <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Reference</th><th>Subtotal</th></tr></thead><tbody>
-                    @foreach ($view['budget']['items'] as $item)
-                        <tr><td>{{ $item['name'] }}</td><td>{{ $item['qty'] }}</td><td>{{ $peso($item['unit_price']) }}</td>
-                            <td>@if ($item['check'])<span class="admin-status {{ $item['check'] === 'above' ? 'rejected' : ($item['check'] === 'within' ? 'approved' : 'cancelled') }}">{{ $item['check'] }}</span><small>{{ $peso($item['reference_min']) }}–{{ $peso($item['reference_max']) }}</small>@else<small>custom item</small>@endif</td>
-                            <td>{{ $peso($item['subtotal']) }}</td></tr>
-                    @endforeach
-                </tbody></table></div>
-            @endif
-            <div class="admin-card-body">
-                <p style="margin:0">{{ $view['budget']['people'] ?? $people }} people × {{ $view['budget']['per_person'] ? $peso($view['budget']['per_person']) : '—' }} = <strong>{{ $peso($view['amount']) }}</strong></p>
-                @if ($view['granted'] !== null)<p style="margin-bottom:0">Approved: <strong>{{ $peso($view['granted']) }}</strong></p>@endif
-            </div>
-        @endif
-    </article>
 </div>
 
 <div class="admin-grid admin-two-col">

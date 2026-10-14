@@ -43,11 +43,8 @@ class AdminController extends Controller
         $pendingCount = $data['fundingSummary']['pendingCount'];
         $totalFundRequests = count($data['fundingRequests']);
         $aiProviders = app(AiClient::class)->status();
-        $prices = app(\App\Services\PriceListService::class);
-        $priceGroups = $prices->grouped();
-        $priceRun = $prices->lastRun();
 
-        return view('adminPage.admin', array_merge($iotMetrics, $data, compact('pendingCount', 'totalFundRequests', 'aiProviders', 'priceGroups', 'priceRun')));
+        return view('adminPage.admin', array_merge($iotMetrics, $data, compact('pendingCount', 'totalFundRequests', 'aiProviders')));
     }
 
     /**
@@ -137,14 +134,13 @@ class AdminController extends Controller
             return redirect()->route('admin.fund-request.show', $id)
                 ->with('alert_error', 'Verify every required document before approving.');
         }
-        if ($validated['action'] === 'approved' && empty($fundingRequest['budget']['per_person'])) {
+        $requested = $this->fundingService->amountNeeded($fundingRequest);
+        if ($validated['action'] === 'approved' && $requested === null) {
             return redirect()->route('admin.fund-request.show', $id)
-                ->with('alert_error', 'Set the budget per person before approving.');
+                ->with('alert_error', 'Record the amount needed in the assessment before approving.');
         }
-
-        $requested = (float) ($fundingRequest['amount_requested'] ?? $fundingRequest['amount'] ?? 0);
         if ($validated['action'] === 'approved' && (float) $validated['amount'] > $requested) {
-            return back()->with('alert_error', 'The recommended amount cannot be more than the amount requested.');
+            return back()->with('alert_error', 'The recommended amount cannot be more than the amount needed from the assessment.');
         }
 
         $pending = [

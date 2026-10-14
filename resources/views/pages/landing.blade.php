@@ -45,7 +45,7 @@
         <ol class="brand-how">
             <li><h3>Ask for help</h3><p>Create an account and send a fund request in six short steps, with a formal letter and a Certificate of Indigency.</p></li>
             <li><h3>Interview and assessment</h3><p>A social worker interviews your organization within {{ config('funding.assessment_days') }} days and checks your documents.</p></li>
-            <li><h3>Approval and release</h3><p>The foundation sets a budget per person and approves it. You list the people, and the funds go to your bank or e-wallet.</p></li>
+            <li><h3>Approval and release</h3><p>The social worker decides the amount needed and the foundation approves it. You list the people, and the funds go to your bank or e-wallet.</p></li>
             <li><h3>Report back</h3><p>Within {{ config('funding.liquidation_days') }} days, share the receipts and the list of people who received the help.</p></li>
         </ol>
     </section>

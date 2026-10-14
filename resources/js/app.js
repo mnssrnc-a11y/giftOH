@@ -4,6 +4,7 @@ import './preferences';
 import './admin-ui';
 import './user-flow';
 import './superadmin-ui';
+import './places';
 import './fund-request';
 import './people-list';
 import './request-thread';

@@ -3,8 +3,8 @@
 namespace App\Services;
 
 /**
- * The foundation's request rules (config/funding.php and the Firebase price list):
- * categories, required documents, per-person budgets and price checks.
+ * The foundation's request rules (config/funding.php): categories, required documents, the
+ * usual per-person allocation, and where funds can be sent.
  */
 class FundingRules
 {
@@ -61,73 +61,6 @@ class FundingRules
         }
 
         return $priorities;
-    }
-
-    /**
-     * Flat price list: key => [key, group, group_label, type, name, size, price, min, max, source, updated_at...].
-     * Managed by the super admin and refreshed monthly by the AI price update (see PriceListService).
-     */
-    public function priceCatalog(): array
-    {
-        return app(PriceListService::class)->items();
-    }
-
-    /**
-     * Normalise budget lines. Every line must be an item on the price list and always uses the
-     * list price: admins choose items and quantities but cannot change prices or add items.
-     *
-     * @param  array  $lines  [['ref' => key, 'qty' => ...], ...]
-     * @return array{items: array, per_person: float}
-     */
-    public function buildBudget(array $lines): array
-    {
-        $catalog = $this->priceCatalog();
-        $items = [];
-
-        foreach ($lines as $line) {
-            $qty = round((float) ($line['qty'] ?? 0), 2);
-            $ref = $catalog[$line['ref'] ?? ''] ?? null;
-            if ($ref === null) {
-                continue;
-            }
-            $price = round($ref['price'], 2);
-            $name = trim("{$ref['name']} ({$ref['size']})");
-            if ($qty <= 0 || $price <= 0) {
-                continue;
-            }
-
-            $items[] = [
-                'ref' => $ref['key'],
-                'group' => $ref['group'],
-                'name' => mb_substr($name, 0, 120),
-                'qty' => $qty,
-                'unit_price' => $price,
-                'subtotal' => round($qty * $price, 2),
-                'reference_min' => $ref['min'],
-                'reference_max' => $ref['max'],
-            ];
-        }
-
-        return [
-            'items' => $items,
-            'per_person' => round(array_sum(array_column($items, 'subtotal')), 2),
-        ];
-    }
-
-    /**
-     * Price check for a stored budget line: "within", "above", "below" or null when there is no reference.
-     */
-    public function priceCheck(array $item): ?string
-    {
-        if (! isset($item['reference_min'], $item['reference_max'])) {
-            return null;
-        }
-
-        return match (true) {
-            $item['unit_price'] > $item['reference_max'] * 1.05 => 'above',
-            $item['unit_price'] < $item['reference_min'] * 0.95 => 'below',
-            default => 'within',
-        };
     }
 
     /**

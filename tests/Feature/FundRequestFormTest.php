@@ -79,8 +79,8 @@ class FundRequestFormTest extends TestCase
             ->assertRedirect(route('fund-request.show', 'req-9'))
             ->assertSessionHas('success', fn ($message) => str_contains($message, 'under assessment'));
 
-        $this->assertSame('12 Rizal St., San Jose, City of San Fernando', $saved['address']);
-        $this->assertSame(['street' => '12 Rizal St.', 'barangay' => 'San Jose', 'municipality' => 'City of San Fernando'], $saved['address_parts']);
+        $this->assertSame('12 Rizal St., San Jose, City of San Fernando, Pampanga', $saved['address']);
+        $this->assertSame(['street' => '12 Rizal St.', 'barangay' => 'San Jose', 'municipality' => 'City of San Fernando', 'province' => 'Pampanga'], $saved['address_parts']);
         $this->assertSame(['Medical', 'Food'], $saved['categories']);
         $this->assertSame('Medical', $saved['category']);
         $this->assertSame(25, $saved['beneficiary_count']);
@@ -120,6 +120,22 @@ class FundRequestFormTest extends TestCase
             ->assertSessionHasErrors(['provider' => 'Choose the bank or e-wallet from the list.']);
         $this->requester()->post(route('fund-request.store'), $this->form(['org_choice' => 'Not a listed home']))
             ->assertSessionHasErrors('org_choice');
+    }
+
+    public function test_the_address_is_a_place_in_pampanga_chosen_from_the_list(): void
+    {
+        $funding = $this->mock(FundingService::class);
+        $funding->shouldReceive('requestDenialReason')->andReturn(null);
+        $funding->shouldNotReceive('createRequest');
+
+        $this->requester()->post(route('fund-request.store'), $this->form(['municipality' => 'Quezon City']))
+            ->assertSessionHasErrors(['municipality' => 'Choose a city or town in Pampanga from the list.']);
+        // Dolores is a barangay of the City of San Fernando, not of Apalit.
+        $this->requester()->post(route('fund-request.store'), $this->form(['municipality' => 'Apalit', 'barangay' => 'Dolores']))
+            ->assertSessionHasErrors(['barangay' => 'Choose a barangay of the chosen city or town.']);
+
+        $this->assertCount(22, \App\Support\Pampanga::towns());
+        $this->assertContains('Angeles City', \App\Support\Pampanga::towns());
     }
 
     public function test_after_approval_the_requester_sees_the_add_person_form(): void

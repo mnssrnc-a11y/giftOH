@@ -13,7 +13,7 @@
     $canLiquidate = in_array($stage['key'], ['released', 'liquidation_returned'], true);
     $badge = match (true) {
         in_array($stage['key'], ['completed', 'awaiting_recipients', 'to_release', 'released'], true) => 'bg-green-100 text-green-800',
-        $stage['key'] === 'rejected' => 'bg-red-100 text-red-800',
+        in_array($stage['key'], ['rejected', 'cancelled'], true) => 'bg-red-100 text-red-800',
         in_array($stage['key'], ['liquidation_returned'], true) => 'bg-amber-100 text-amber-800',
         default => 'bg-blue-100 text-blue-800',
     };
@@ -56,6 +56,8 @@
                 @else
                     <p class="mt-3 text-sm text-gray-600">This request has been appealed {{ \App\Services\FundingService::MAX_APPEALS }} times, the most allowed.</p>
                 @endif
+            @elseif ($stage['key'] === 'cancelled')
+                <p class="rounded-lg bg-red-50 p-4 text-sm text-red-800">You cancelled this request on {{ $day($view['cancelled']['at'] ?? null) }}. The interview, the decision and the release of funds were all stopped.@if (! empty($view['cancelled']['reason'])) <br><strong>Your reason:</strong> {{ $view['cancelled']['reason'] }}@endif</p>
             @else
                 @php($stepTargets = ['#details', '#progress', '#progress', '#progress', '#release', '#liquidation', '#history'])
                 <ol class="grid grid-cols-2 gap-3 md:grid-cols-7">
@@ -100,12 +102,26 @@
             @elseif ($stage['key'] === 'to_release')
                 <p class="mt-5 text-sm text-gray-600">Approved for <strong>{{ $peso($view['granted'] ?? $view['amount']) }}</strong>. The foundation will release the funds by {{ strtolower($disbursement['method_label']) }}.</p>
             @endif
+
+            @if ($view['cancellable'])
+                <details class="mt-5 rounded-lg border border-red-200 p-4 text-sm" id="cancel" @if ($errors->has('cancel_reason')) open @endif>
+                    <summary class="cursor-pointer font-semibold text-red-700">Cancel this request</summary>
+                    <form method="POST" action="{{ route('fund-request.cancel', $view['id']) }}" class="mt-3 space-y-3" data-cancel-request>
+                        @csrf
+                        <p class="text-gray-700">Cancelling stops everything still to come: the interview, the decision and the release of funds. It cannot be undone; you can send a new request later.</p>
+                        <label class="block text-xs font-semibold text-gray-600">Why are you cancelling? <span class="font-normal">(optional)</span>
+                            <textarea name="cancel_reason" maxlength="1000" rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">{{ old('cancel_reason') }}</textarea></label>
+                        <label class="flex items-start gap-2 text-gray-800"><input type="checkbox" name="confirm" value="1" required class="mt-1"> I understand the request and its release of funds will be cancelled.</label>
+                        <button type="submit" class="rounded-lg bg-red-700 px-5 py-2 font-semibold text-white hover:bg-red-800">Cancel request</button>
+                    </form>
+                </details>
+            @endif
         </section>
 
         @if ($stage['key'] === 'awaiting_recipients')
             <section class="{{ $card }}" id="release">
                 <h2 class="mb-1 text-lg font-bold text-gray-900">Release of funds: who will receive the help?</h2>
-                <p class="mb-4 text-sm text-gray-600">Add each person with <strong>Add person</strong>: last name, first name and middle name. The approved budget covers <strong>{{ $view['people_limit'] }}</strong> {{ \Illuminate\Support\Str::plural('person', $view['people_limit']) }}. The funds are released once the list is in.</p>
+                <p class="mb-4 text-sm text-gray-600">Add each person with <strong>Add person</strong>: last name, first name and middle name. The approval covers <strong>{{ $view['people_limit'] }}</strong> {{ \Illuminate\Support\Str::plural('person', $view['people_limit']) }}. The funds are released once the list is in.</p>
                 @error('people')<p class="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{{ $message }}</p>@enderror
                 @if ($errors->has('people.*'))<ul class="mb-3 list-disc rounded-lg bg-red-50 p-3 pl-8 text-sm text-red-800" role="alert">@foreach ($errors->get('people.*') as $messages)<li>{{ $messages[0] }}</li>@endforeach</ul>@endif
                 <form method="POST" action="{{ route('fund-request.beneficiaries', $view['id']) }}">
@@ -164,8 +180,8 @@
                     <div><dt class="text-gray-500">Purpose</dt><dd class="whitespace-pre-line text-gray-900">{{ $view['purpose'] ?: '—' }}</dd></div>
                     <div class="grid grid-cols-3 gap-3">
                         <div><dt class="text-gray-500">People</dt><dd class="font-semibold">{{ $view['beneficiary_count'] ?: '—' }}</dd></div>
-                        <div><dt class="text-gray-500">Per person</dt><dd class="font-semibold">{{ $view['budget']['per_person'] ? $peso($view['budget']['per_person']) : 'To be decided' }}</dd></div>
-                        <div><dt class="text-gray-500">Budget</dt><dd class="font-semibold">{{ $view['amount'] > 0 ? $peso($view['amount']) : 'To be decided' }}</dd></div>
+                        <div><dt class="text-gray-500">Per person</dt><dd class="font-semibold">{{ $view['need']['per_person'] ? $peso($view['need']['per_person']) : 'To be decided' }}</dd></div>
+                        <div><dt class="text-gray-500">Amount needed</dt><dd class="font-semibold">{{ $view['need']['amount'] !== null ? $peso($view['need']['amount']) : 'After the assessment' }}</dd></div>
                     </div>
                     @if ($view['granted'] !== null)<div><dt class="text-gray-500">Approved amount</dt><dd class="text-lg font-bold text-green-700">{{ $peso($view['granted']) }}</dd></div>@endif
                     @foreach ($view['contact'] as $label => $value)@if ($value)<div><dt class="text-gray-500">{{ $label }}</dt><dd>{{ $value }}</dd></div>@endif @endforeach
@@ -185,15 +201,6 @@
                 </dl>
             </section>
         </div>
-
-        @if ($view['budget']['items'])
-            <section class="{{ $card }}">
-                <h2 class="mb-4 text-lg font-bold text-gray-900">Budget per person <span class="text-sm font-normal text-gray-500">(set by the foundation)</span></h2>
-                <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-left text-xs uppercase text-gray-500"><tr><th class="py-2">Item</th><th class="py-2">Qty</th><th class="py-2">Unit price</th><th class="py-2 text-right">Subtotal</th></tr></thead><tbody>
-                    @foreach ($view['budget']['items'] as $item)<tr class="border-t border-gray-100"><td class="py-2">{{ $item['name'] }}</td><td class="py-2">{{ $item['qty'] }}</td><td class="py-2">{{ $peso($item['unit_price']) }}</td><td class="py-2 text-right">{{ $peso($item['subtotal']) }}</td></tr>@endforeach
-                </tbody></table></div>
-            </section>
-        @endif
 
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
             <section class="{{ $card }}" id="documents">

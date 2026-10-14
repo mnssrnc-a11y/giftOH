@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Records who did what (role changes, settings, funding decisions, releases, price updates)
+ * Records who did what (role changes, settings, funding decisions, releases, cancellations)
  * for the super admin's activity log. Never stores secrets.
  */
 class AuditLogger
@@ -18,7 +18,7 @@ class AuditLogger
     }
 
     /**
-     * @param  string  $category  account | settings | funding | prices | content
+     * @param  string  $category  account | settings | funding | content
      */
     public function record(string $category, string $action, ?string $subjectId = null, array $details = []): void
     {

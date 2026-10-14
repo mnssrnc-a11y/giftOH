@@ -13,8 +13,6 @@ use App\Services\FundingService;
 use App\Services\IotService;
 use App\Services\MailSettingsService;
 use App\Services\NotificationService;
-use App\Services\PriceListService;
-use App\Services\PriceUpdateRunner;
 use App\Services\RequestMessageService;
 use App\Services\SystemSettings;
 use Carbon\Carbon;
@@ -34,7 +32,7 @@ class SuperAdminController extends Controller
     ) {
     }
 
-    public function index(FirebaseAuditLogRepository $auditLogs, MailSettingsService $mail, FundingRules $rules, PriceListService $prices, PriceUpdateRunner $priceRunner)
+    public function index(FirebaseAuditLogRepository $auditLogs, MailSettingsService $mail, FundingRules $rules)
     {
         // Every request, the ones awaiting the final decision first; each opens the full request.
         $fundRequests = $this->dashboard->fundingRows();
@@ -64,17 +62,13 @@ class SuperAdminController extends Controller
             'mailPending' => $mail->pending(),
             'logs' => $this->logs($auditLogs),
             'selfId' => (string) Auth::id(),
-            'priceGroups' => $prices->grouped(),
-            'priceRun' => $prices->lastRun(),
-            'priceUpdateRunning' => $priceRunner->isRunning(),
-            'priceUpdateStatus' => $priceRunner->status(),
         ]);
     }
 
     /**
      * Everything about one request for the super admin's final check: the requester's account
      * and earlier requests, the submitted details and documents, the social worker's assessment,
-     * the admin's budget, review and verification notes, the AI assessment, the conversation and
+     * the amount needed, the admin's review and verification notes, the AI assessment, the conversation and
      * the history. Read only, except for the final decision.
      */
     public function showRequest(string $id, FundingRequestPresenter $presenter, RequestMessageService $messages, \App\Services\Payouts\PayoutService $payouts)

@@ -5,11 +5,10 @@
     $pages = [
         'dashboard' => ['YOUR COMMUNITY, AT A GLANCE', 'A little oversight. A bigger impact.', 'Keep your community, funding, and connected devices moving forward.'],
         'accounts' => ['PEOPLE & PERMISSIONS', 'Account management', 'Every account in Firebase. Change roles and enable or disable access.'],
-        'prices' => ['ITEMS & PRICES', 'Price list', 'Food, medical and cleaning items used in every per-person budget. Only you can add, edit or delete items and set prices.'],
         'settings' => ['PLATFORM CONTROLS', 'System settings', 'Scoring priorities, request interval, and email (Brevo).'],
         'monitor' => ['CONNECTED & INFORMED', 'System monitor', 'Device health, funding outcomes, and recent audit events.'],
         'requests' => ['MAKE HOPE HAPPEN', 'Fund requests', 'Every request, with the ones awaiting your final decision first. Open one to see everything the requester submitted and what the admins verified.'],
-        'activity' => ['EVERY ACTION, ACCOUNTED FOR', 'Activity log', 'Account, configuration, funding and price changes in one place.'],
+        'activity' => ['EVERY ACTION, ACCOUNTED FOR', 'Activity log', 'Account, configuration and funding changes in one place.'],
     ];
     $peso = fn ($value) => '₱' . number_format((float) $value, 2);
     $when = fn ($value) => $value ? \Carbon\Carbon::parse($value)->format('M d, Y g:i A') : '—';
@@ -21,14 +20,9 @@
         'requestUrl' => route('superadmin.fund-request.show', ['id' => '__ID__']),
         // After a form fails validation the page reloads without its #section; reopen it.
         'initialSection' => old('_section'),
-        'priceStatusUrl' => route('superadmin.prices.status'),
         'accountUrl' => route('superadmin.accounts.update', ['id' => '__ID__']),
         'accounts' => $accounts,
         'selfId' => $selfId,
-        'prices' => collect($priceGroups)->flatMap(fn ($group) => collect($group['items'])->keyBy('key'))->all(),
-        'priceGroups' => collect($priceGroups)->map(fn ($group) => ['label' => $group['label'], 'types' => collect($group['items'])->pluck('type')->unique()->values()->all()])->all(),
-        'priceStoreUrl' => route('superadmin.prices.store'),
-        'priceItemUrl' => route('superadmin.prices.update-item', ['key' => '__KEY__']),
     ];
     $deviceList = function () use ($devices, $ago) {
         if (! $devices) {
@@ -100,50 +94,9 @@
         <p class="sa-empty" data-sa-filter-empty="accounts" hidden>No accounts match.</p>
     </article>
 
-    @elseif ($key === 'prices')
-    @php($run = $priceRun)
-    <article class="sa-card">
-        <div class="sa-card-head"><div><h2>Monthly AI price update</h2><p>Runs on the 1st of every month: the <a class="sa-link" href="https://www.dti.gov.ph/dti-consumer-space/dti-latest-srps-basic-necessities-prime-commodities" target="_blank" rel="noopener">DTI SRP bulletin</a> for food and cleaning materials, the <a class="sa-link" href="https://tgp.com.ph/" target="_blank" rel="noopener">TGP store</a> for medicine, and web search for the rest.</p></div><span class="sa-badge {{ $priceUpdateRunning ? 'amber' : (($priceUpdateStatus['state'] ?? '') === 'failed' ? 'red' : 'gray') }}" data-price-status data-running="{{ $priceUpdateRunning ? 'true' : 'false' }}">{{ $priceUpdateRunning ? 'Running now' : ($run ? 'Last run ' . $ago($run['ran_at']) : 'Not run yet') }}</span></div>
-        <div class="sa-card-body">
-            @if ($priceUpdateRunning)<div class="sa-note" style="margin:0 0 14px">Updating prices in the background since {{ $ago($priceUpdateStatus['started_at'] ?? null) }}. This takes a few minutes; the page refreshes when it is done and you get a notification.</div>
-            @elseif (($priceUpdateStatus['state'] ?? '') === 'failed')<div class="sa-note sa-note-error" style="margin:0 0 14px">{{ $priceUpdateStatus['message'] ?? 'The last update failed.' }}</div>@endif
-            @if ($run && ! empty($run['failed']))<p style="margin-top:0">Last run stopped: {{ $run['failed'] }}</p>
-            @elseif ($run)<p style="margin-top:0"><strong>{{ count((array) ($run['updated'] ?? [])) }}</strong> price(s) changed · {{ count((array) ($run['not_found'] ?? [])) }} not found · {{ count((array) ($run['flagged'] ?? [])) }} flagged for review.</p>
-                @if (! empty($run['flagged']))<ul style="margin:0 0 12px;padding-left:18px;font-size:12px">@foreach ($run['flagged'] as $flag)<li>{{ $flag['name'] }}: {{ $flag['reason'] }}</li>@endforeach</ul>@endif
-            @endif
-            <form method="POST" action="{{ route('superadmin.prices.update') }}" data-sa-confirm="Run the AI price update now? Prices found on DTI, TGP and web search replace the current prices; you can still edit any price afterwards.">
-                @csrf
-                <div class="sa-actions" style="justify-content:flex-start;margin-top:0"><button class="sa-button" @disabled($priceUpdateRunning)>↻ Update prices now</button></div>
-            </form>
-            <div class="sa-note">Admins see this list and pick items and quantities for each request's budget, but they cannot add items or change prices.</div>
-        </div>
-    </article>
-    @foreach ($priceGroups as $group)
-    <article class="sa-card" id="prices-{{ $group['key'] }}">
-        <div class="sa-card-head"><div><h2>{{ $group['label'] }}</h2><p>{{ count($group['items']) }} item(s) · Firebase price_list/{{ $group['key'] }}</p></div><button type="button" class="sa-button secondary" data-sa-price-add="{{ $group['key'] }}">+ Add item</button></div>
-        <div class="sa-toolbar"><input type="search" data-sa-filter-search="prices-{{ $group['key'] }}" placeholder="Search {{ strtolower($group['label']) }}" aria-label="Search {{ $group['label'] }} items"></div>
-        <div class="sa-table-wrap"><table class="sa-table"><thead><tr><th>Item</th><th>Type</th><th>Budget price</th><th>Range</th><th>Source</th><th>Updated</th><th>Action</th></tr></thead><tbody data-sa-filter-body="prices-{{ $group['key'] }}">
-            @forelse ($group['items'] as $item)
-                <tr data-text="{{ strtolower($item['name'] . ' ' . $item['size'] . ' ' . $item['type']) }}">
-                    <td><strong>{{ $item['name'] }}</strong><small>{{ $item['size'] }}</small></td>
-                    <td style="white-space:normal;min-width:110px;max-width:170px">{{ $item['type'] }}</td>
-                    <td><strong>{{ $peso($item['price']) }}</strong>@if ($item['previous_price'] !== null)<small>was {{ $peso($item['previous_price']) }}</small>@endif</td>
-                    <td>{{ $peso($item['min']) }}–{{ $peso($item['max']) }}</td>
-                    <td style="white-space:normal;min-width:120px;max-width:180px">@if ($item['source_url'])<a class="sa-link" href="{{ $item['source_url'] }}" target="_blank" rel="noopener">{{ $item['source'] }}</a>@else{{ $item['source'] ?? '—' }}@endif</td>
-                    <td>{{ $item['updated_at'] ? \Carbon\Carbon::parse($item['updated_at'])->format('M d, Y') : '—' }}</td>
-                    <td><button type="button" class="sa-link" data-sa-price-edit="{{ $item['key'] }}">Edit ↗</button></td>
-                </tr>
-            @empty
-                <tr><td colspan="7" class="sa-empty">No items yet. Add the first one.</td></tr>
-            @endforelse
-        </tbody></table></div>
-        <p class="sa-empty" data-sa-filter-empty="prices-{{ $group['key'] }}" hidden>No items match.</p>
-    </article>
-    @endforeach
-
     @elseif ($key === 'settings')
     <div class="sa-grid equal">
-        <article class="sa-card"><div class="sa-card-head"><h2>AI scoring priorities</h2><span class="sa-badge">0–100 per category</span></div>
+        <article class="sa-card" data-tour="sa-scores"><div class="sa-card-head"><h2>AI scoring priorities</h2><span class="sa-badge">0–100 per category</span></div>
             <form class="sa-card-body" method="POST" action="{{ route('superadmin.settings.scores') }}" data-sa-confirm="Save the new category priority scores?">
                 @csrf<input type="hidden" name="_section" value="settings">
                 <p>Higher scores get a larger share when funds are limited.</p>
@@ -153,7 +106,7 @@
                 <div class="sa-actions"><button class="sa-button">Save scores</button></div>
             </form>
         </article>
-        <article class="sa-card"><div class="sa-card-head"><h2>Request interval</h2><span class="sa-badge gray">Per account</span></div>
+        <article class="sa-card" data-tour="sa-interval"><div class="sa-card-head"><h2>Request interval</h2><span class="sa-badge gray">Per account</span></div>
             <form class="sa-card-body" method="POST" action="{{ route('superadmin.settings.interval') }}" data-sa-confirm="Change the minimum time between requests?">
                 @csrf<input type="hidden" name="_section" value="settings">
                 <p>Minimum days between two requests from the same account.</p>
@@ -214,11 +167,11 @@
     <article class="sa-card"><div class="sa-card-head"><h2>Audit events</h2><a class="sa-link" href="#activity">Full log ↗</a></div><div class="sa-card-body">{!! $eventList(8) !!}</div></article>
 
     @elseif ($key === 'requests')
-    <article class="sa-card"><div class="sa-card-head"><h2>All fund requests</h2><span class="sa-badge amber">{{ $outcomes['awaiting'] }} awaiting you</span></div><div class="sa-toolbar"><input type="search" data-sa-request-search placeholder="Search organization, administrator, or category" aria-label="Search fund requests"><select data-sa-request-filter aria-label="Filter request status"><option value="">All statuses</option><option>Awaiting you</option><option>With admins</option><option>Approved</option><option>Completed</option><option>Rejected</option></select></div><div class="sa-table-wrap"><table class="sa-table"><thead><tr><th>Request / requester</th><th>Category</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody data-sa-requests></tbody></table></div></article>
+    <article class="sa-card"><div class="sa-card-head"><h2>All fund requests</h2><span class="sa-badge amber">{{ $outcomes['awaiting'] }} awaiting you</span></div><div class="sa-toolbar"><input type="search" data-sa-request-search placeholder="Search organization, administrator, or category" aria-label="Search fund requests"><select data-sa-request-filter aria-label="Filter request status"><option value="">All statuses</option><option>Awaiting you</option><option>With admins</option><option>Approved</option><option>Completed</option><option>Rejected</option><option>Cancelled</option></select></div><div class="sa-table-wrap"><table class="sa-table"><thead><tr><th>Request / requester</th><th>Category</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody data-sa-requests></tbody></table></div></article>
 
     @elseif ($key === 'activity')
     <article class="sa-card"><div class="sa-card-head"><h2>Activity log</h2><span class="sa-badge gray">{{ count($logs) }} recent event(s)</span></div>
-        <div class="sa-toolbar"><input type="search" data-sa-filter-search="logs" placeholder="Search actions or people" aria-label="Search activity log"><select data-sa-filter-select="logs" data-key="category" aria-label="Filter category"><option value="">All categories</option>@foreach (['account' => 'Accounts', 'settings' => 'Settings', 'funding' => 'Funding', 'prices' => 'Prices', 'security' => 'Security'] as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></div>
+        <div class="sa-toolbar"><input type="search" data-sa-filter-search="logs" placeholder="Search actions or people" aria-label="Search activity log"><select data-sa-filter-select="logs" data-key="category" aria-label="Filter category"><option value="">All categories</option>@foreach (['account' => 'Accounts', 'settings' => 'Settings', 'funding' => 'Funding', 'security' => 'Security'] as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></div>
         <div class="sa-table-wrap"><table class="sa-table"><thead><tr><th>Action</th><th>By</th><th>When</th><th>Category</th></tr></thead><tbody data-sa-filter-body="logs">
             @forelse ($logs as $log)
                 <tr data-category="{{ $log['category'] }}" data-text="{{ strtolower($log['action'] . ' ' . $log['actor']) }}"><td>{{ $log['action'] }}</td><td>{{ $log['actor'] }}</td><td>{{ $when($log['at']) }}</td><td><span class="sa-badge gray">{{ ucfirst($log['category']) }}</span></td></tr>

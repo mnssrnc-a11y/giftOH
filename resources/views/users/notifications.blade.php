@@ -5,7 +5,7 @@
 @section('page-title', 'Notifications')
 
 @section('content')
-@php($warnTypes = ['denied', 'funding_denied', 'liquidation_returned', 'document_resubmit', 'price_update_failed'])
+@php($warnTypes = ['denied', 'funding_denied', 'liquidation_returned', 'document_resubmit', 'request_cancelled'])
 <div class="hope-page">
     <div class="hope-heading">
         <div>

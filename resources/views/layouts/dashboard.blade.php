@@ -32,6 +32,7 @@
         <button type="button" class="hope-menu ws-menu" aria-label="Open navigation" aria-controls="hope-navigation" aria-expanded="false">☰</button>
         <div class="ws-title"><small>Gift of Hope</small><strong>Small acts. Extraordinary change.</strong></div>
         <div class="ws-top-actions">
+            <button type="button" class="ws-icon-button ws-howto" data-tutorial-start data-tour="howto" hidden aria-label="Show me how this page works" title="Show me how">?</button>
             @include('partials.notification-bell')
             <a href="{{ route('user') }}" class="ws-top-avatar" aria-label="My profile"><x-avatar class="ws-avatar" /></a>
         </div>

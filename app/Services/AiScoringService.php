@@ -43,14 +43,14 @@ class AiScoringService
     public function score(array $request): ?array
     {
         $category = $request['category_name'] ?? $request['category'] ?? 'General';
-        $budget = (array) ($request['budget'] ?? []);
-        $items = collect($budget['items'] ?? [])->map(fn (array $item): string => "{$item['name']} × {$item['qty']} @ ₱{$item['unit_price']}")->implode('; ');
+        $amount = app(FundingService::class)->amountNeeded($request);
+        $basis = $request['assessment']['amount_basis'] ?? null;
 
         $system = <<<PROMPT
 You evaluate funding requests for "Gift of Hope", a Philippine foundation that helps charity homes and communities.
 Score how critical the request is from 0 to 100 (higher = more critical, must be funded) using:
 urgency 25%, impact 25%, need severity 20%, feasibility 15%, category fit 15%.
-Requests cover 20 to 40 beneficiaries with a per-person budget of goods (food, medicine, cleaning materials).
+Requests cover 20 to 40 beneficiaries; after an interview, a social worker decides the amount the request needs.
 Return JSON: {"total_score": number, "breakdown": {"urgency": number, "impact": number, "need_severity": number,
 "feasibility": number, "category_fit": number}, "recommendation": "critical|high|moderate|low",
 "reasoning": "1-2 sentences", "red_flags": ["short notes on anything to verify during the social worker interview"]}
@@ -62,11 +62,9 @@ PROMPT;
             'Kinds of help: ' . app(FundingRules::class)->categoryLabels((array) ($request['categories'] ?? [$category])),
             'Purpose: ' . ($request['purpose'] ?? $request['mission'] ?? ''),
             'Beneficiaries: ' . ($request['beneficiary_count'] ?? 'not stated'),
-            isset($budget['per_person']) ? "Per-person budget: ₱{$budget['per_person']}" : null,
-            $items !== '' ? "Budget items per person: {$items}" : null,
-            (float) ($request['amount_requested'] ?? 0) > 0
-                ? 'Budget set by the foundation: ₱' . $request['amount_requested']
-                : 'Budget: not yet decided (the foundation sets it after the assessment)',
+            $amount !== null
+                ? "Amount needed (social worker's assessment): ₱{$amount}" . ($basis ? " — {$basis}" : '')
+                : 'Amount needed: not yet decided (the social worker sets it after the assessment)',
         ]));
 
         $answer = $this->ai->json($system, $prompt);

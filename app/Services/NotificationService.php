@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * In-app notifications. Requesters hear about their own requests; admins and super admins hear
- * about the work waiting for them (new requests, replies, decisions to finalize, price updates).
+ * about the work waiting for them (new requests, replies, decisions to finalize, cancellations).
  * Opening a notification moves it to notification_history and follows its link.
  */
 class NotificationService

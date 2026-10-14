@@ -1,17 +1,16 @@
 {{--
-    Guided tour for new users (config/tour.php). It starts by itself on the role's home page until
-    the person finishes or skips it once, and again whenever the page is opened with ?tour=1
-    (Help & tour → "Start the tour").
+    Hands-on tutorials of this page (config/tour.php). Each starts by itself the first time its page
+    or section is opened, and again from the "?" button, ?tutorial=<id> (Help & tour) or ?tour=1.
 --}}
 @php
-    $tourRole = \App\Http\Middleware\EnsureRole::resolveRole(auth()->user()) ?? 'user';
-    $tourHome = \App\Http\Middleware\EnsureRole::homeRouteFor($tourRole);
-    $tourSeen = (int) (auth()->user()->tour_version ?? 0) >= (int) config('tour.version');
+    $tutorialRole = \App\Http\Middleware\EnsureRole::resolveRole(auth()->user()) ?? 'user';
+    $pageTutorials = collect(\App\Support\Tutorials::forCurrentPage($tutorialRole));
+    $askedFor = request()->boolean('tour') ? \App\Support\Tutorials::welcomeFor($tutorialRole) : request()->query('tutorial');
     $tourConfig = [
-        'steps' => config("tour.steps.{$tourRole}", []),
-        'autostart' => request()->routeIs($tourHome) && (! $tourSeen || request()->boolean('tour')),
+        'tutorials' => $pageTutorials->map(fn ($t) => ['id' => $t['id'], 'section' => $t['section'], 'title' => $t['title'], 'steps' => $t['steps']])->all(),
+        'seen' => \App\Support\Tutorials::seen(auth()->user()),
+        'start' => $pageTutorials->contains('id', $askedFor) ? $askedFor : null,
         'completeUrl' => route('tour.complete'),
-        'helpUrl' => route('help'),
     ];
 @endphp
 <script>window.giftOfHopeTour = @json($tourConfig);</script>

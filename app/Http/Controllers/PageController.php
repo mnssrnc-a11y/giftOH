@@ -44,6 +44,7 @@ class PageController extends Controller
                 'approved' => 'Approved',
                 'rejected' => 'Denied',
                 'completed' => 'Completed',
+                'cancelled' => 'Cancelled',
                 FundingService::STATUS_UNDER_REVIEW => 'Under review',
                 // A submitted request is with the social worker first.
                 default => 'Under assessment',
@@ -51,6 +52,7 @@ class PageController extends Controller
             $color = match ($status) {
                 'Approved', 'Completed' => 'green',
                 'Denied' => 'red',
+                'Cancelled' => 'gray',
                 default => 'gold',
             };
             $view = $presenter->present($request);
@@ -76,7 +78,7 @@ class PageController extends Controller
             'Total requests' => count($requests),
             'In progress' => count(array_filter($requests, static fn (array $request): bool => in_array($request['status'], ['Under assessment', 'Under review'], true))),
             'Approved / completed' => count(array_filter($requests, static fn (array $request): bool => in_array($request['status'], ['Approved', 'Completed'], true))),
-            'Denied' => count(array_filter($requests, static fn (array $request): bool => $request['status'] === 'Denied')),
+            'Denied / cancelled' => count(array_filter($requests, static fn (array $request): bool => in_array($request['status'], ['Denied', 'Cancelled'], true))),
         ];
 
         return view('users.flow', [
@@ -147,7 +149,7 @@ class PageController extends Controller
 
     /**
      * Open a notification: it moves to the history and the page it is about opens (the request,
-     * the price list...). Without a link, back to the notifications page.
+     * System settings...). Without a link, back to the notifications page.
      */
     public function markNotificationRead(string $id)
     {

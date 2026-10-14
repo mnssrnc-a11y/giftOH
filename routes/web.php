@@ -13,7 +13,6 @@ use App\Http\Controllers\HelpController;
 use App\Http\Controllers\PayoutController;
 use App\Http\Controllers\PublicFileController;
 use App\Http\Controllers\RequestConversationController;
-use App\Http\Controllers\SuperAdminPriceController;
 use App\Http\Controllers\SuperAdminController;
 // Public routes
 Route::get('/config/firebase', [ConfigController::class, 'firebaseConfig'])->name('config.firebase');
@@ -81,6 +80,8 @@ Route::middleware(['auth', 'role:user'])->group(function(){
     Route::get('/fund-request/{id}', [PageController::class, 'showFundRequest'])->name('fund-request.show');
     Route::post('/fund-request/{id}/liquidation', [FundController::class, 'submitLiquidation'])->middleware('throttle:5,1')->name('fund-request.liquidation');
     Route::post('/fund-request/{id}/appeal', [FundController::class, 'appeal'])->middleware('throttle:5,1')->name('fund-request.appeal');
+    // The requester stops the request before the funds go out: everything still to come is cancelled.
+    Route::post('/fund-request/{id}/cancel', [FundController::class, 'cancel'])->middleware('throttle:5,1')->name('fund-request.cancel');
     // After approval: the people who will receive the help (Add person: last, first, middle name).
     Route::post('/fund-request/{id}/beneficiaries', [FundController::class, 'submitBeneficiaries'])->middleware('throttle:10,1')->name('fund-request.beneficiaries');
     Route::post('/fund-request/{id}/interview-response', [RequestConversationController::class, 'interviewResponse'])->name('fund-request.interview-response');
@@ -106,7 +107,6 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/fund-request/{id}', [AdminRequestController::class, 'show'])->name('admin.fund-request.show');
     Route::post('/admin/fund-request/{id}/interview', [AdminRequestController::class, 'scheduleInterview'])->name('admin.fund-request.interview');
     Route::post('/admin/fund-request/{id}/assessment', [AdminRequestController::class, 'recordAssessment'])->name('admin.fund-request.assessment');
-    Route::post('/admin/fund-request/{id}/budget', [AdminRequestController::class, 'setBudget'])->name('admin.fund-request.budget');
     Route::post('/admin/fund-request/{id}/notes', [AdminRequestController::class, 'addNote'])->middleware('throttle:30,1')->name('admin.fund-request.notes');
     Route::post('/admin/fund-request/{id}/documents/{field}/review', [AdminRequestController::class, 'reviewDocument'])->name('admin.fund-request.document-review');
     Route::post('/admin/fund-request/{id}/ai-score', [AdminRequestController::class, 'rescore'])->name('admin.fund-request.ai-score');
@@ -119,7 +119,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
 Route::middleware(['auth', 'role:super_admin'])->group(function () {
     Route::get('/superadmin', [SuperAdminController::class, 'index'])->name('superadmin');
-    // Full request (requester, documents, assessment, budget, notes, conversation) for the final check.
+    // Full request (requester, documents, assessment and amount needed, notes, conversation) for the final check.
     Route::get('/superadmin/fund-request/{id}', [SuperAdminController::class, 'showRequest'])->name('superadmin.fund-request.show');
     Route::post('/superadmin/fund-request/{id}/finalize', [SuperAdminController::class, 'finalize'])->name('superadmin.fund-request.finalize');
     // Automatic transfer of the approved funds, confirmed with an emailed code.
@@ -131,10 +131,4 @@ Route::middleware(['auth', 'role:super_admin'])->group(function () {
     Route::post('/superadmin/settings/mail', [SuperAdminController::class, 'startMailChange'])->middleware('throttle:5,10')->name('superadmin.settings.mail');
     Route::post('/superadmin/settings/mail/confirm', [SuperAdminController::class, 'confirmMailChange'])->name('superadmin.settings.mail.confirm');
     Route::post('/superadmin/settings/mail/test', [SuperAdminController::class, 'testMail'])->middleware('throttle:5,10')->name('superadmin.settings.mail.test');
-    // Price list (Food, Medical, Cleaning materials): only the super admin changes items and prices.
-    Route::post('/superadmin/prices/update', [SuperAdminPriceController::class, 'runUpdate'])->name('superadmin.prices.update');
-    Route::get('/superadmin/prices/status', [SuperAdminPriceController::class, 'status'])->name('superadmin.prices.status');
-    Route::post('/superadmin/prices/items', [SuperAdminPriceController::class, 'store'])->middleware('throttle:20,1')->name('superadmin.prices.store');
-    Route::put('/superadmin/prices/items/{key}', [SuperAdminPriceController::class, 'update'])->name('superadmin.prices.update-item');
-    Route::delete('/superadmin/prices/items/{key}', [SuperAdminPriceController::class, 'destroy'])->name('superadmin.prices.destroy');
 });

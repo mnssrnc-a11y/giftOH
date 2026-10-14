@@ -18,7 +18,7 @@
                     </div>
                 @endif
 
-                <div class="flex">
+                <div >
                     <div>
                         <label for="fname" class="block text-sm font-medium text-gray-700">First Name</label>
                         <input id="fname" name="fname" type="text" required autofocus
@@ -76,23 +76,23 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                @php($placeClass = 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500')
                 <div>
                     <label for="province" class="block text-sm font-medium text-gray-700">Province</label>
-                    <input id="province" name="province" type="text" required
-                        value="{{ old('province') }}"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <input id="province" value="{{ \App\Support\Pampanga::PROVINCE }}" readonly class="{{ $placeClass }} bg-gray-50">
                 </div>
                 <div>
-                    <label for="city" class="block text-sm font-medium text-gray-700">City</label>
-                    <input id="city" name="city" type="text" required
-                        value="{{ old('city') }}"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <label for="city" class="block text-sm font-medium text-gray-700">City / municipality</label>
+                    <select id="city" name="city" required data-place-town class="{{ $placeClass }}">
+                        <option value="">Choose the city or town…</option>
+                        @foreach (\App\Support\Pampanga::towns() as $town)<option @selected(old('city') === $town)>{{ $town }}</option>@endforeach
+                    </select>
+                    @error('city')<p class="mt-1 text-sm text-red-700">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label for="barangay" class="block text-sm font-medium text-gray-700">Barangay</label>
-                    <input id="barangay" name="barangay" type="text" required
-                        value="{{ old('barangay') }}"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    @include('partials.barangay-select', ['name' => 'barangay', 'town' => old('city'), 'extra' => 'class="' . $placeClass . '"'])
+                    @error('barangay')<p class="mt-1 text-sm text-red-700">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label for="street_address" class="block text-sm font-medium text-gray-700">Street Address</label>

@@ -48,6 +48,7 @@ class FundingRequestPresenter
             $view['admin_review'] = null;
             $view['final_notes'] = null;
             $view['staff_notes'] = [];
+            $view['need']['basis'] = null;
         }
 
         return $view;
@@ -73,7 +74,6 @@ class FundingRequestPresenter
         // Requests can name several kinds of help; older ones have one category.
         $categories = array_values((array) ($request['categories'] ?? [$category]));
         $stage = $this->funding->stageOf($request);
-        $budget = (array) ($request['budget'] ?? []);
         $disbursement = (array) ($request['disbursement'] ?? []);
         $assessmentDue = $this->funding->assessmentDueAt($request);
         $liquidationDue = $this->funding->liquidationDueAt($request);
@@ -99,12 +99,14 @@ class FundingRequestPresenter
             'recipients' => array_values((array) ($request['recipients'] ?? [])),
             'people_limit' => $this->funding->approvedPeople($request),
             'beneficiary_count' => (int) ($request['beneficiary_count'] ?? count((array) ($request['beneficiaries'] ?? []))),
-            'budget' => [
-                'per_person' => isset($budget['per_person']) ? (float) $budget['per_person'] : null,
-                'people' => isset($budget['people']) ? (int) $budget['people'] : null,
-                'items' => array_map(fn (array $item): array => $item + ['check' => $this->rules->priceCheck($item)], (array) ($budget['items'] ?? [])),
-            ],
+            'need' => $this->need($request),
             'per_person_cap' => $this->rules->perPersonCap($category),
+            'cancellable' => $this->funding->cancellable($request),
+            'cancelled' => ! empty($request['cancelled_at']) ? [
+                'at' => $request['cancelled_at'],
+                'reason' => $request['cancel_reason'] ?? null,
+                'stage' => $request['cancelled_stage'] ?? null,
+            ] : null,
             'documents' => $this->documents($request),
             'documents_verified' => $this->funding->documentsVerified($request),
             'interview_response' => $request['assessment']['interview_response'] ?? null,
@@ -209,6 +211,27 @@ class FundingRequestPresenter
         ];
     }
 
+    /**
+     * The amount the request needs, decided by the admin / social worker in the assessment.
+     * Older requests had a per-person budget from the former price list instead.
+     */
+    private function need(array $request): array
+    {
+        $amount = $this->funding->amountNeeded($request);
+        $assessment = (array) ($request['assessment'] ?? []);
+        $people = (int) ($assessment['verified_beneficiaries'] ?? $request['beneficiary_count'] ?? 0);
+        $legacy = ! isset($assessment['amount_needed']) && ! empty($request['budget']['per_person']);
+
+        return [
+            'amount' => $amount,
+            'people' => $people,
+            'per_person' => $amount !== null && $people > 0 ? round($amount / $people, 2) : null,
+            'basis' => $legacy
+                ? '₱' . number_format((float) $request['budget']['per_person'], 2) . ' per person (budget set before amounts came from the assessment)'
+                : ($assessment['amount_basis'] ?? null),
+        ];
+    }
+
     private function assessment(array $assessment): array
     {
         return $assessment + [
@@ -250,6 +273,7 @@ class FundingRequestPresenter
             [$request['approved_at'] ?? null, 'Approved' . (isset($request['approved_amount']) ? ' · ₱' . number_format((float) $request['approved_amount'], 2) : ''), null],
             [$request['rejected_at'] ?? null, 'Rejected', $forAdmin ? ($request['final_notes'] ?? $request['admin_notes'] ?? null) : $this->rejectionReason($request)],
             [$disbursement['recorded_at'] ?? null, 'Funds released', isset($disbursement['amount']) ? '₱' . number_format((float) $disbursement['amount'], 2) . ' · ' . (config('funding.disbursement_methods.' . ($disbursement['method'] ?? '')) ?? '') : null],
+            [$request['cancelled_at'] ?? null, 'Cancelled by the requester', $request['cancel_reason'] ?? null],
         ];
         foreach ((array) ($request['appeal_history'] ?? []) as $appeal) {
             $events[] = [$appeal['previous_decision_at'] ?? null, 'Rejected', $appeal['previous_reason'] ?? null];

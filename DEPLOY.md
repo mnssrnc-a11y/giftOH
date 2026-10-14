@@ -143,8 +143,7 @@ is refused by the bank.
 - **Malware scan:** Windows Defender doesn't exist on a Linux server, so online uploads get the
   built-in checks (`UPLOAD_SCAN_ENGINES=heuristic`): blocked extensions, hidden scripts, PDF
   JavaScript, disguised files and the EICAR test file.
-- **Scheduled jobs** (monthly price update, daily file re-scan) run inside the container, but only
-  while it's awake. The super admin's "Update prices" button still works any time.
+- **Scheduled jobs** (daily file re-scan) run inside the container, but only while it's awake.
 - **Super admin → email sender:** online, a new sender must first be verified in Brevo (step 1.2).
   No app password is needed, and the choice is saved in Firebase (`system_settings/mail_sender`).
 

@@ -7,6 +7,7 @@ use App\Repositories\FirebaseAdminPostRepository;
 use App\Repositories\FirebaseUserRepository;
 use App\Services\FundingService;
 use App\Services\NotificationService;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class HelpTourTest extends TestCase
@@ -23,46 +24,94 @@ class HelpTourTest extends TestCase
         return $this->actingAs(new FirebaseUser($extra + ['id' => "test-{$role}", 'fname' => 'Alex', 'lname' => 'Tester', 'role' => $role]));
     }
 
-    public function test_help_explains_the_process_and_each_role_sees_its_own_part(): void
+    private function tutorialsOn($response): array
     {
-        $this->get(route('help'))->assertRedirect(route('login'));
-
-        $this->as('normaluser')->get(route('help'))->assertOk()
-            ->assertSee('How Gift of Hope works')
-            ->assertSee('The requester lists the people')
-            ->assertSee(route('dashboarduser', ['tour' => 1]), false)
-            ->assertSee('Why was my account name refused?');
-
-        $this->as('admin')->get(route('help'))->assertOk()
-            ->assertSee(route('admin', ['tour' => 1]), false)
-            ->assertSee('Why can&#039;t I approve a request?', false);
-
-        $this->as('super_admin')->get(route('help'))->assertOk()
-            ->assertSee(route('superadmin', ['tour' => 1]), false)
-            ->assertSee('Why can&#039;t I send a transfer?', false);
+        return json_decode(str($response->getContent())->between('window.giftOfHopeTour = ', ';</script>'), true);
     }
 
-    public function test_the_tour_starts_by_itself_once_and_again_on_request(): void
+    public function test_every_tutorial_is_short_and_points_at_a_real_page(): void
+    {
+        $tutorials = config('tour.tutorials');
+        $this->assertNotEmpty($tutorials);
+
+        foreach ($tutorials as $id => $tutorial) {
+            $this->assertTrue(Route::has($tutorial['route']), "{$id}: unknown route {$tutorial['route']}");
+            $this->assertEmpty(array_diff($tutorial['roles'], ['user', 'admin', 'super_admin']), "{$id}: unknown role");
+            $this->assertNotEmpty($tutorial['about'], "{$id}: Help needs a line about it");
+            $this->assertLessThanOrEqual(4, count($tutorial['steps']), "{$id}: keep it short");
+            foreach ($tutorial['steps'] as $step) {
+                $this->assertLessThanOrEqual(110, mb_strlen($step['text']), "{$id}: \"{$step['text']}\" is too long");
+                $this->assertContains($step['do'] ?? null, [null, 'click', 'fill']);
+                if (isset($step['next'])) {
+                    $this->assertArrayHasKey($step['next'], $tutorials, "{$id}: next tutorial {$step['next']} is missing");
+                }
+            }
+        }
+
+        // Every role gets a tutorial for each of its workspace sections.
+        $sections = fn (string $route) => collect($tutorials)->where('route', $route)->pluck('section')->sort()->values()->all();
+        $this->assertSame(['dashboard', 'funding', 'reports', 'settings', 'updates'], $sections('admin'));
+        $this->assertSame(['accounts', 'activity', 'dashboard', 'monitor', 'requests', 'settings'], $sections('superadmin'));
+    }
+
+    public function test_help_lists_the_tutorials_of_each_role(): void
+    {
+        $this->mock(FundingService::class, function ($mock) {
+            $mock->shouldReceive('getRequestsByUser')->andReturn([['id' => 'old', 'created_at' => '2026-01-01'], ['id' => 'new', 'created_at' => '2026-05-01']]);
+            $mock->shouldReceive('getAllRequests')->andReturn([]);
+        });
+
+        $this->get(route('help'))->assertRedirect(route('login'));
+
+        $this->as('normaluser', ['tutorials_seen' => ['welcome']])->get(route('help'))->assertOk()
+            ->assertSee('Tutorials')
+            ->assertSee(e(route('fund-request', ['tutorial' => 'fund-request'])), false)
+            // A request page tutorial opens on the newest request.
+            ->assertSee(e(route('fund-request.show', ['id' => 'new', 'tutorial' => 'request-detail'])), false)
+            ->assertSee('✓ Done')
+            ->assertDontSee('Announcements with photos.');
+
+        $this->as('admin')->get(route('help'))->assertOk()
+            ->assertSee(e(route('admin', ['tutorial' => 'admin-funding'])) . '#funding', false)
+            ->assertSee('After the first request')
+            ->assertDontSee('Roles and access.');
+
+        $this->as('super_admin')->get(route('help'))->assertOk()
+            ->assertSeeInOrder(['Getting started', 'Final check', 'Settings', 'IoT box monitor'])
+            ->assertSee(e(route('superadmin', ['tutorial' => 'sa-accounts'])) . '#accounts', false)
+            ->assertSee('The smart donation boxes, live.');
+    }
+
+    public function test_each_page_gets_its_own_tutorial_until_it_is_seen(): void
     {
         $this->mock(FundingService::class, fn ($mock) => $mock->shouldReceive('getRequestsByUser')->andReturn([]));
         $this->mock(FirebaseAdminPostRepository::class, fn ($mock) => $mock->shouldReceive('latest')->andReturn([]));
-        $tour = fn ($response) => json_decode(str($response->getContent())->between('window.giftOfHopeTour = ', ';</script>'), true);
 
-        $new = $tour($this->as('normaluser')->get(route('dashboarduser')));
-        $this->assertTrue($new['autostart']);
-        $this->assertSame('Welcome to Gift of Hope', $new['steps'][0]['title']);
+        $home = $this->tutorialsOn($this->as('normaluser')->get(route('dashboarduser')));
+        $this->assertSame(['welcome'], array_column($home['tutorials'], 'id'));
+        $this->assertSame([], $home['seen']);
+        $this->assertNull($home['start']);
 
-        $seen = ['tour_version' => config('tour.version')];
-        $this->assertFalse($tour($this->as('normaluser', $seen)->get(route('dashboarduser')))['autostart']);
-        $this->assertTrue($tour($this->as('normaluser', $seen)->get(route('dashboarduser', ['tour' => 1])))['autostart']);
-        // Only the home page starts it.
-        $this->assertFalse($tour($this->as('normaluser')->get(route('help')))['autostart']);
+        $seen = ['tutorials_seen' => ['welcome']];
+        $this->assertSame(['welcome'], $this->tutorialsOn($this->as('normaluser', $seen)->get(route('dashboarduser')))['seen']);
+        // Asked for again (Help, or the old ?tour=1 link); a tutorial of another page is ignored.
+        $this->assertSame('welcome', $this->tutorialsOn($this->as('normaluser', $seen)->get(route('dashboarduser', ['tutorial' => 'welcome'])))['start']);
+        $this->assertSame('welcome', $this->tutorialsOn($this->as('normaluser', $seen)->get(route('dashboarduser', ['tour' => 1])))['start']);
+        $this->assertNull($this->tutorialsOn($this->as('normaluser')->get(route('dashboarduser', ['tutorial' => 'sa-accounts'])))['start']);
+
+        $settings = $this->tutorialsOn($this->as('normaluser')->get(route('settings')));
+        $this->assertSame(['settings'], array_column($settings['tutorials'], 'id'));
+        $this->assertSame('click', collect($home['tutorials'][0]['steps'])->last()['do']);
     }
 
-    public function test_finishing_the_tour_is_remembered_on_the_account(): void
+    public function test_finishing_a_tutorial_is_remembered_on_the_account(): void
     {
-        $this->mock(FirebaseUserRepository::class, fn ($mock) => $mock->shouldReceive('update')->once()->with('test-admin', ['tour_version' => config('tour.version')])->andReturn([]));
+        $this->mock(FirebaseUserRepository::class, fn ($mock) => $mock->shouldReceive('update')->once()
+            ->with('test-admin', ['tutorials_seen' => ['admin-welcome', 'admin-funding']])->andReturn([]));
 
-        $this->as('admin')->post(route('tour.complete'))->assertNoContent();
+        $this->as('admin', ['tutorials_seen' => ['admin-welcome']])->postJson(route('tour.complete'), ['id' => 'admin-funding'])->assertNoContent();
+        // Already seen: nothing to save. Unknown: refused.
+        $this->as('admin', ['tutorials_seen' => ['admin-welcome']])->postJson(route('tour.complete'), ['id' => 'admin-welcome'])->assertNoContent();
+        $this->as('admin')->postJson(route('tour.complete'), ['id' => 'nope'])->assertUnprocessable();
     }
 }

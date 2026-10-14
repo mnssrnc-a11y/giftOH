@@ -7,7 +7,7 @@
 | Based on the foundation interview:
 | - Every request needs a formal request letter and a Certificate of Indigency.
 | - Any organization may apply. (Education / scholarship assistance is no longer offered.)
-| - A request covers 20 to 40 individuals; the budget is planned per person.
+| - A request covers 20 to 40 individuals; the social worker decides the amount it needs.
 | - Social workers interview and assess each request before approval, within a week.
 | - Funds are sent by bank-to-bank transfer to an account in the receiver's name.
 | - After release, the organization liquidates: receipts and the list of people who received help.
@@ -26,7 +26,7 @@ return [
     // Days after funds are released before the liquidation report is overdue.
     'liquidation_days' => (int) env('FUNDING_LIQUIDATION_DAYS', 30),
 
-    // Per-person budget the foundation usually allocates for goods (e.g. 40 people x ₱500 = ₱20,000).
+    // Usual amount per person, shown as a guideline next to the amount needed (e.g. 40 people x ₱500 = ₱20,000).
     'default_per_person_allocation' => (float) env('FUNDING_PER_PERSON_ALLOCATION', 500),
 
     'document_rules' => 'file|mimes:jpg,jpeg,png,pdf|max:10240',

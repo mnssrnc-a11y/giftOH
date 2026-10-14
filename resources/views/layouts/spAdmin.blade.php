@@ -3,7 +3,7 @@
 @php
     $saSection = trim($__env->yieldContent('sa-section'));
     $saNav = [
-        'WORKSPACE' => ['dashboard' => ['▦', 'Dashboard'], 'requests' => ['₱', 'Fund requests'], 'accounts' => ['♧', 'Accounts'], 'prices' => ['▤', 'Price list']],
+        'WORKSPACE' => ['dashboard' => ['▦', 'Dashboard'], 'requests' => ['₱', 'Fund requests'], 'accounts' => ['♧', 'Accounts']],
         'SYSTEM' => ['settings' => ['⚙', 'System settings'], 'monitor' => ['◉', 'System monitor'], 'activity' => ['◷', 'Activity log']],
     ];
     $awaitingCount = $outcomes['awaiting'] ?? null;
@@ -36,6 +36,7 @@
             <button type="button" class="ws-menu" data-sa-menu aria-label="Open navigation" aria-expanded="false" aria-controls="sa-navigation">☰</button>
             <div class="ws-title"><small>Super admin</small><strong data-sa-title>@yield('page-title', 'Dashboard')</strong></div>
             <div class="ws-top-actions">
+                <button type="button" class="ws-icon-button ws-howto" data-tutorial-start data-tour="howto" hidden aria-label="Show me how this page works" title="Show me how">?</button>
                 @include('partials.notification-bell')
                 <a href="{{ route('settings') }}" class="ws-top-avatar" aria-label="My account"><x-avatar class="ws-avatar" fallback="S" /></a>
             </div>
@@ -48,7 +49,7 @@
     @include('partials.tabbar', ['tabs' => [
         ['href' => route('superadmin') . '#dashboard', 'icon' => '▦', 'label' => 'Home', 'section' => 'dashboard'],
         ['href' => route('superadmin') . '#requests', 'icon' => '₱', 'label' => 'Requests', 'section' => 'requests', 'route' => 'superadmin.fund-request.show'],
-        ['href' => route('superadmin') . '#prices', 'icon' => '▤', 'label' => 'Prices', 'section' => 'prices'],
+        ['href' => route('superadmin') . '#accounts', 'icon' => '♧', 'label' => 'Accounts', 'section' => 'accounts'],
     ]])
     <dialog class="sa-dialog" data-sa-dialog aria-labelledby="sa-dialog-title"><button class="sa-dialog-close" type="button" data-sa-close aria-label="Close dialog">×</button><div data-sa-dialog-content></div></dialog>
     {{-- Result of the last action, visible wherever the page is scrolled to. --}}

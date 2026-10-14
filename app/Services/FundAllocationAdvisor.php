@@ -6,10 +6,9 @@ use App\Services\Ai\AiClient;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Recommends how much of a funding request can be granted, the way the foundation budgets:
- * count the people who will receive help (20-40), allocate a per-person amount (usually ₱500
- * for goods, e.g. 40 people → ₱20,000), and when funds are short, share them across the
- * queue by priority so other requests still get a budget.
+ * Recommends how much of a funding request can be granted: the amount the social worker decided
+ * in the assessment, and when funds are short, a share of them by priority so the other requests
+ * in the queue still get help. Requests not assessed yet count with the per-person guideline.
  *
  * The rule-based amount always runs. When an AI provider is configured it may adjust the
  * amount inside the same hard limits and explains its reasoning.
@@ -68,12 +67,12 @@ class FundAllocationAdvisor
         }
 
         if ($queueDemand <= $budget) {
+            // Enough for everyone: exactly what the assessment says.
             $amount = $need['amount'];
         } else {
             $weight = $need['amount'] * ($priority / 100) ** 2;
-            $amount = min($need['amount'], $weightedDemand > 0 ? $budget * $weight / $weightedDemand : 0);
+            $amount = $this->roundToPeople(min($need['amount'], $weightedDemand > 0 ? $budget * $weight / $weightedDemand : 0), $need['people']);
         }
-        $amount = $this->roundToPeople($amount, $need['people']);
 
         $recommendation = [
             'available' => true,
@@ -85,7 +84,7 @@ class FundAllocationAdvisor
             'per_person_cap' => $need['cap'],
             'requested_amount' => $need['requested'],
             'coverage' => $need['requested'] > 0 ? round($amount / $need['requested'] * 100) : 0,
-            'max_amount' => $this->roundToPeople(min($need['requested'], $availableFunds), $need['people']),
+            'max_amount' => $need['requested'] <= $availableFunds ? $need['requested'] : $this->roundToPeople($availableFunds, $need['people']),
             'total_funds' => $totalFunds,
             'committed_funds' => $committed,
             'reserved_funds' => $reserved,
@@ -102,27 +101,28 @@ class FundAllocationAdvisor
     }
 
     /**
-     * How much the request needs under the foundation's per-person guideline.
+     * How much the request needs: the amount the social worker / admin decided in the assessment.
+     * Requests not assessed yet count with the foundation's per-person guideline as an estimate.
      *
-     * @return array{amount: float, requested: float, people: int, people_source: string, cap: float}
+     * @return array{amount: float, requested: float, people: int, people_source: string, cap: float, assessed: bool}
      */
     private function needOf(array $request): array
     {
-        $requested = (float) ($request['amount_requested'] ?? $request['amount'] ?? 0);
         $category = $request['category_name'] ?? $request['category'] ?? null;
         $verified = (int) ($request['assessment']['verified_beneficiaries'] ?? 0);
         $declared = (int) ($request['beneficiary_count'] ?? 0);
         $people = $verified ?: $declared;
         $cap = $this->rules->perPersonCap($category);
-
-        $amount = $people > 0 ? min($requested, $people * $cap) : $requested;
+        $assessed = $this->funding->amountNeeded($request);
+        $amount = $assessed ?? $people * $cap;
 
         return [
             'amount' => $amount,
-            'requested' => $requested,
+            'requested' => $amount,
             'people' => $people,
             'people_source' => $verified ? 'verified by the social worker' : 'declared in the request',
             'cap' => $cap,
+            'assessed' => $assessed !== null,
         ];
     }
 
@@ -194,9 +194,11 @@ class FundAllocationAdvisor
         $category = $request['category_name'] ?? $request['category'] ?? 'General';
         $lines = ["{$category} carries a priority score of {$priority}/100 ({$this->priorityLabel($priority)})."];
 
-        if ($need['people'] > 0) {
-            $lines[] = "Guideline: {$need['people']} people ({$need['people_source']}) × {$peso($need['cap'])} per person = {$peso($need['people'] * $need['cap'])}"
-                . ($need['requested'] > $need['amount'] ? "; the request asks for {$peso($need['requested'])}." : '.');
+        if ($need['assessed']) {
+            $lines[] = "The social worker's assessment puts the need at {$peso($need['amount'])}"
+                . ($need['people'] > 0 ? " for {$need['people']} people ({$need['people_source']})." : '.');
+        } elseif ($need['people'] > 0) {
+            $lines[] = "Not assessed yet; estimated with the guideline: {$need['people']} people × {$peso($need['cap'])} per person = {$peso($need['amount'])}.";
         }
 
         $lines[] = "After approved grants and recommendations awaiting finalization, {$peso($available)} is available; "
@@ -230,7 +232,7 @@ class FundAllocationAdvisor
                 'purpose' => $request['purpose'] ?? $request['mission'] ?? null,
                 'amount_requested' => $recommendation['requested_amount'],
                 'people' => $recommendation['people'],
-                'budget_items_per_person' => $request['budget']['items'] ?? null,
+                'how_the_amount_was_decided' => $request['assessment']['amount_basis'] ?? null,
                 'social_worker_assessment' => $request['assessment']['notes'] ?? null,
                 'ai_criticality_score' => $request['ai_score'] ?? null,
             ],
@@ -248,7 +250,7 @@ class FundAllocationAdvisor
 
         $system = <<<PROMPT
 You advise administrators of "Gift of Hope", a Philippine charity, on how much money to release for a funding request.
-The foundation budgets per person (usually ₱500 each for goods, for 20-40 people) and must leave budget for other requests.
+A social worker decides the amount each request needs after an interview (requests cover 20-40 people); the foundation must leave money for other requests.
 Recommend an amount in PHP between 0 and hard_maximum. Stay close to rule_based_amount unless the request details justify a change.
 Return JSON: {"recommended_amount": number, "reasoning": ["short sentence", "..."]} with at most 3 sentences.
 PROMPT;

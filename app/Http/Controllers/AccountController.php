@@ -19,6 +19,7 @@ use App\Repositories\FirebaseUserRepository;
 use App\Services\MailSettingsService;
 use App\Services\NotificationService;
 use App\Services\RegistrationService;
+use App\Support\Pampanga;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class AccountController extends Controller
@@ -54,6 +55,7 @@ class AccountController extends Controller
             $request->merge(['email' => strtolower($email)]);
         }
 
+        $place = Pampanga::rules($request->input('city'));
         $validated = $request->validate([
             'fname' => 'required|string|max:255',
             'lname' => 'required|string|max:255',
@@ -63,12 +65,15 @@ class AccountController extends Controller
             'contact_number' => 'required|string|max:15',
             'gender' => 'nullable|in:male,female',
             'date_of_birth' => 'nullable|date',
-            'street_address' => 'nullable|string|max:255',
-            'barangay' => 'nullable|string|max:255',
-            'city' => 'nullable|string|max:255',
-            'province' => 'nullable|string|max:255',
+            // Addresses are in Pampanga: the city / town and its barangay come from the list.
+            'street_address' => 'required|string|max:255',
+            'city' => $place['town'],
+            'barangay' => $place['barangay'],
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-        ]);
+        ], [
+            'city.in' => 'Choose a city or town in Pampanga from the list.',
+            'barangay.in' => 'Choose a barangay of the chosen city or town.',
+        ], ['city' => 'city / municipality', 'street_address' => 'street address']);
 
         if ($this->firebaseUsers->findByEmail($validated['email']) !== null) {
             return back()
@@ -76,11 +81,7 @@ class AccountController extends Controller
                 ->withErrors(['email' => 'An account with this email address already exists.']);
         }
 
-        // Concatenate address parts into a single address string
-        $address = $validated['street_address'] . ', '
-                . $validated['barangay'] . ', '
-                . $validated['city'] . ', '
-                . $validated['province'];
+        $address = Pampanga::address($validated['street_address'], $validated['barangay'], $validated['city']);
 
         $pending = [
             'fname' => $validated['fname'],

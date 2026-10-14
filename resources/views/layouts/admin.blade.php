@@ -39,6 +39,7 @@
                 <button type="button" class="ws-icon-button" data-theme-toggle title="Dark mode" aria-label="Toggle dark mode">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
                 </button>
+                <button type="button" class="ws-icon-button ws-howto" data-tutorial-start data-tour="howto" hidden aria-label="Show me how this page works" title="Show me how">?</button>
                 @include('partials.notification-bell')
                 <a href="{{ route('admin') }}#settings" class="ws-top-avatar" aria-label="My account"><x-avatar class="ws-avatar" fallback="A" /></a>
             </div>

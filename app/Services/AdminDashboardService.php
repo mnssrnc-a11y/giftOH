@@ -88,7 +88,7 @@ class AdminDashboardService
                 'ai_score' => isset($request['ai_score']) ? (float) $request['ai_score'] : null,
                 'stage' => $stage = $this->funding->stageOf($request),
                 'beneficiary_count' => (int) ($request['beneficiary_count'] ?? 0),
-                'per_person' => isset($request['budget']['per_person']) ? (float) $request['budget']['per_person'] : null,
+                'amount_needed' => $this->funding->amountNeeded($request),
                 'assessment_outcome' => $request['assessment']['outcome'] ?? null,
                 'verified_beneficiaries' => isset($request['assessment']['verified_beneficiaries']) ? (int) $request['assessment']['verified_beneficiaries'] : null,
                 'assessment_notes' => $request['assessment']['notes'] ?? null,

@@ -179,7 +179,7 @@
         <article><span>Approval rate</span><strong>{{ is_null($fundingSummary['approvalRate']) ? '—' : $fundingSummary['approvalRate'] . '%' }}</strong><small>{{ $fundingSummary['decidedCount'] }} finalized decision(s)</small></article>
     </div>
     <div class="admin-tabs" data-funding-tabs>
-        @foreach (['all' => 'All requests', 'assessment' => 'Assessment (' . $fundingSummary['needsAssessment'] . ')', 'decision' => 'Ready for decision', 'awaiting' => 'Awaiting super admin', 'release' => 'To release (' . $fundingSummary['toRelease'] . ')', 'liquidation' => 'Liquidation (' . $fundingSummary['liquidationPending'] . ')', 'completed' => 'Completed', 'rejected' => 'Rejected'] as $key => $label)<button class="admin-tab {{ $key === 'all' ? 'is-active' : '' }}" data-status-tab="{{ $key }}">{{ $label }}</button>@endforeach
+        @foreach (['all' => 'All requests', 'assessment' => 'Assessment (' . $fundingSummary['needsAssessment'] . ')', 'decision' => 'Ready for decision', 'awaiting' => 'Awaiting super admin', 'release' => 'To release (' . $fundingSummary['toRelease'] . ')', 'liquidation' => 'Liquidation (' . $fundingSummary['liquidationPending'] . ')', 'completed' => 'Completed', 'rejected' => 'Rejected / cancelled'] as $key => $label)<button class="admin-tab {{ $key === 'all' ? 'is-active' : '' }}" data-status-tab="{{ $key }}">{{ $label }}</button>@endforeach
     </div>
     <div class="admin-card">
         <div class="admin-card-body">
@@ -200,7 +200,7 @@
 <section class="admin-page" data-admin-page="reports">
     <div class="admin-page-head"><div><h2>Reports center</h2><p>Operational and funding performance from live records.</p></div><div class="admin-actions"><button class="admin-button" data-export-csv>▦ Export CSV</button><button class="admin-button primary" data-print>⌑ Print / PDF</button></div></div>
     <div class="admin-report-tabs">
-        @foreach (['iot' => 'IoT reports', 'funding' => 'Funding reports', 'funded' => 'Funded projects', 'finished' => 'Finished projects', 'prices' => 'Price reference'] as $key => $label)<button class="admin-report-tab {{ $key === 'iot' ? 'is-active' : '' }}" data-report-tab="{{ $key }}">{{ $label }}</button>@endforeach
+        @foreach (['iot' => 'IoT reports', 'funding' => 'Funding reports', 'funded' => 'Funded projects', 'finished' => 'Finished projects'] as $key => $label)<button class="admin-report-tab {{ $key === 'iot' ? 'is-active' : '' }}" data-report-tab="{{ $key }}">{{ $label }}</button>@endforeach
     </div>
     <div class="admin-toolbar"><input class="admin-input admin-search" type="search" placeholder="Search current report…" data-report-search><label class="admin-field"><span>Start date</span><input class="admin-input admin-date" type="date" data-report-from></label><label class="admin-field"><span>End date</span><input class="admin-input admin-date" type="date" data-report-to></label><button class="admin-button" data-report-clear>Clear filters</button></div>
 
@@ -241,28 +241,6 @@
                 <tr data-empty><td colspan="6">No finished projects yet.</td></tr>
             @endforelse
         </tbody></table></div></article>
-    </div>
-    <div class="admin-report-panel" data-report-panel="prices">
-        @php($lastRun = $priceRun)
-        <article class="admin-card" style="margin-bottom:18px"><div class="admin-card-body">
-            <span class="admin-eyebrow">Read only · managed by the super admin</span>
-            <h3 style="margin:6px 0">Price list for per-person budgets</h3>
-            <p class="admin-field-hint" style="margin:0">Items are grouped into Food, Medical and Cleaning materials. Only the super admin adds items or changes prices; the AI also refreshes prices every month from the <a href="https://www.dti.gov.ph/dti-consumer-space/dti-latest-srps-basic-necessities-prime-commodities" target="_blank" rel="noopener">DTI SRP bulletin</a> and the <a href="https://tgp.com.ph/" target="_blank" rel="noopener">TGP</a> store. When you build a budget you choose items and quantities; the prices below are applied automatically.</p>
-            <p style="margin:10px 0 0;font-size:12px">@if ($lastRun) Last AI update {{ \Carbon\Carbon::parse($lastRun['ran_at'])->diffForHumans() }}: <strong>{{ count((array) ($lastRun['updated'] ?? [])) }}</strong> price(s) changed. @else The AI price update has not run yet. @endif Need an item that is not listed? Ask the super admin.</p>
-        </div></article>
-        @foreach ($priceGroups as $group)
-        <article class="admin-card" style="margin-bottom:18px" id="prices-{{ $group['key'] }}"><div class="admin-card-head"><div><h3>{{ $group['label'] }}</h3><p>{{ count($group['items']) }} item(s)</p></div><span class="admin-status in-progress">₱{{ number_format(config('funding.default_per_person_allocation')) }} usual allocation per person</span></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Type</th><th>Item</th><th>Size</th><th>Budget price</th><th>Range</th><th>Source</th><th>Updated</th></tr></thead><tbody>
-            @forelse ($group['items'] as $item)
-                <tr><td>{{ $item['type'] }}</td><td>{{ $item['name'] }}@if ($item['matched_product'])<small title="{{ $item['matched_product'] }}">{{ \Illuminate\Support\Str::limit($item['matched_product'], 60) }}</small>@endif</td><td>{{ $item['size'] }}</td>
-                    <td><strong>₱{{ number_format($item['price'], 2) }}</strong>@if ($item['previous_price'] !== null)<small>was ₱{{ number_format($item['previous_price'], 2) }}</small>@endif</td>
-                    <td>₱{{ number_format($item['min'], 2) }}–₱{{ number_format($item['max'], 2) }}</td>
-                    <td>@if ($item['source_url'])<a href="{{ $item['source_url'] }}" target="_blank" rel="noopener">{{ $item['source'] }}</a>@else{{ $item['source'] ?? '—' }}@endif</td>
-                    <td>{{ $item['updated_at'] ? \Carbon\Carbon::parse($item['updated_at'])->format('M d, Y') : '—' }}</td></tr>
-            @empty
-                <tr data-empty><td colspan="7">No items in this group yet.</td></tr>
-            @endforelse
-        </tbody></table></div></article>
-        @endforeach
     </div>
 </section>
 
