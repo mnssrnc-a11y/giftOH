@@ -56,3 +56,7 @@ Artisan::command('firebase:verification-smoke', function () {
 // Daily anti-malware re-scan of stored uploads with the latest antivirus signatures; infected files
 // are moved to storage/app/quarantine and logged for the super admin.
 Illuminate\Support\Facades\Schedule::command('security:scan-files --quarantine')->dailyAt('02:30')->withoutOverlapping();
+
+// Release line: focus the donations on hand on approved requests (first come, first served) and
+// tell the admins when the next one is ready to transfer. New donations come in from the boxes.
+Illuminate\Support\Facades\Schedule::command('funds:queue')->everyFiveMinutes()->withoutOverlapping();

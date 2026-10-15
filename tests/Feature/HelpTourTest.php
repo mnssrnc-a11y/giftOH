@@ -51,7 +51,7 @@ class HelpTourTest extends TestCase
         // Every role gets a tutorial for each of its workspace sections.
         $sections = fn (string $route) => collect($tutorials)->where('route', $route)->pluck('section')->sort()->values()->all();
         $this->assertSame(['dashboard', 'funding', 'reports', 'settings', 'updates'], $sections('admin'));
-        $this->assertSame(['accounts', 'activity', 'dashboard', 'monitor', 'requests', 'settings'], $sections('superadmin'));
+        $this->assertSame(['accounts', 'activity', 'dashboard', 'monitor', 'requests', 'settings', 'transactions'], $sections('superadmin'));
     }
 
     public function test_help_lists_the_tutorials_of_each_role(): void

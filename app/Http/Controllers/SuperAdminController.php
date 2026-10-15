@@ -10,11 +10,13 @@ use App\Services\AuditLogger;
 use App\Services\FundingRequestPresenter;
 use App\Services\FundingRules;
 use App\Services\FundingService;
+use App\Services\FundQueue;
 use App\Services\IotService;
 use App\Services\MailSettingsService;
 use App\Services\NotificationService;
 use App\Services\RequestMessageService;
 use App\Services\SystemSettings;
+use App\Services\TransactionLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -32,8 +34,11 @@ class SuperAdminController extends Controller
     ) {
     }
 
-    public function index(FirebaseAuditLogRepository $auditLogs, MailSettingsService $mail, FundingRules $rules)
+    public function index(FirebaseAuditLogRepository $auditLogs, MailSettingsService $mail, FundingRules $rules, FundQueue $queue, TransactionLog $ledger)
     {
+        // New donations come in from the boxes: see if the next request in line is now covered.
+        $queue->refreshSoon();
+
         // Every request, the ones awaiting the final decision first; each opens the full request.
         $fundRequests = $this->dashboard->fundingRows();
         usort($fundRequests, static fn (array $a, array $b): int => ($b['status'] === 'awaiting') <=> ($a['status'] === 'awaiting'));
@@ -44,6 +49,9 @@ class SuperAdminController extends Controller
 
         return view('supperAdminPage.spAd_dashB', [
             'fundRequests' => $fundRequests,
+            'releaseLine' => $queue->state(),
+            'transactions' => $ledger->latest(),
+            'ledgerCheck' => $ledger->verify(),
             'availableFunds' => $this->iotService->getAvailableFunds(),
             'accounts' => $accounts,
             'accountSummary' => [
@@ -71,7 +79,7 @@ class SuperAdminController extends Controller
      * the amount needed, the admin's review and verification notes, the AI assessment, the conversation and
      * the history. Read only, except for the final decision.
      */
-    public function showRequest(string $id, FundingRequestPresenter $presenter, RequestMessageService $messages, \App\Services\Payouts\PayoutService $payouts)
+    public function showRequest(string $id, FundingRequestPresenter $presenter, RequestMessageService $messages, \App\Services\Payouts\PayoutService $payouts, FundQueue $queue, TransactionLog $ledger)
     {
         $request = $this->fundingService->getRequestById($id);
         abort_if($request === null, 404);
@@ -95,6 +103,8 @@ class SuperAdminController extends Controller
             ], $earlier),
             'thread' => $messages->thread($id, 'staff'),
             'availableFunds' => $this->iotService->getAvailableFunds(),
+            'line' => $queue->rowFor($id),
+            'transactions' => $ledger->latest($id),
             'outcomes' => $this->outcomes(),
             'transfer' => in_array($view['stage']['key'], ['awaiting_recipients', 'to_release', 'released'], true) || ! empty($view['disbursement']['payout'])
                 ? $payouts->readiness($request) + ['enabled' => $payouts->enabled(), 'code_sent' => session('pending_payout') === $id]
@@ -102,7 +112,7 @@ class SuperAdminController extends Controller
         ]);
     }
 
-    public function finalize(Request $request, string $id, NotificationService $notifications)
+    public function finalize(Request $request, string $id, NotificationService $notifications, TransactionLog $ledger, FundQueue $queue)
     {
         $validated = $request->validate([
             'decision' => 'required|in:approved,rejected',
@@ -137,10 +147,15 @@ class SuperAdminController extends Controller
         $this->audit->record('funding', 'Final decision: ' . $validated['decision']
             . ($approved ? ' · ₱' . number_format((float) $validated['amount'], 2) : ''), $id,
             ['organization' => $fundingRequest['org_name'] ?? null]);
-        $notifications->notifyAdmins($id, 'final_decision', $approved ? 'Request approved · release the funds' : 'Request rejected',
+        $notifications->notifyAdmins($id, 'final_decision', $approved ? 'Request approved · in the release line' : 'Request rejected',
             $approved
-                ? "The super admin approved ₱" . number_format((float) $validated['amount'], 2) . " for {$organization}. Record the release when the bank transfer is sent."
+                ? "The super admin approved ₱" . number_format((float) $validated['amount'], 2) . " for {$organization}. It joins the release line (first come, first served); you are told when the donations on hand cover it."
                 : "The super admin rejected the request from {$organization}." . (! empty($validated['notes']) ? " Note: {$validated['notes']}" : ''));
+        if ($approved) {
+            $ledger->record('approved', $fundingRequest, (float) $validated['amount'], ['note' => $validated['notes'] ?? null]);
+            // The donations on hand may already cover it.
+            $queue->refresh();
+        }
 
         return $back()
             ->with('status', 'Request ' . ($approved ? 'approved' : 'rejected') . '. The requester and the admins have been notified.');

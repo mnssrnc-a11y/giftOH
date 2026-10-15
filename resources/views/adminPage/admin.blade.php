@@ -48,8 +48,8 @@
         <article class="admin-stat" data-admin-iot-monitor><div class="admin-stat-top"><div class="admin-stat-icon">▣</div><span class="admin-stat-change" data-admin-iot-online-label>{{ !is_null($onlineBoxCount) ? $onlineBoxCount . ' online' : 'Live status unavailable' }}</span></div><h3 data-admin-iot-total>{{ $smartBoxCount ?? '—' }}</h3><p>Smart boxes</p></article>
         <article class="admin-stat green"><div class="admin-stat-top"><div class="admin-stat-icon">↗</div><span class="admin-stat-change">{{ is_null($donationOverview) ? 'Unavailable' : 'Boxes + donations' }}</span></div><h3>{{ is_null($donationOverview) ? '—' : $peso($donationOverview) }}</h3><p>Donation overview</p></article>
         <article class="admin-stat purple"><div class="admin-stat-top"><div class="admin-stat-icon">▤</div><span class="admin-stat-change">{{ $fundingSummary['decidedCount'] }} decided</span></div><h3>{{ $totalFundRequests }}</h3><p>Total fund requests</p></article>
-        <article class="admin-stat green"><div class="admin-stat-top"><div class="admin-stat-icon">₱</div><span class="admin-stat-change">{{ is_null($totalFunds) ? 'Unavailable' : 'Live total' }}</span></div><h3>{{ is_null($totalFunds) ? '—' : $peso($totalFunds) }}</h3><p>Total funds</p></article>
-        <article class="admin-stat"><div class="admin-stat-top"><div class="admin-stat-icon">◉</div><span class="admin-stat-change">{{ is_null($availableFunds) ? 'Unavailable' : $availablePercentage . '% available' }}</span></div><h3>{{ is_null($availableFunds) ? '—' : $peso($availableFunds) }}</h3><p>Available funds</p></article>
+        <article class="admin-stat green"><div class="admin-stat-top"><div class="admin-stat-icon">₱</div><span class="admin-stat-change">{{ is_null($balance) ? 'Unavailable' : 'Collected minus transfers' }}</span></div><h3>{{ is_null($balance) ? '—' : $peso($balance) }}</h3><p>Funds on hand</p></article>
+        <article class="admin-stat"><div class="admin-stat-top"><div class="admin-stat-icon">◉</div><span class="admin-stat-change">{{ is_null($availableFunds) ? 'Unavailable' : 'After approved requests' }}</span></div><h3>{{ is_null($availableFunds) ? '—' : $peso($availableFunds) }}</h3><p>Free to grant</p></article>
     </div>
 
     <div class="admin-quick-actions" aria-label="Quick actions">
@@ -59,6 +59,11 @@
         <button data-admin-go="reports"><i>▥</i><span>Generate report</span></button>
         <a href="{{ route('iot-monitor') }}"><i>▣</i><span>Check IoT boxes</span></a>
     </div>
+
+    <article class="admin-card" style="margin-bottom:18px">
+        <div class="admin-card-head"><div><h3>Release line</h3><p>Approved requests get the donations first come, first served. You are notified when one is ready to transfer.</p></div></div>
+        <div class="admin-card-body">@include('partials.release-line', ['line' => $releaseLine, 'route' => 'admin.fund-request.show'])</div>
+    </article>
 
     <div class="admin-grid admin-two-col">
         <article class="admin-card">

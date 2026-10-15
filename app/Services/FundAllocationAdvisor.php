@@ -36,7 +36,8 @@ class FundAllocationAdvisor
             return null;
         }
 
-        $totalFunds = $this->iot->getTotalFunds();
+        // Funds on hand (collected minus transfers) and what approved requests in the release line are owed.
+        $totalFunds = $this->iot->getBalance();
         if ($totalFunds === null) {
             return [
                 'available' => false,
@@ -45,7 +46,7 @@ class FundAllocationAdvisor
         }
 
         $priorities = $this->categoryPriorities();
-        $committed = $this->funding->getTotalApprovedAmount();
+        $committed = $this->funding->getAwaitingTransferAmount();
         $reserved = $this->funding->getReservedAmount($requestId);
         $availableFunds = max(0.0, $totalFunds - $committed - $reserved);
         $budget = $availableFunds * (1 - self::RESERVE_RATIO);
@@ -201,7 +202,7 @@ class FundAllocationAdvisor
             $lines[] = "Not assessed yet; estimated with the guideline: {$need['people']} people × {$peso($need['cap'])} per person = {$peso($need['amount'])}.";
         }
 
-        $lines[] = "After approved grants and recommendations awaiting finalization, {$peso($available)} is available; "
+        $lines[] = "After the money owed to approved requests in the release line and recommendations awaiting finalization, {$peso($available)} is available; "
             . (int) (self::RESERVE_RATIO * 100) . '% is held back as a reserve.';
 
         if ($available <= 0) {

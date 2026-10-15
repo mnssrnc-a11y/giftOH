@@ -130,7 +130,7 @@ return [
             'title' => 'Getting started', 'about' => 'A one-minute look around.',
             'steps' => [
                 ['title' => 'Welcome!', 'text' => 'You review requests and recommend a decision. Here is a quick look around.'],
-                ['target' => 'stats', 'title' => 'Today', 'text' => 'Pending requests, donation boxes and funds.'],
+                ['target' => 'release-line', 'title' => 'Release line', 'text' => 'Approved requests get the donations first come, first served. You are told when one is ready.'],
                 ['target' => ['bell', 'tab-alerts'], 'title' => 'Notifications', 'text' => 'New requests and replies show up here.'],
                 ['target' => ['nav-funding', 'tab-funding'], 'do' => 'click', 'next' => 'admin-funding', 'title' => 'Your turn', 'text' => 'Click Funding.'],
             ],
@@ -148,11 +148,11 @@ return [
 
         'admin-request' => [
             'roles' => ['admin'], 'route' => 'admin.fund-request.show', 'record' => true,
-            'title' => 'Work on a request', 'about' => 'Interview, amount needed, documents, release.',
+            'title' => 'Work on a request', 'about' => 'The procedure, one step at a time.',
             'steps' => [
-                ['target' => 'next-step', 'title' => 'Next step', 'text' => 'Interview, then the assessment with the amount needed, then release and liquidation.'],
-                ['target' => '#documents', 'title' => 'Documents', 'text' => 'Verify each one, or ask for a clearer copy.'],
-                ['target' => '#notes', 'title' => 'Notes', 'text' => 'Notes for the super admin. The requester never sees them.'],
+                ['target' => 'procedure', 'title' => 'Step by step', 'text' => 'Interview, documents, assessment, decision, release, liquidation. ✓ means done.'],
+                ['target' => '.proc-panel:not([hidden])', 'title' => 'This step', 'text' => 'Only what this step needs is shown. Finish it, then press Next.'],
+                ['target' => 'info-tabs', 'title' => 'About the request', 'text' => 'Details, verification notes, messages, transactions and history.'],
             ],
         ],
 
@@ -260,6 +260,15 @@ return [
             'title' => 'System monitor', 'about' => 'Boxes, outcomes and events.',
             'steps' => [
                 ['target' => '[data-sa-page="monitor"] .sa-grid', 'title' => 'At a glance', 'text' => 'Donation boxes and funding outcomes.'],
+            ],
+        ],
+
+        'sa-transactions' => [
+            'roles' => ['super_admin'], 'route' => 'superadmin', 'section' => 'transactions',
+            'title' => 'Transaction log', 'about' => 'Every money step, never edited.',
+            'steps' => [
+                ['target' => 'ledger-check', 'title' => 'Checked', 'text' => '✓ means no entry was changed. Entries cannot be edited or deleted.'],
+                ['target' => '.tx-table', 'title' => 'Every peso', 'text' => 'Approvals, funds set aside, transfers, cancellations and liquidations.'],
             ],
         ],
 

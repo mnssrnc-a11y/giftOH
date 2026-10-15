@@ -4,14 +4,17 @@ namespace App\Services\Payouts;
 
 use App\Services\AuditLogger;
 use App\Services\FundingService;
+use App\Services\FundQueue;
 use App\Services\IotService;
 use App\Services\NotificationService;
+use App\Services\TransactionLog;
 
 /**
  * Automatic transfer of approved funds to the receiver's bank account or e-wallet.
  *
- * A transfer is possible once the request is approved, its list of people is in, the foundation's
- * funds cover every approved amount, and the receiver's bank or e-wallet has a payout channel. The
+ * A transfer is possible once the request is approved, its list of people is in, the donations on
+ * hand cover it in the release line (first come, first served, see FundQueue), and the receiver's
+ * bank or e-wallet has a payout channel. The
  * super admin starts it and confirms with an emailed code; the provider reports the result by
  * webhook, and a successful transfer is recorded as the release of funds.
  */
@@ -23,7 +26,9 @@ class PayoutService
         private FundingService $funding,
         private IotService $iot,
         private NotificationService $notifications,
-        private AuditLogger $audit
+        private AuditLogger $audit,
+        private FundQueue $queue,
+        private TransactionLog $ledger
     ) {
     }
 
@@ -69,11 +74,12 @@ class PayoutService
         if ($channel === null) {
             $problems[] = "Automatic transfer to {$provider} is not set up. Send it from the foundation's account and record the release.";
         }
-        $total = $this->iot->getTotalFunds();
-        if ($total === null) {
-            $problems[] = 'The foundation\'s funds could not be read right now.';
-        } elseif ($total - $this->funding->getTotalApprovedAmount() < -0.005) {
-            $problems[] = 'The foundation\'s funds do not yet cover every approved amount.';
+        // First come, first served: the donations on hand must cover this request after the ones before it.
+        $line = $stage['key'] === 'to_release' ? $this->queue->rowFor((string) $request['id']) : null;
+        if ($line !== null && ! $line['covered']) {
+            $problems[] = $line['short'] > 0
+                ? "Not enough donations yet: this request is #{$line['position']} in line and ₱" . number_format($line['short'], 2) . ' more is needed.'
+                : 'The foundation\'s funds could not be read right now.';
         }
 
         return ['ready' => $problems === [], 'problems' => $problems, 'amount' => $amount, 'channel' => $channel, 'provider' => $provider, 'payout' => $payout];
@@ -119,6 +125,7 @@ class PayoutService
         ];
         $this->funding->setPayout($requestId, $payout);
         $this->audit->record('funding', 'Automatic transfer sent: ₱' . number_format($check['amount'], 2) . " to {$check['provider']}", $requestId, ['payout_id' => $result['id']]);
+        $this->ledger->record('payout_sent', $request, $check['amount'], ['to' => $check['provider'], 'payout_id' => $result['id']]);
 
         return $payout;
     }
@@ -161,12 +168,19 @@ class PayoutService
             $this->notifications->notifySuperAdmins($requestId, 'payout_succeeded', 'Transfer completed', $message);
             $this->notifications->notifyAdmins($requestId, 'payout_succeeded', 'Transfer completed', $message);
             $this->audit->record('funding', 'Automatic transfer completed: ₱' . number_format($amount, 2), $requestId, ['payout_id' => $payoutId]);
+            $this->ledger->record('transferred', $request, $amount, [
+                'method' => 'automatic', 'to' => $request['disbursement']['provider'] ?? null, 'reference_no' => $payoutId,
+                'funds_on_hand_after' => round((float) $this->iot->getBalance(), 2),
+            ], 'Payout provider');
+            // The money left: the next request in line may now be covered.
+            $this->queue->refresh();
         } elseif (in_array($status, ['FAILED', 'CANCELLED', 'REVERSED', 'REJECTED', 'EXPIRED', 'COMPLIANCE_REJECTED'], true)) {
             $failure = (string) ($data['failure_code'] ?? $status);
             $this->funding->setPayout($requestId, array_merge($payout, ['status' => 'failed', 'provider_status' => $status, 'failure_code' => $failure, 'completed_at' => now()->toIso8601String()]));
             $this->notifications->notifySuperAdmins($requestId, 'payout_failed', 'Transfer did not go through',
                 "The transfer to {$organization} ended as {$status} ({$failure})." . ($status === 'REVERSED' ? ' It was returned after it had succeeded: check the account and the release record.' : ' Check the account details, then try again or send it manually.'));
             $this->audit->record('funding', "Automatic transfer {$status}: {$failure}", $requestId, ['payout_id' => $payoutId]);
+            $this->ledger->record('payout_failed', $request, $amount, ['status' => $status, 'failure_code' => $failure, 'payout_id' => $payoutId], 'Payout provider');
         } else {
             $this->funding->setPayout($requestId, array_merge($payout, ['provider_status' => $status]));
         }

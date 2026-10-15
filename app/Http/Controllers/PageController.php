@@ -254,8 +254,10 @@ class PageController extends Controller
         $messages = app(\App\Services\RequestMessageService::class);
         $thread = $messages->thread($id, 'requester');
         $messages->markRead($id, 'requester');
+        // After approval: the request's place in the release line (first come, first served).
+        $line = $view['status'] === 'approved' ? app(\App\Services\FundQueue::class)->rowFor($id) : null;
 
-        return view('FundPage.fund-request-detail', compact('fundRequest', 'view', 'thread'));
+        return view('FundPage.fund-request-detail', compact('fundRequest', 'view', 'thread', 'line'));
     }
 
     public function settings()

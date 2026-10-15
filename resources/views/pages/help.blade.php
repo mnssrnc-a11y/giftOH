@@ -14,7 +14,7 @@
         ['admin', 'The admin recommends a decision', 'Approval (with an amount, at most what the assessment says is needed) or rejection, with verification notes for the super admin.'],
         ['super_admin', 'The super admin gives the final approval', 'After checking everything about the request: the requester, documents, assessment and amount needed, notes and the AI assessment. The requester is notified either way.'],
         ['user', 'The requester lists the people', 'With "Add person": the last, first and middle name of each person who will receive the help.'],
-        ['admin', 'The funds are sent', "To the bank account or e-wallet in the receiver's name. An admin records the transfer with its proof, or the super admin sends it automatically once transfers are connected."],
+        ['admin', 'The funds are sent', "Approved requests get the donations first come, first served. When the donations on hand cover a request, the admins are told to transfer it to the receiver's bank account or e-wallet and record the transfer (or the super admin sends it automatically once transfers are connected). The funds on hand go down when the money is transferred."],
         ['user', 'The requester reports how the money was used', "Within {$liquidationDays} days: receipts and the list of people who received the help. An admin checks it and the request is completed."],
     ];
     $roleNames = ['user' => 'Requester', 'admin' => 'Admin', 'super_admin' => 'Super admin'];
@@ -30,7 +30,7 @@
         'admin' => [
             'Open "Funding" and a request to schedule the interview, record the assessment with the amount needed, review the documents and add verification notes.',
             'Approval needs: the social worker recommends it, every required document is verified, and the amount needed is recorded. Your decision goes to the super admin.',
-            'After approval, wait for the list of people (you get a notification), then send the funds and record the release with the proof.',
+            'After approval the request joins the release line (first come, first served). When you are told its funds are ready, transfer the money and record the release with the proof.',
             'Check each liquidation: verify it, or return it with remarks.',
             'Post updates (with photos) in "Updates"; see reports in "Reports" and the donation boxes in "IoT box monitor".',
         ],
@@ -38,6 +38,7 @@
             'Requests waiting for you are on the dashboard and in "Fund requests". Open one for the final check and approve (set the amount) or reject (give the reason).',
             'When automatic transfers are connected, send the approved amount from the request page; you confirm with a code sent to your email.',
             'Manage accounts (roles, access) and System settings (scoring priorities, request interval, Brevo email).',
+            'The dashboard shows the release line; Transactions lists every money step and checks that no entry was changed.',
             'System monitor and Activity log show the donation boxes, funding outcomes and every change made in the system.',
         ],
     ];
@@ -52,7 +53,8 @@
         'admin' => [
             ['Why can\'t I approve a request?', 'The social worker must recommend it, every required document must be verified, and the amount needed must be recorded in the assessment.'],
             ['How is the amount decided?', 'By the admin / social worker after the interview, from what the people need. Record it, and how it was decided, in the assessment; you can change it until you send your decision.'],
-            ['When can I record the release?', 'After the super admin approves the request and the requester has listed the people who will receive the help.'],
+            ['When can I record the release?', 'When the request is approved, its list of people is in, and the donations on hand cover it in the release line (requests approved earlier are paid first). You get a notification.'],
+            ['Can a transaction be corrected?', 'No. Transaction log entries cannot be edited or deleted. If a transfer goes wrong, it shows as a new entry.'],
         ],
         'super_admin' => [
             ['Why can\'t I send a transfer?', 'The request must be approved, its list of people must be in, the foundation\'s funds must cover every approved amount, and the bank or e-wallet must have a payout channel. Until a payout provider is connected, admins send the funds and record the release.'],

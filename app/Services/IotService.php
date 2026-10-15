@@ -104,19 +104,25 @@ class IotService
     }
 
     /**
-     * Get available funds (Total funds minus approved funding allocations).
+     * Funds on hand: everything collected (boxes + recorded donations) minus the money already
+     * transferred to requesters. It goes down when a transfer is made, not at approval.
      */
-    public function getAvailableFunds(): ?float
+    public function getBalance(): ?float
     {
         $total = $this->getTotalFunds();
 
-        if ($total === null) {
-            return null;
-        }
+        return $total === null ? null : max(0.0, $total - $this->fundingService->getTransferredAmount());
+    }
 
-        $approvedAmount = $this->fundingService->getTotalApprovedAmount();
+    /**
+     * Free to grant: the funds on hand minus what approved requests still waiting for their
+     * transfer are owed (the release line, see FundQueue).
+     */
+    public function getAvailableFunds(): ?float
+    {
+        $balance = $this->getBalance();
 
-        return max(0.0, $total - $approvedAmount);
+        return $balance === null ? null : max(0.0, $balance - $this->fundingService->getAwaitingTransferAmount());
     }
 
     /**
@@ -129,10 +135,11 @@ class IotService
         $onlineBoxCount = $this->getOnlineBoxCount();
         $donationOverview = $this->getDonationOverview();
         $totalFunds = $this->getTotalFunds();
+        $balance = $this->getBalance();
         $availableFunds = $this->getAvailableFunds();
 
-        $availablePercentage = ($totalFunds !== null && $totalFunds > 0)
-            ? round(($availableFunds / $totalFunds) * 100)
+        $availablePercentage = ($balance !== null && $balance > 0)
+            ? round(($availableFunds / $balance) * 100)
             : 0;
 
         return [
@@ -141,6 +148,7 @@ class IotService
             'onlineBoxCount' => $onlineBoxCount,
             'donationOverview' => $donationOverview,
             'totalFunds' => $totalFunds,
+            'balance' => $balance,
             'availableFunds' => $availableFunds,
             'availablePercentage' => $availablePercentage,
         ];

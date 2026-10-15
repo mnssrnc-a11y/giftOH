@@ -9,6 +9,7 @@
         'monitor' => ['CONNECTED & INFORMED', 'System monitor', 'Device health, funding outcomes, and recent audit events.'],
         'requests' => ['MAKE HOPE HAPPEN', 'Fund requests', 'Every request, with the ones awaiting your final decision first. Open one to see everything the requester submitted and what the admins verified.'],
         'activity' => ['EVERY ACTION, ACCOUNTED FOR', 'Activity log', 'Account, configuration and funding changes in one place.'],
+        'transactions' => ['EVERY PESO, ACCOUNTED FOR', 'Transaction log', 'Every money step: amounts approved, funds set aside, transfers, cancellations and liquidations. Entries cannot be edited or deleted.'],
     ];
     $peso = fn ($value) => '₱' . number_format((float) $value, 2);
     $when = fn ($value) => $value ? \Carbon\Carbon::parse($value)->format('M d, Y g:i A') : '—';
@@ -71,6 +72,10 @@
             </div>
         </article>
     </div>
+    <article class="sa-card">
+        <div class="sa-card-head"><div><h2>Release line</h2><p>Approved requests get the donations first come, first served. The admins are told when one is ready to transfer.</p></div><a href="#transactions" class="sa-link">Transaction log ↗</a></div>
+        <div class="sa-card-body">@include('partials.release-line', ['line' => $releaseLine, 'route' => 'superadmin.fund-request.show'])</div>
+    </article>
     <div class="sa-grid equal">
         <article class="sa-card"><div class="sa-card-head"><h2>Connected donation boxes</h2><a href="#monitor" class="sa-link">View monitor ↗</a></div><div class="sa-card-body">{!! $deviceList() !!}</div></article>
         <article class="sa-card"><div class="sa-card-head"><h2>Recent activity</h2><a href="#activity" class="sa-link">View log ↗</a></div><div class="sa-card-body">{!! $eventList(5) !!}</div></article>
@@ -180,6 +185,13 @@
             @endforelse
         </tbody></table></div>
         <p class="sa-empty" data-sa-filter-empty="logs" hidden>No events match.</p>
+    </article>
+
+    @elseif ($key === 'transactions')
+    <article class="sa-card">
+        <div class="sa-card-head"><div><h2>Transaction log</h2><p>{{ $ledgerCheck['count'] }} entr{{ $ledgerCheck['count'] === 1 ? 'y' : 'ies' }}, newest first. Each entry is chained to the one before it.</p></div>
+            <span class="sa-badge {{ $ledgerCheck['ok'] ? '' : 'red' }}" data-tour="ledger-check">{{ $ledgerCheck['ok'] ? '✓ Verified: no entry was changed' : '⚠ Entry #' . $ledgerCheck['broken'] . ' was changed or removed' }}</span></div>
+        <div class="sa-card-body">@include('partials.transactions', ['transactions' => $transactions, 'withRequest' => true, 'route' => 'superadmin.fund-request.show'])</div>
     </article>
     @endif
 </section>

@@ -106,6 +106,10 @@ class FundWorkflowFeaturesTest extends TestCase
         ]));
         $this->mock(IotService::class, fn ($mock) => $mock->shouldReceive('getAvailableFunds')->andReturn(50000.0));
         $this->mock(SystemSettings::class, fn ($mock) => $mock->shouldReceive('requestIntervalDays')->andReturn(93));
+        $this->mock(\App\Services\FundQueue::class, fn ($mock) => $mock->shouldReceive('rowFor')->andReturn(null));
+        $this->mock(\App\Services\TransactionLog::class, fn ($mock) => $mock->shouldReceive('latest')->with('req-1')->andReturn([
+            ['seq' => 4, 'type' => 'approved', 'label' => 'Amount approved', 'amount' => 12500, 'actor_name' => 'Boss', 'at' => now()->toIso8601String(), 'details' => []],
+        ]));
 
         $this->as('super_admin')->get(route('superadmin.fund-request.show', 'req-1'))
             ->assertOk()
@@ -117,6 +121,7 @@ class FundWorkflowFeaturesTest extends TestCase
             ->assertSee('Called the barangay captain.')          // verification note
             ->assertSee('₱12,500.00')->assertSee('Rice and canned goods for 25 residents for two weeks') // amount needed, from the assessment
             ->assertSee('Is the interview on Monday?')           // conversation
+            ->assertSee('Amount approved')                       // transaction log
             ->assertSee('Approve request')->assertSee('Reject request');
 
         $this->as('admin')->get(route('superadmin.fund-request.show', 'req-1'))->assertRedirect(route('admin'));

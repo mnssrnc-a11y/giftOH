@@ -51,7 +51,7 @@
             <div><dt>AI recommendation</dt><dd>{{ ($review['ai_amount'] ?? null) !== null ? $peso($review['ai_amount']) : '—' }}@if ($view['ai'])<small>Criticality {{ $view['ai']['score'] }}/100 · {{ $view['ai']['recommendation'] ?? 'scored' }}</small>@endif</dd></div>
             <div><dt>Amount needed</dt><dd>{{ $view['need']['amount'] !== null ? $peso($view['need']['amount']) : 'Not set' }}<small>From the social worker's assessment</small></dd></div>
             <div><dt>Checks</dt><dd>{{ ($assessment['outcome'] ?? '') === 'recommended' ? 'Social worker recommends' : (! empty($assessment['assessed_at']) ? 'Social worker does not recommend' : 'Not assessed') }}<small>{{ $verifiedDocs }} of {{ $requiredDocs->count() }} required documents verified · {{ $assessment['verified_beneficiaries'] ?? '—' }} of {{ $view['beneficiary_count'] }} people verified</small></dd></div>
-            <div><dt>Unallocated funds</dt><dd>{{ $availableFunds !== null ? $peso($availableFunds) : 'Unavailable' }}<small>Available to grant right now</small></dd></div>
+            <div><dt>Free to grant</dt><dd>{{ $availableFunds !== null ? $peso($availableFunds) : 'Unavailable' }}<small>Funds on hand after every approved request; available to grant right now</small></dd></div>
             @if ($view['granted'] !== null)<div><dt>Approved amount</dt><dd>{{ $peso($view['granted']) }}</dd></div>@endif
         </dl>
         @if (! empty($review['notes']))<div class="sa-note">Admin's note: “{{ $review['notes'] }}”</div>@endif
@@ -86,7 +86,7 @@
             <dl class="sa-facts" style="margin-bottom:16px">
                 <div><dt>Amount</dt><dd>{{ $peso($transfer['amount']) }}</dd></div>
                 <div><dt>To</dt><dd>{{ $transfer['provider'] ?? '—' }}<small>{{ $disbursement['account_name'] ?? '' }} · {{ $disbursement['account_number'] ?? '' }}</small></dd></div>
-                <div><dt>Foundation funds</dt><dd>{{ $availableFunds !== null ? $peso($availableFunds) . ' unallocated' : 'Unavailable' }}<small>After every approved amount</small></dd></div>
+                <div><dt>Release line</dt><dd>@if ($line)#{{ $line['position'] }} · {{ $line['ready'] ? 'ready to transfer' : ($line['covered'] ? 'covered, waiting for the list' : $peso($line['short']) . ' more needed') }}@else — @endif<small>First come, first served</small></dd></div>
                 @if (! empty($transfer['payout']['payout_id']))<div><dt>Provider reference</dt><dd>{{ $transfer['payout']['payout_id'] }}<small>{{ $transfer['payout']['provider_status'] ?? '' }}{{ ! empty($transfer['payout']['failure_code']) ? ' · ' . $transfer['payout']['failure_code'] : '' }}</small></dd></div>@endif
             </dl>
             @if ($payoutState === 'processing')
@@ -248,6 +248,11 @@
     </div>
 </article>
 @endif
+
+<article class="sa-card" id="transactions">
+    <div class="sa-card-head"><div><h2>Transactions</h2><p>Every money step on this request. Entries cannot be edited or deleted.</p></div></div>
+    <div class="sa-card-body">@include('partials.transactions', ['transactions' => $transactions, 'withRequest' => false])</div>
+</article>
 
 <article class="sa-card" id="messages">
     <div class="sa-card-head"><div><h2>Conversation with the requester</h2><p>Messages between the admins and the requester (read only here)</p></div><span class="sa-badge gray">{{ count($thread) }}</span></div>

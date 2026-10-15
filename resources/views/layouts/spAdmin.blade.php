@@ -4,7 +4,7 @@
     $saSection = trim($__env->yieldContent('sa-section'));
     $saNav = [
         'WORKSPACE' => ['dashboard' => ['▦', 'Dashboard'], 'requests' => ['₱', 'Fund requests'], 'accounts' => ['♧', 'Accounts']],
-        'SYSTEM' => ['settings' => ['⚙', 'System settings'], 'monitor' => ['◉', 'System monitor'], 'activity' => ['◷', 'Activity log']],
+        'SYSTEM' => ['settings' => ['⚙', 'System settings'], 'monitor' => ['◉', 'System monitor'], 'activity' => ['◷', 'Activity log'], 'transactions' => ['⇄', 'Transactions']],
     ];
     $awaitingCount = $outcomes['awaiting'] ?? null;
     $navCount = count($navNotifications ?? []);

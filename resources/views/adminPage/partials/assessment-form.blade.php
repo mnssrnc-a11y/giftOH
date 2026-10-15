@@ -14,7 +14,7 @@
         <p class="admin-field-hint" id="amount_needed-hint">How much the request needs, based on the assessment.@if ($guideline !== null) Guideline: about {{ $peso($cap) }} per person ({{ $peso($guideline) }} for {{ $people }} people).@endif</p>
     </div>
     <div class="admin-field"><label for="amount_basis">How the amount was decided <span style="font-weight:400">(optional)</span></label><input id="amount_basis" name="amount_basis" maxlength="1000" placeholder="e.g. ₱500 per person × 30 people for rice and canned goods" value="{{ old('amount_basis', $assessment['amount_basis'] ?? '') }}"></div>
-    <div class="admin-field"><label for="assessment_sw">Assessed by (social worker)</label><input id="assessment_sw" name="social_worker" maxlength="120" value="{{ old('social_worker', $assessment['social_worker'] ?? '') }}"></div>
+    <div class="admin-field"><label for="assessment_sw">Assessed by (social worker)</label><input id="assessment_sw" name="social_worker" maxlength="120" value="{{ old('social_worker', ($assessment['social_worker'] ?? '') ?: auth()->user()->fullName()) }}"></div>
     <div class="admin-field"><label for="assessment_notes">Findings</label><textarea id="assessment_notes" name="notes" class="admin-textarea" style="min-height:90px" required maxlength="5000">{{ old('notes', $assessment['notes'] ?? '') }}</textarea></div>
     <div><button class="admin-button success" type="submit">Save assessment</button></div>
 </form>

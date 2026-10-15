@@ -45,7 +45,7 @@ php artisan view:cache
 # Everything Laravel writes at runtime belongs to the web server user.
 chown -R www-data:www-data storage bootstrap/cache
 
-# Laravel scheduler (daily malware re-scan), as the web user.
+# Laravel scheduler (release line every 5 minutes, daily malware re-scan), as the web user.
 # On Render's free plan it only runs while the service is awake.
 if [ "${RUN_SCHEDULER:-true}" = "true" ]; then
     su -s /bin/sh www-data -c "php artisan schedule:work" > /proc/1/fd/1 2>&1 &

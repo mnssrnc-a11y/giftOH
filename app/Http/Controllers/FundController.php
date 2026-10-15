@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Services\AiScoringService;
 use App\Services\AuditLogger;
 use App\Services\RequestMessageService;
+use App\Services\TransactionLog;
 use App\Services\FundingRules;
 use App\Services\FundingService;
+use App\Services\FundQueue;
 use App\Services\NotificationService;
 use App\Support\Pampanga;
 use Illuminate\Http\Request;
@@ -163,7 +165,7 @@ class FundController extends Controller
      * After approval, the requester lists the people who will receive the help (Add person:
      * last, first and middle name). The funds are released once the list is in.
      */
-    public function submitBeneficiaries(Request $request, string $id)
+    public function submitBeneficiaries(Request $request, string $id, FundQueue $queue)
     {
         $fundRequest = $this->fundingService->getRequestById($id);
         abort_if($fundRequest === null || (string) ($fundRequest['user_id'] ?? '') !== (string) Auth::id(), 404);
@@ -188,12 +190,14 @@ class FundController extends Controller
         }
 
         $this->notifications->notifyAdmins($id, 'beneficiaries_submitted', 'List of people received',
-            ($fundRequest['org_name'] ?? 'The requester') . ' listed ' . count($people) . ' people. The request is ready for the release of funds.');
-        $this->notifications->notifySuperAdmins($id, 'beneficiaries_submitted', 'Ready for the transfer',
-            ($fundRequest['org_name'] ?? 'A request') . ' listed ' . count($people) . ' people and can now receive the approved funds.');
+            ($fundRequest['org_name'] ?? 'The requester') . ' listed ' . count($people) . ' people. The funds go out when the donations on hand cover it in the release line.');
+        $this->notifications->notifySuperAdmins($id, 'beneficiaries_submitted', 'List of people received',
+            ($fundRequest['org_name'] ?? 'A request') . ' listed ' . count($people) . ' people; it can receive the approved funds when its turn in the release line comes.');
+        // With the list in, the request may be ready to transfer now.
+        $queue->refresh();
 
         return redirect()->to(route('fund-request.show', $id) . '#release')
-            ->with('success', 'Thank you! The foundation will now release the funds to your account.');
+            ->with('success', 'Thank you! The foundation sends the funds to your account when your turn in line comes.');
     }
 
     /**
@@ -232,7 +236,7 @@ class FundController extends Controller
      * The requester cancels the request before the funds go out. Everything still to come stops
      * (interview, decision, release of funds); the admins and super admins are told.
      */
-    public function cancel(Request $request, string $id, AuditLogger $audit, RequestMessageService $messages)
+    public function cancel(Request $request, string $id, AuditLogger $audit, RequestMessageService $messages, TransactionLog $ledger, FundQueue $queue)
     {
         $fundRequest = $this->fundingService->getRequestById($id);
         abort_if($fundRequest === null || (string) ($fundRequest['user_id'] ?? '') !== (string) Auth::id(), 404);
@@ -254,6 +258,12 @@ class FundController extends Controller
         $this->notifications->notifySuperAdmins($id, 'request_cancelled', 'Request cancelled', $message);
         $messages->system($id, 'The requester cancelled this request.' . ($reason ? " Reason: {$reason}" : ''), 'staff');
         $audit->record('funding', 'Request cancelled by the requester', $id, ['organization' => $org, 'reason' => $reason]);
+        // An approved amount it was holding goes back to the funds; the next request in line moves up.
+        $wasApproved = $this->fundingService->statusOf($fundRequest) === 'approved';
+        $ledger->record('cancelled', $fundRequest, $wasApproved ? $this->fundingService->grantedAmountOf($fundRequest) : null, ['reason' => $reason]);
+        if ($wasApproved) {
+            $queue->refresh();
+        }
 
         return redirect()->route('fund-request.show', $id)
             ->with('success', 'Your request was cancelled. Nothing more will happen on it, and no funds will be released.');

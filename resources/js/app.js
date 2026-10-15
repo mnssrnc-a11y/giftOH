@@ -8,6 +8,7 @@ import './places';
 import './fund-request';
 import './people-list';
 import './request-thread';
+import './request-tabs';
 import './notify';
 import './tabbar';
 import './tour';

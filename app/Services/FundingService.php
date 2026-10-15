@@ -122,16 +122,44 @@ class FundingService
         return (float) ($request['approved_amount'] ?? $request['amount_requested'] ?? $request['amount'] ?? 0);
     }
 
-    public function getTotalApprovedAmount(): float
+    /**
+     * Money that has actually left the foundation: every released (transferred) amount. The funds
+     * on hand go down only when a transfer is made, not when a request is approved.
+     */
+    public function getTransferredAmount(): float
     {
         $total = 0.0;
         foreach ($this->getAllRequests() as $request) {
-            if (in_array($this->statusOf($request), ['approved', 'completed'], true)) {
-                $total += $this->grantedAmountOf($request);
+            if (! empty($request['disbursement']['released_at'] ?? null)) {
+                $total += (float) ($request['disbursement']['amount'] ?? 0);
             }
         }
 
         return $total;
+    }
+
+    /**
+     * Approved requests still waiting for their transfer, first approved first (first come, first
+     * served): the line the donations are focused on.
+     */
+    public function awaitingTransfer(): array
+    {
+        $line = array_values(array_filter($this->getApprovedRequests(), static fn (array $request): bool => empty($request['disbursement']['released_at'] ?? null)));
+        usort($line, static fn (array $a, array $b): int => [(string) ($a['approved_at'] ?? $a['updated_at'] ?? ''), (string) ($a['created_at'] ?? '')]
+            <=> [(string) ($b['approved_at'] ?? $b['updated_at'] ?? ''), (string) ($b['created_at'] ?? '')]);
+
+        return $line;
+    }
+
+    public function getAwaitingTransferAmount(): float
+    {
+        return array_sum(array_map(fn (array $request): float => $this->grantedAmountOf($request), $this->awaitingTransfer()));
+    }
+
+    /** The donations on hand cover this request: the admins were told to transfer it (once). */
+    public function markFundsReady(string $requestId): ?array
+    {
+        return $this->fundingRequests->update($requestId, ['funds_ready_at' => now()->toIso8601String()]);
     }
 
     /**

@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Services\AuditLogger;
 use App\Services\FundingService;
+use App\Services\FundQueue;
 use App\Services\IotService;
 use App\Services\NotificationService;
 use App\Services\Payouts\PayoutService;
+use App\Services\TransactionLog;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Http;
 use Mockery;
@@ -25,7 +27,18 @@ class PayoutTest extends TestCase
         parent::setUp();
         config(['payouts.driver' => 'xendit', 'payouts.xendit.secret_key' => 'xnd_test_secret', 'payouts.xendit.webhook_token' => 'hook-token']);
         $this->mock(AuditLogger::class, fn ($mock) => $mock->shouldReceive('record'));
-        $this->mock(IotService::class, fn ($mock) => $mock->shouldReceive('getTotalFunds')->andReturn(50000.0));
+        $this->mock(IotService::class, fn ($mock) => $mock->shouldReceive('getBalance')->andReturn(50000.0));
+        $this->line(['position' => 1, 'covered' => true, 'ready' => true, 'short' => 0.0]);
+        $this->mock(TransactionLog::class, fn ($mock) => $mock->shouldReceive('record'));
+    }
+
+    /** The request's place in the release line (first come, first served). */
+    private function line(array $row): Mockery\MockInterface
+    {
+        return $this->mock(FundQueue::class, function ($mock) use ($row) {
+            $mock->shouldReceive('rowFor')->andReturn($row + ['id' => 'req-1', 'amount' => 12500.0]);
+            $mock->shouldReceive('refresh')->andReturn([]);
+        });
     }
 
     private function funding(array $request, string $stage = 'to_release'): Mockery\MockInterface
@@ -33,7 +46,6 @@ class PayoutTest extends TestCase
         return $this->mock(FundingService::class, function ($mock) use ($request, $stage) {
             $mock->shouldReceive('getRequestById')->with('req-1')->andReturn($request);
             $mock->shouldReceive('stageOf')->andReturn(['key' => $stage, 'label' => $stage, 'step' => 4]);
-            $mock->shouldReceive('getTotalApprovedAmount')->andReturn(12500.0);
         });
     }
 
@@ -54,6 +66,12 @@ class PayoutTest extends TestCase
         $this->assertStringContainsString('PayPal is not set up', app(PayoutService::class)->readiness($unsupported)['problems'][0]);
 
         $this->assertTrue(app(PayoutService::class)->readiness($this->request)['ready']);
+
+        // First come, first served: not before the donations cover the requests approved earlier.
+        $this->line(['position' => 2, 'covered' => false, 'ready' => false, 'short' => 4000.0]);
+        $check = app(PayoutService::class)->readiness($this->request);
+        $this->assertFalse($check['ready']);
+        $this->assertSame(['Not enough donations yet: this request is #2 in line and ₱4,000.00 more is needed.'], $check['problems']);
     }
 
     public function test_sending_pays_the_receiver_account_once_through_xendit(): void
@@ -86,6 +104,12 @@ class PayoutTest extends TestCase
             $mock->shouldReceive('getByUser')->andReturn([]);
             $mock->shouldReceive('notifySuperAdmins')->once();
             $mock->shouldReceive('notifyAdmins')->once();
+        });
+        // The transfer is logged, and the next request in line may now be covered.
+        $this->mock(TransactionLog::class, fn ($mock) => $mock->shouldReceive('record')->once()->withArgs(fn ($type, $request, $amount) => $type === 'transferred' && $amount === 12500.0));
+        $this->mock(FundQueue::class, function ($mock) {
+            $mock->shouldReceive('rowFor')->andReturn(['id' => 'req-1', 'position' => 1, 'covered' => true, 'ready' => true, 'short' => 0.0, 'amount' => 12500.0]);
+            $mock->shouldReceive('refresh')->once()->andReturn([]);
         });
 
         $payload = ['id' => 'disb-77', 'reference_id' => 'goh-req-1', 'status' => 'SUCCEEDED', 'amount' => 12500];

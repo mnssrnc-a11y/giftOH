@@ -260,6 +260,7 @@ function initAdminUI() {
             `• Awaiting final approval: ${count('awaiting')}`,
             `• Approved: ${count('approved') + count('completed')}${granted ? ` (${money(granted)} granted)` : ''}`,
             `• Rejected: ${count('rejected')}`,
+            ...(count('cancelled') ? [`• Cancelled by the requester: ${count('cancelled')}`] : []),
             '',
             'By category:',
             ...byCategory.map(([category, group]) => `• ${category} — ${group.count} request(s), ${money(group.amount)}`),

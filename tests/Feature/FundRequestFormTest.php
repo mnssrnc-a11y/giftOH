@@ -148,13 +148,15 @@ class FundRequestFormTest extends TestCase
         $this->mock(\App\Repositories\FirebaseMessageRepository::class, fn ($mock) => $mock->shouldReceive('forRequest')->andReturn([]));
         $this->mock(NotificationService::class, fn ($mock) => $mock->shouldReceive('getByUser')->andReturn([]));
         $this->mock(SystemSettings::class);
+        $this->mock(\App\Services\FundQueue::class, fn ($mock) => $mock->shouldReceive('rowFor')->with('req-1')->andReturn(['position' => 2, 'covered' => false, 'ready' => false, 'short' => 500.0]));
 
         $this->requester()->get(route('fund-request.show', 'req-1'))->assertOk()
             ->assertSee('Release of funds: who will receive the help?')
             ->assertSee('Add person')
             ->assertSee('name="people[0][last]"', false)
             ->assertSee('Food packs / groceries, Medical assistance / medicines')
-            ->assertSee('GCash');
+            ->assertSee('GCash')
+            ->assertSee('You are #2 in line.');
     }
 
     public function test_the_people_are_listed_after_approval_and_before_the_release(): void

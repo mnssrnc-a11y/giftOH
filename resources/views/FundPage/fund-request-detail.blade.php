@@ -102,6 +102,15 @@
             @elseif ($stage['key'] === 'to_release')
                 <p class="mt-5 text-sm text-gray-600">Approved for <strong>{{ $peso($view['granted'] ?? $view['amount']) }}</strong>. The foundation will release the funds by {{ strtolower($disbursement['method_label']) }}.</p>
             @endif
+            @if (in_array($stage['key'], ['awaiting_recipients', 'to_release'], true) && ($line ?? null))
+                {{-- First come, first served: donations go to the requests approved earlier first. --}}
+                <p class="mt-3 rounded-lg {{ $line['covered'] ? 'bg-green-50 text-green-800' : 'bg-blue-50 text-blue-900' }} p-3 text-sm">
+                    @if ($line['ready'])<strong>Your funds are ready.</strong> The foundation is sending them to your account.
+                    @elseif ($line['covered'])<strong>Your funds are set aside.</strong> They are sent once you list the people.
+                    @else<strong>You are #{{ $line['position'] }} in line.</strong> Approved requests are funded first come, first served from the donations; yours is sent when the donations reach it.
+                    @endif
+                </p>
+            @endif
 
             @if ($view['cancellable'])
                 <details class="mt-5 rounded-lg border border-red-200 p-4 text-sm" id="cancel" @if ($errors->has('cancel_reason')) open @endif>

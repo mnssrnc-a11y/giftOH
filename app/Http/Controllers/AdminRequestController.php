@@ -9,7 +9,9 @@ use App\Services\NotificationService;
 use App\Services\RequestMessageService;
 use App\Services\FundingRules;
 use App\Services\FundingService;
+use App\Services\FundQueue;
 use App\Services\IotService;
+use App\Services\TransactionLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -27,22 +29,26 @@ class AdminRequestController extends Controller
         private FundingRequestPresenter $presenter,
         private RequestMessageService $messages,
         private NotificationService $notifications,
-        private AuditLogger $audit
+        private AuditLogger $audit,
+        private TransactionLog $ledger
     ) {
     }
 
-    public function show(string $id, IotService $iot)
+    public function show(string $id, IotService $iot, FundQueue $queue)
     {
         $request = $this->funding->getRequestById($id);
         abort_if($request === null, 404);
 
+        $queue->refreshSoon();
         $view = $this->presenter->present($request, forAdmin: true);
         $pendingCount = count($this->funding->getPendingRequests());
         $availableFunds = $iot->getAvailableFunds();
         $thread = $this->messages->thread($id, 'staff');
         $this->messages->markRead($id, 'staff');
+        $line = $queue->rowFor($id);
+        $transactions = $this->ledger->latest($id);
 
-        return view('adminPage.request-show', compact('view', 'pendingCount', 'availableFunds', 'thread'));
+        return view('adminPage.request-show', compact('view', 'pendingCount', 'availableFunds', 'thread', 'line', 'transactions'));
     }
 
     public function scheduleInterview(Request $request, string $id)
@@ -162,11 +168,20 @@ class AdminRequestController extends Controller
         );
     }
 
-    public function recordDisbursement(Request $request, string $id)
+    public function recordDisbursement(Request $request, string $id, FundQueue $queue, IotService $iot)
     {
         $fundRequest = $this->funding->getRequestById($id);
         abort_if($fundRequest === null, 404);
         $granted = (float) ($fundRequest['approved_amount'] ?? $fundRequest['amount_requested'] ?? 0);
+
+        // First come, first served: money goes out only when the donations on hand cover this
+        // request after the ones approved before it.
+        $line = $queue->rowFor($id);
+        if ($line !== null && ! $line['covered']) {
+            return redirect()->route('admin.fund-request.show', $id)->with('alert_error', $line['short'] > 0
+                ? "Not enough donations yet: this request is #{$line['position']} in line and ₱" . number_format($line['short'], 2) . ' more is needed before it can be transferred.'
+                : 'The foundation\'s funds could not be read right now. Try again shortly.');
+        }
 
         $validated = $request->validate([
             'method' => ['required', Rule::in(array_keys(config('funding.disbursement_methods')))],
@@ -191,6 +206,16 @@ class AdminRequestController extends Controller
         }
         if ($updated) {
             $this->audit->record('funding', 'Funds released: ₱' . number_format($validated['amount'], 2), $id, ['method' => $validated['method'], 'reference' => $validated['reference_no'] ?? null]);
+            // The money left the foundation: the funds on hand go down now, and the next request
+            // in line may be covered.
+            $this->ledger->record('transferred', $fundRequest, $validated['amount'], [
+                'method' => $validated['method'],
+                'to' => $fundRequest['disbursement']['provider'] ?? $fundRequest['disbursement']['bank_name'] ?? null,
+                'reference_no' => $validated['reference_no'],
+                'released_at' => $validated['released_at'],
+                'funds_on_hand_after' => round((float) $iot->getBalance(), 2),
+            ]);
+            $queue->refresh();
         }
 
         return $this->back($id, $updated, 'Release recorded. The requester was asked to submit the liquidation.');
@@ -208,6 +233,11 @@ class AdminRequestController extends Controller
         $updated = $this->funding->reviewLiquidation($id, $validated['decision'] === 'verified', $validated['remarks'] ?? null, Auth::id());
         if ($updated) {
             $this->audit->record('funding', $validated['decision'] === 'verified' ? 'Liquidation verified' : 'Liquidation returned', $id);
+            if ($validated['decision'] === 'verified') {
+                $this->ledger->record('liquidation_verified', $updated, (float) ($updated['liquidation']['amount_spent'] ?? 0), [
+                    'released' => (float) ($updated['disbursement']['amount'] ?? 0),
+                ]);
+            }
         }
 
         return $this->back($id, $updated, $validated['decision'] === 'verified'

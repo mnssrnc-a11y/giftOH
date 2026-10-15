@@ -104,6 +104,10 @@ class CancelAndAmountTest extends TestCase
         $funding = $this->mock(FundingService::class);
         $funding->shouldReceive('getRequestById')->with('req-1')->andReturn($request);
         $funding->shouldReceive('cancelRequest')->once()->with('req-1', 'user-1', 'Found another sponsor.')->andReturn(['status' => 'cancelled'] + $request);
+        $funding->shouldReceive('statusOf')->andReturn('pending');
+        // Logged, with no amount: nothing was approved yet, so the release line does not change.
+        $this->mock(\App\Services\TransactionLog::class, fn ($mock) => $mock->shouldReceive('record')->once()->with('cancelled', $request, null, ['reason' => 'Found another sponsor.']));
+        $this->mock(\App\Services\FundQueue::class, fn ($mock) => $mock->shouldNotReceive('refresh'));
         $this->mock(NotificationService::class, function ($mock) {
             $mock->shouldReceive('notifyAdmins')->once()->with('req-1', 'request_cancelled', 'Request cancelled', Mockery::pattern('/Hope Home cancelled the request\. Reason: Found another sponsor\./'));
             $mock->shouldReceive('notifySuperAdmins')->once()->with('req-1', 'request_cancelled', 'Request cancelled', Mockery::type('string'));

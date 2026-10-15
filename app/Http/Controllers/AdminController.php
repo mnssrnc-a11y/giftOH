@@ -16,6 +16,7 @@ use App\Services\AdminDashboardService;
 use App\Services\Ai\AiClient;
 use App\Services\FundAllocationAdvisor;
 use App\Services\FundingService;
+use App\Services\FundQueue;
 use App\Services\IotService;
 use App\Services\NotificationService;
 use App\Services\VerificationService;
@@ -38,13 +39,17 @@ class AdminController extends Controller
             return redirect()->route('login');
         }
 
+        // New donations come in from the boxes: see if the next request in line is now covered.
+        $queue = app(FundQueue::class);
+        $queue->refreshSoon();
         $iotMetrics = $this->iotService->getDashboardMetrics();
         $data = $this->dashboard->build($iotMetrics);
         $pendingCount = $data['fundingSummary']['pendingCount'];
         $totalFundRequests = count($data['fundingRequests']);
         $aiProviders = app(AiClient::class)->status();
+        $releaseLine = $queue->state();
 
-        return view('adminPage.admin', array_merge($iotMetrics, $data, compact('pendingCount', 'totalFundRequests', 'aiProviders')));
+        return view('adminPage.admin', array_merge($iotMetrics, $data, compact('pendingCount', 'totalFundRequests', 'aiProviders', 'releaseLine')));
     }
 
     /**
@@ -87,6 +92,7 @@ class AdminController extends Controller
             'boxTotal' => array_sum(array_column($boxes, 'total')),
             'directTotal' => array_sum(array_column($donations, 'amount')),
             'totalFunds' => $this->iotService->getTotalFunds(),
+            'balance' => $this->iotService->getBalance(),
             'availableFunds' => $this->iotService->getAvailableFunds(),
             'pendingCount' => count($this->fundingService->getPendingRequests()),
         ]);

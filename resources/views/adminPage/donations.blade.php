@@ -19,7 +19,8 @@
     <article><span>Total funds</span><strong>{{ is_null($totalFunds) ? '—' : $peso($totalFunds) }}</strong><small>Boxes + recorded donations</small></article>
     <article><span>Collected by boxes</span><strong>{{ $peso($boxTotal) }}</strong><small>{{ count($boxes) }} smart box(es)</small></article>
     <article><span>Recorded donations</span><strong>{{ $peso($directTotal) }}</strong><small>{{ count($donations) }} record(s)</small></article>
-    <article><span>Available to grant</span><strong>{{ is_null($availableFunds) ? '—' : $peso($availableFunds) }}</strong><small>After approved grants</small></article>
+    <article><span>Funds on hand</span><strong>{{ is_null($balance) ? '—' : $peso($balance) }}</strong><small>Collected minus money transferred</small></article>
+    <article><span>Free to grant</span><strong>{{ is_null($availableFunds) ? '—' : $peso($availableFunds) }}</strong><small>After approved grants</small></article>
 </div>
 
 <div class="admin-grid admin-two-col">
