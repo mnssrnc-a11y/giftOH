@@ -106,6 +106,45 @@ class NotificationService
         return $this->notifyRole('super_admin', $type, $label, $message, route('superadmin.fund-request.show', $requestId, false), $requestId);
     }
 
+    /**
+     * Where a notification is about, per role: the section of the request page it concerns
+     * (the documents, the conversation, the release…), so opening it lands right there.
+     */
+    private const SECTIONS = [
+        'user' => [
+            'interview_scheduled' => 'progress', 'document_resubmit' => 'documents', 'message' => 'messages',
+            'funding_approved' => 'release', 'funding_denied' => 'progress', 'funds_released' => 'liquidation',
+            'liquidation_returned' => 'liquidation', 'liquidation_verified' => 'history',
+        ],
+        'admin' => [
+            'new_request' => 'interview', 'interview_response' => 'interview', 'document_uploaded' => 'documents',
+            'message' => 'messages', 'appeal' => 'assessment', 'final_decision' => 'decision', 'request_cancelled' => 'decision',
+            'beneficiaries_submitted' => 'release', 'funds_ready' => 'release', 'payout_failed' => 'release',
+            'payout_succeeded' => 'liquidation', 'liquidation_submitted' => 'liquidation',
+        ],
+        'super_admin' => [
+            'awaiting_final' => 'decision', 'request_cancelled' => 'decision', 'message' => 'messages',
+            'beneficiaries_submitted' => 'transfer', 'payout_succeeded' => 'transfer', 'payout_failed' => 'transfer',
+        ],
+    ];
+
+    /**
+     * The page (and section) a notification opens: its own link, or the request page for the
+     * role, plus the section it is about. Null when it points nowhere.
+     */
+    public static function destinationFor(array $notification, string $role): ?string
+    {
+        $requestId = (string) ($notification['request_id'] ?? '');
+        $link = self::safeLink($notification['link'] ?? null) ?? ($requestId === '' ? null : match ($role) {
+            'admin' => route('admin.fund-request.show', $requestId, false),
+            'super_admin' => route('superadmin.fund-request.show', $requestId, false),
+            default => route('fund-request.show', $requestId, false),
+        });
+        $section = self::SECTIONS[$role][$notification['type'] ?? ''] ?? null;
+
+        return $link !== null && $section !== null && ! str_contains($link, '#') ? "{$link}#{$section}" : $link;
+    }
+
     public function getByUser(string|int $userId): array
     {
         try {

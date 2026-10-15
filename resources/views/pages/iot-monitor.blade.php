@@ -12,7 +12,7 @@
         </div>
 
         <div class="p-8 space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" data-tour="iot-stats">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                     <div class="text-sm text-gray-500 mb-2">Active Boxes</div>
                     <div class="text-3xl font-bold text-gray-900" id="stat-active-boxes">-</div>

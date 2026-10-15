@@ -1,7 +1,7 @@
 {{-- Message thread, staff view (newest at the bottom). --}}
 @forelse ($thread as $message)
     @if ($message['side'] === 'system')
-        <p class="admin-thread-event">{{ $message['body'] }} · {{ $message['at'] ? \Carbon\Carbon::parse($message['at'])->format('M d, g:i A') : '' }}</p>
+        <div class="thread-system" role="note"><span aria-hidden="true">ⓘ</span><div><p>{{ $message['body'] }}</p>@if ($message['at'])<time datetime="{{ $message['at'] }}">{{ \Carbon\Carbon::parse($message['at'])->format('M d, Y · g:i A') }}</time>@endif</div></div>
     @else
         <div class="admin-thread-row {{ $message['side'] === 'staff' ? 'is-staff' : '' }}">
             <div class="admin-thread-bubble">

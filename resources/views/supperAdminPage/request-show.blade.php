@@ -43,7 +43,7 @@
 </div>
 
 {{-- Decision summary: what the admin recommends and what to check before finalizing. --}}
-<article class="sa-card sa-decision">
+<article class="sa-card sa-decision" id="decision">
     <div class="sa-card-head"><div><h2>{{ $awaiting ? 'Your final decision' : 'Decision' }}</h2><p>{{ $awaiting ? 'Check the details below, then approve or reject. The requester and the admins are notified.' : ($view['status'] === 'pending' ? 'Not ready for your decision yet: the admins are still assessing this request.' : ($view['cancelled'] ? 'Cancelled by the requester on ' . $day($view['cancelled']['at']) . '. Everything still to come was stopped, including the release of funds.' . ($view['cancelled']['reason'] ? ' Reason: “' . $view['cancelled']['reason'] . '”' : '') : 'This request has moved past final approval.')) }}</p></div></div>
     <div class="sa-card-body">
         <dl class="sa-facts">
@@ -88,7 +88,7 @@
                 <div><dt>To</dt><dd>{{ $transfer['provider'] ?? '—' }}<small>{{ $disbursement['account_name'] ?? '' }} · {{ $disbursement['account_number'] ?? '' }}</small></dd></div>
                 <div><dt>Sent through</dt><dd>{{ $transfer['mode_label'] }}@if ($transfer['channel'])<small>Channel {{ $transfer['channel'] }}</small>@endif</dd></div>
                 @if ($transfer['balance'] !== null)<div><dt>Payout account</dt><dd>{{ $peso($transfer['balance']) }}<small>{{ $transfer['mode'] === 'live' ? 'Real money' : 'Practice money' }}</small></dd></div>@endif
-                <div><dt>Release line</dt><dd>@if ($line)#{{ $line['position'] }} · {{ $line['ready'] ? 'ready to transfer' : ($line['covered'] ? 'covered, waiting for the list' : $peso($line['short']) . ' more needed') }}@else — @endif<small>First come, first served</small></dd></div>
+                <div><dt>Release line</dt><dd>@if ($line)#{{ $line['position'] }} · {{ $line['ready'] ? 'ready to transfer' : ($line['covered'] ? 'covered, waiting for the list' : (($line['known'] ?? true) ? $peso($line['short']) . ' more needed' : 'donation total unavailable')) }}@else — @endif<small>First come, first served</small></dd></div>
                 @if (! empty($transfer['payout']['payout_id']))<div><dt>Provider reference</dt><dd>{{ $transfer['payout']['payout_id'] }}<small>{{ $transfer['payout']['provider_status'] ?? '' }}{{ ! empty($transfer['payout']['failure_code']) ? ' · ' . $transfer['payout']['failure_code'] : '' }}</small></dd></div>@endif
             </dl>
             @if ($payoutState === 'processing')
@@ -261,7 +261,11 @@
     <div class="sa-card-head"><div><h2>Conversation with the requester</h2><p>Messages between the admins and the requester (read only here)</p></div><span class="sa-badge gray">{{ count($thread) }}</span></div>
     <div class="sa-card-body sa-thread">
         @forelse ($thread as $message)
-            <div class="sa-thread-row is-{{ $message['side'] }}"><div><strong>{{ $message['sender'] }}</strong><p>{{ $message['body'] }}</p><small>{{ $dayTime($message['at']) }}</small></div></div>
+            @if ($message['side'] === 'system')
+                <div class="thread-system" role="note"><span aria-hidden="true">ⓘ</span><div><p>{{ $message['body'] }}</p>@if ($message['at'])<time datetime="{{ $message['at'] }}">{{ \Carbon\Carbon::parse($message['at'])->format('M d, Y · g:i A') }}</time>@endif</div></div>
+            @else
+                <div class="sa-thread-row is-{{ $message['side'] }}"><div><strong>{{ $message['sender'] }}</strong><p>{{ $message['body'] }}</p><small>{{ $dayTime($message['at']) }}</small></div></div>
+            @endif
         @empty
             <p class="sa-muted">No messages yet.</p>
         @endforelse

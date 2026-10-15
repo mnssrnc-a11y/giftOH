@@ -99,6 +99,7 @@ class FundingRequestPresenter
             'recipients' => array_values((array) ($request['recipients'] ?? [])),
             'people_limit' => $this->funding->approvedPeople($request),
             'beneficiary_count' => (int) ($request['beneficiary_count'] ?? count((array) ($request['beneficiaries'] ?? []))),
+            'progress' => $this->progress($request, $stage),
             'need' => $this->need($request),
             'per_person_cap' => $this->rules->perPersonCap($category),
             'cancellable' => $this->funding->cancellable($request),
@@ -209,6 +210,24 @@ class FundingRequestPresenter
             'proof' => ! empty($disbursement['proof']) ? $this->file('Proof of release', $disbursement['proof']) : null,
             'recorded_by' => $this->nameOf($disbursement['recorded_by'] ?? null),
         ];
+    }
+
+    /**
+     * Where the requester's progress bar stands (FundingRequestPresenter::STEPS). Once the
+     * requester has confirmed the interview and the admin is verifying the request (a document
+     * is verified), it moves on to "Admin review", before the assessment is written up.
+     *
+     * @return array{step: int, label: string}
+     */
+    private function progress(array $request, array $stage): array
+    {
+        if ($this->funding->statusOf($request) === 'pending' && $stage['step'] < 2
+            && ($request['assessment']['interview_response']['status'] ?? null) === 'confirmed'
+            && in_array('verified', $this->funding->documentStatuses($request), true)) {
+            return ['step' => 2, 'label' => 'Interview confirmed · under admin review'];
+        }
+
+        return ['step' => $stage['step'], 'label' => $stage['label']];
     }
 
     /**

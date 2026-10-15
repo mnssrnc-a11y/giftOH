@@ -7,6 +7,8 @@
     $peso = fn ($value) => '₱' . number_format((float) $value, 2);
     $day = fn ($value) => $value ? \Carbon\Carbon::parse($value)->format('M d, Y') : '—';
     $stage = $view['stage'];
+    // The progress bar the requester sees (it reaches "Admin review" once the admin is verifying).
+    $progress = $view['progress'];
     $assessment = $view['assessment'];
     $disbursement = $view['disbursement'];
     $liquidation = $view['liquidation'];
@@ -40,7 +42,7 @@
         <section class="{{ $card }}" id="progress">
             <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <h2 class="text-lg font-bold text-gray-900">Progress</h2>
-                <span class="rounded-full px-4 py-1.5 text-sm font-semibold {{ $badge }}">{{ $stage['label'] }}</span>
+                <span class="rounded-full px-4 py-1.5 text-sm font-semibold {{ $badge }}">{{ $progress['label'] }}</span>
             </div>
             @if ($stage['key'] === 'rejected')
                 <p class="rounded-lg bg-red-50 p-4 text-sm text-red-800"><strong>Reason:</strong> {{ $view['rejection_reason'] ?? 'No reason was given.' }}</p>
@@ -62,7 +64,7 @@
                 @php($stepTargets = ['#details', '#progress', '#progress', '#progress', '#release', '#liquidation', '#history'])
                 <ol class="grid grid-cols-2 gap-3 md:grid-cols-7">
                     @foreach (\App\Services\FundingRequestPresenter::STEPS as $i => $step)
-                        @php($state = $i < $stage['step'] || $stage['key'] === 'completed' ? 'done' : ($i === $stage['step'] ? 'current' : 'todo'))
+                        @php($state = $i < $progress['step'] || $stage['key'] === 'completed' ? 'done' : ($i === $progress['step'] ? 'current' : 'todo'))
                         <li class="text-xs"><a href="{{ $stepTargets[$i] }}" class="block rounded-md p-1 hover:bg-blue-50" @if ($state === 'current') aria-current="step" @endif><span class="mb-1 block h-1.5 rounded-full {{ $state === 'done' ? 'bg-green-500' : ($state === 'current' ? 'bg-[#1976D2]' : 'bg-gray-200') }}"></span><span class="{{ $state === 'todo' ? 'text-gray-400' : 'font-semibold text-gray-800' }}">{{ $step }}</span></a></li>
                     @endforeach
                 </ol>
@@ -71,7 +73,7 @@
             @if ($stage['key'] === 'needs_assessment')
                 <p class="mt-5 text-sm text-gray-600">A social worker will contact you to schedule an interview and assessment by <strong>{{ $day($view['assessment_due']) }}</strong>.</p>
             @elseif (!empty($assessment['interview_at']) && $stage['step'] <= 1)
-                <div class="mt-5 rounded-lg bg-blue-50 p-4 text-sm text-blue-900">
+                <div class="mt-5 rounded-lg bg-blue-50 p-4 text-sm text-blue-900" data-tour="interview">
                     <strong>Interview:</strong> {{ \Carbon\Carbon::parse($assessment['interview_at'])->format('l, M d, Y g:i A') }}
                     · {{ $assessment['mode_label'] ?? '' }}@if (!empty($assessment['location'])) · {{ $assessment['location'] }}@endif
                     @if (!empty($assessment['social_worker']))<br>Social worker: {{ $assessment['social_worker'] }}@endif
@@ -104,12 +106,22 @@
             @endif
             @if (in_array($stage['key'], ['awaiting_recipients', 'to_release'], true) && ($line ?? null))
                 {{-- First come, first served: donations go to the requests approved earlier first. --}}
-                <p class="mt-3 rounded-lg {{ $line['covered'] ? 'bg-green-50 text-green-800' : 'bg-blue-50 text-blue-900' }} p-3 text-sm">
-                    @if ($line['ready'])<strong>Your funds are ready.</strong> The foundation is sending them to your account.
-                    @elseif ($line['covered'])<strong>Your funds are set aside.</strong> They are sent once you list the people.
-                    @else<strong>You are #{{ $line['position'] }} in line.</strong> Approved requests are funded first come, first served from the donations; yours is sent when the donations reach it.
+                <div class="mt-3 rounded-lg {{ $line['covered'] ? 'bg-green-50 text-green-800' : 'bg-blue-50 text-blue-900' }} p-3 text-sm" id="funding-gap">
+                    @if ($line['ready'])<p><strong>Your funds are ready.</strong> The foundation is sending them to your account.</p>
+                    @elseif ($line['covered'])<p><strong>Your funds are set aside.</strong> They are sent once you list the people.</p>
+                    @elseif (! $line['known'])<p><strong>You are #{{ $line['position'] }} in line.</strong> The donation total cannot be read right now; the amount still needed shows here once it can.</p>
+                    @else
+                        <p><strong>{{ $peso($line['short']) }} more in donations is needed</strong> before your transfer can be sent. You are #{{ $line['position'] }} in line.</p>
+                        @php($percent = $line['amount'] > 0 ? (int) floor($line['raised'] / $line['amount'] * 100) : 0)
+                        <div class="mt-3 h-2 overflow-hidden rounded-full bg-blue-100" role="progressbar" aria-label="Donations set aside for your request" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $percent }}">
+                            <div class="h-full rounded-full bg-blue-600" style="width: {{ $percent }}%"></div>
+                        </div>
+                        <p class="mt-1.5 text-xs">{{ $peso($line['raised']) }} of {{ $peso($line['amount']) }} set aside for you · {{ $peso($line['amount'] - $line['raised']) }} to go</p>
+                        @if ($line['ahead_short'] > 0)
+                            <p class="mt-1.5 text-xs">This includes {{ $peso($line['ahead_short']) }} still needed by requests approved before yours, which are funded first (first come, first served).</p>
+                        @endif
                     @endif
-                </p>
+                </div>
             @endif
 
             @if ($view['cancellable'])

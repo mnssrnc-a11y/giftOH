@@ -40,6 +40,9 @@ class FundQueue
             $covered = ! $blocked && $cumulative <= $balance + 0.005;
             $blocked = $blocked || ! $covered;
             $hasList = $this->funding->hasBeneficiaryList($request);
+            // Donations already set aside for this request (what is left after the ones before it).
+            $raised = $balance === null ? null : ($covered ? $amount : round(max(0.0, min($amount, $balance - ($cumulative - $amount))), 2));
+            $short = $covered || $balance === null ? 0.0 : round($cumulative - $balance, 2);
             $rows[] = [
                 'id' => (string) $request['id'],
                 'organization' => $request['org_name'] ?? 'Request',
@@ -50,7 +53,12 @@ class FundQueue
                 'has_list' => $hasList,
                 'ready' => $covered && $hasList,
                 // Donations still needed before this request is covered (everyone before it first).
-                'short' => $covered || $balance === null ? 0.0 : round($cumulative - $balance, 2),
+                'short' => $short,
+                'raised' => $raised,
+                // The part of "short" that the requests approved earlier still need.
+                'ahead_short' => $raised === null ? 0.0 : round(max(0.0, $short - ($amount - $raised)), 2),
+                // False when the donation total could not be read (short is unknown, not zero).
+                'known' => $balance !== null,
                 'notified' => ! empty($request['funds_ready_at']),
                 'request' => $request,
             ];

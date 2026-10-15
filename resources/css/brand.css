@@ -345,12 +345,23 @@
 .people-add:disabled { opacity: .5; cursor: not-allowed; }
 .people-count { font-size: 13px; color: #5b6b85; }
 .people-count.is-over { color: var(--brand-bad); font-weight: 700; }
+/* Alike names: a "No." column appears for the whole list, filled in only on the alike rows.
+   (".people .people-list" outranks the page's general "input { display: block }" rule.) */
+.people .people-list .people-row input[data-part=number] { display: none; }
+.people-list.has-numbers .people-row { grid-template-columns: 34px repeat(3, minmax(0, 1fr)) 76px 40px; }
+.people .people-list.has-numbers .people-row input[data-part=number] { display: block; visibility: hidden; text-align: center; }
+.people .people-list.has-numbers .people-row.needs-number input[data-part=number] { visibility: visible; border-color: #f0b429; background: #fffbea; }
+.people-row.needs-number::before { background: #fff3c4; color: #8a5a00; }
+.people-alike { margin: 0 0 12px; padding: 10px 14px; border: 1px solid #f7d070; border-radius: 10px; background: #fffbea; color: #6b4a00; font-size: 14px; line-height: 1.5; }
+.people-alike[hidden] { display: none; }
 @media (max-width: 640px) {
-    .people-row { grid-template-columns: 30px 1fr 40px; grid-template-areas: "n last x" "n first x" "n middle x"; padding: 10px; border: 1px solid #e2eaf5; border-radius: 12px; }
+    .people-row, .people-list.has-numbers .people-row { grid-template-columns: 30px 1fr 40px; grid-template-areas: "n last x" "n first x" "n middle x" "n number x"; padding: 10px; border: 1px solid #e2eaf5; border-radius: 12px; }
     .people-row::before { grid-area: n; align-self: start; }
     .people-row [data-part=last] { grid-area: last; }
     .people-row [data-part=first] { grid-area: first; }
     .people-row [data-part=middle] { grid-area: middle; }
+    .people-row [data-part=number] { grid-area: number; }
+    .people .people-list.has-numbers .people-row:not(.needs-number) input[data-part=number] { display: none; }
     .people-remove { grid-area: x; align-self: start; }
 }
 
@@ -555,3 +566,11 @@
     .proc-panel { padding: 16px; }
     .proc-label small { display: none; }
 }
+
+/* ---------- Conversation: updates the app posts (interview scheduled, document asked again…) ---------- */
+.thread-system { display: flex; align-items: flex-start; gap: 8px; max-width: 92%; margin: 12px auto; padding: 8px 12px; border: 1px solid var(--brand-sky-2); border-radius: 12px; background: var(--brand-sky); color: var(--brand-ink); font-size: 12px; line-height: 1.5; text-align: left; }
+.thread-system > span { flex: none; font-weight: 800; color: var(--brand); }
+.thread-system p { margin: 0 !important; color: inherit !important; font-size: 12px !important; overflow-wrap: anywhere; }
+.thread-system time { display: block; margin-top: 2px; font-size: 11px; color: var(--brand-muted); }
+.hope-shell.dark .thread-system, .is-dark .thread-system { background: #13294b; border-color: #24467a; color: #e3f2fd; }
+.hope-shell.dark .thread-system time, .is-dark .thread-system time { color: #9fb6d6; }

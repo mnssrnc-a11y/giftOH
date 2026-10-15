@@ -176,12 +176,18 @@ class FundController extends Controller
             'people.*.last' => 'required|string|max:80',
             'people.*.first' => 'required|string|max:80',
             'people.*.middle' => 'nullable|string|max:80',
+            'people.*.number' => 'nullable|integer|min:1|max:99',
         ], [
             'people.required' => 'Add the people who will receive the help.',
             'people.max' => "The approval covers {$limit} people. Remove the extra names.",
             'people.*.last.required' => 'Enter the last name of person #:position.',
             'people.*.first.required' => 'Enter the first name of person #:position.',
+            'people.*.number.*' => 'The number of person #:position must be from 1 to 99.',
         ]);
+        // People with alike names (two "Juan Dela Cruz") each need their own number.
+        if ($numbering = $this->rules->numberingErrors($request->input('people', []))) {
+            throw \Illuminate\Validation\ValidationException::withMessages($numbering);
+        }
 
         $people = $this->rules->cleanPeople($request->input('people', []));
         $updated = $this->fundingService->submitBeneficiaries($id, $people);
@@ -286,6 +292,7 @@ class FundController extends Controller
             'recipients.*.last' => 'nullable|string|max:80',
             'recipients.*.first' => 'nullable|string|max:80',
             'recipients.*.middle' => 'nullable|string|max:80',
+            'recipients.*.number' => 'nullable|integer|min:1|max:99',
             'amount_spent' => 'required|numeric|min:0',
             'notes' => 'nullable|string|max:2000',
             'photos' => 'nullable|array|max:10',
@@ -293,7 +300,11 @@ class FundController extends Controller
         ], [
             'receipts.required' => 'Upload at least one receipt or liquidation photo.',
             'recipient_list.required' => 'Upload the list of people who received the donation (signed list or photo).',
+            'recipients.*.number.*' => 'The number of person #:position must be from 1 to 99.',
         ]);
+        if ($numbering = $this->rules->numberingErrors($validated['recipients'] ?? [], 'recipients')) {
+            throw \Illuminate\Validation\ValidationException::withMessages($numbering);
+        }
 
         $store = fn ($file, string $folder) => $file->store("liquidations/{$id}/{$folder}", config('funding.files_disk'));
         $files = [

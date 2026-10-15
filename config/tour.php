@@ -16,7 +16,8 @@
 | target is not on the page is left out; a step without a target is shown in the middle.
 | "do" makes it hands-on: click = the person clicks the highlighted part, fill = types or chooses
 | in it. The tutorial moves on by itself when they do. "next" starts that tutorial on the page the
-| click opens.
+| click opens. "when" marks a step that shows only at one stage of a request (its target is on the
+| page only then); at most 4 steps show at a time.
 */
 
 return [
@@ -52,19 +53,22 @@ return [
             'title' => 'Follow your requests', 'about' => 'See where each request is.',
             'steps' => [
                 ['target' => '.hope-toolbar input', 'do' => 'fill', 'title' => 'Your turn', 'text' => 'Search a request by its title or ID.'],
-                ['target' => '.hope-table tbody tr td:nth-child(4)', 'title' => 'Status', 'text' => 'Under assessment → Under review → Approved → Completed.'],
+                ['target' => '.hope-table tbody tr td:nth-child(4)', 'title' => 'Status', 'text' => 'Under assessment → Under review → Approved → Completed. Approved ones show the donations still needed.'],
                 ['target' => '[data-open-dialog^="request-"]', 'title' => 'Timeline', 'text' => 'Open the timeline to see every step, or to appeal a denial.'],
             ],
         ],
 
         'request-detail' => [
             'roles' => ['user'], 'route' => 'fund-request.show', 'record' => true,
-            'title' => 'Your request page', 'about' => 'Follow it, list the people, message or cancel.',
+            'title' => 'Your request page', 'about' => 'Follow it, answer the interview, list the people, message or cancel.',
             'steps' => [
-                ['target' => '#progress', 'title' => 'Progress', 'text' => 'Where your request is and what to do next, like sending a clearer document.'],
-                ['target' => '[data-people-add]', 'do' => 'click', 'title' => 'Your turn', 'text' => 'Click "Add person" and type the name of each person who will receive the help.'],
+                ['target' => '#progress', 'title' => 'Progress', 'text' => 'Where your request is now. Until the funds are sent, you can also cancel it here.'],
+                ['when' => 'pending', 'target' => 'interview', 'title' => 'Interview', 'text' => 'Confirm the interview with "I\'ll be there", or ask for another time.'],
+                ['when' => 'pending', 'target' => '#documents form', 'title' => 'Documents', 'text' => 'A document needs a clearer copy. Upload it here.'],
+                ['when' => 'approved', 'target' => '#funding-gap', 'title' => 'Your funds', 'text' => 'Set aside for you, or how much in donations is still missing before your transfer.'],
+                ['when' => 'approved', 'target' => '#release [data-people-add]', 'do' => 'click', 'title' => 'Your turn', 'text' => 'Add each person who gets the help. Same name twice? Give each a number in the "No." box.'],
+                ['when' => 'released', 'target' => '#liquidation', 'title' => 'Liquidation', 'text' => 'After the funds arrive, upload the receipts and the list of people who got the help.'],
                 ['target' => '#messages textarea', 'do' => 'fill', 'title' => 'Your turn', 'text' => 'Write a message to the foundation.'],
-                ['target' => '#cancel', 'title' => 'Cancel', 'text' => 'Changed your mind? Cancel here until the funds are sent. Everything still to come stops.'],
             ],
         ],
 
@@ -102,7 +106,7 @@ return [
             'roles' => ['user', 'admin', 'super_admin'], 'route' => 'notifications',
             'title' => 'Notifications', 'about' => 'Open an update to go straight to it.',
             'steps' => [
-                ['target' => '.hope-notice-row', 'title' => 'Open one', 'text' => 'Click a notification to go straight to it.'],
+                ['target' => '.hope-notice-row', 'title' => 'Open one', 'text' => 'Click a notification to open the exact part it is about: the documents, the messages, the release…'],
                 ['target' => 'form[action$="/notifications/read-all"] button', 'title' => 'All read', 'text' => 'Clear them all at once.'],
             ],
         ],
@@ -129,9 +133,9 @@ return [
             'roles' => ['admin'], 'route' => 'admin', 'section' => 'dashboard',
             'title' => 'Getting started', 'about' => 'A one-minute look around.',
             'steps' => [
-                ['title' => 'Welcome!', 'text' => 'You review requests and recommend a decision. Here is a quick look around.'],
-                ['target' => 'release-line', 'title' => 'Release line', 'text' => 'Approved requests get the donations first come, first served. You are told when one is ready.'],
-                ['target' => ['bell', 'tab-alerts'], 'title' => 'Notifications', 'text' => 'New requests and replies show up here.'],
+                ['title' => 'Welcome!', 'text' => 'You assess requests and recommend a decision, then send the approved funds and check the liquidation.'],
+                ['target' => 'release-line', 'title' => 'Release line', 'text' => 'Approved requests get the donations first come, first served. You are told when one is ready to transfer.'],
+                ['target' => ['bell', 'tab-alerts'], 'title' => 'Notifications', 'text' => 'New requests, replies, documents and funds ready to transfer. Each one opens the right part of the request.'],
                 ['target' => ['nav-funding', 'tab-funding'], 'do' => 'click', 'next' => 'admin-funding', 'title' => 'Your turn', 'text' => 'Click Funding.'],
             ],
         ],
@@ -140,8 +144,8 @@ return [
             'roles' => ['admin'], 'route' => 'admin', 'section' => 'funding',
             'title' => 'Funding', 'about' => 'Find the requests that need you.',
             'steps' => [
-                ['target' => '[data-funding-tabs]', 'title' => 'By step', 'text' => 'Assessment, decision, release and liquidation.'],
-                ['target' => '.admin-table-action', 'title' => 'Open a request', 'text' => 'Click ⌕ to work on a request.'],
+                ['target' => '[data-funding-tabs]', 'title' => 'By step', 'text' => 'Requests by step: assessment, decision, release, liquidation, then done.'],
+                ['target' => '.admin-table-action', 'title' => 'Open a request', 'text' => 'Click a request\'s name or ⌕ to work on it.'],
                 ['target' => '[data-funding-search]', 'do' => 'fill', 'title' => 'Your turn', 'text' => 'Search a project, organization or requester.'],
             ],
         ],
@@ -150,9 +154,9 @@ return [
             'roles' => ['admin'], 'route' => 'admin.fund-request.show', 'record' => true,
             'title' => 'Work on a request', 'about' => 'The procedure, one step at a time.',
             'steps' => [
-                ['target' => 'procedure', 'title' => 'Step by step', 'text' => 'Interview, documents, assessment, decision, release, liquidation. ✓ means done.'],
-                ['target' => '.proc-panel:not([hidden])', 'title' => 'This step', 'text' => 'Only what this step needs is shown. Finish it, then press Next.'],
-                ['target' => 'info-tabs', 'title' => 'About the request', 'text' => 'Details, verification notes, messages, transactions and history.'],
+                ['target' => 'procedure', 'title' => 'Step by step', 'text' => 'Interview, documents, assessment, decision, release, liquidation. ✓ means done; release opens after approval.'],
+                ['target' => '.proc-panel:not([hidden])', 'title' => 'This step', 'text' => 'Only what this step needs is shown. Finish it, then press "Next".'],
+                ['target' => 'info-tabs', 'title' => 'About the request', 'text' => 'The request, verification notes, the conversation, transactions and history.'],
             ],
         ],
 
@@ -190,7 +194,7 @@ return [
             'roles' => ['admin'], 'route' => 'donations',
             'title' => 'Donations', 'about' => 'Money collected and available.',
             'steps' => [
-                ['target' => '.admin-funding-summary', 'title' => 'Totals', 'text' => 'Collected by the boxes, recorded, and still available to grant.'],
+                ['target' => '.admin-funding-summary', 'title' => 'Totals', 'text' => 'Collected by the boxes and recorded donations, the funds on hand after transfers, and what is free to grant.'],
             ],
         ],
 
@@ -198,8 +202,8 @@ return [
             'roles' => ['admin', 'super_admin'], 'route' => 'iot-monitor',
             'title' => 'IoT box monitor', 'about' => 'The smart donation boxes, live.',
             'steps' => [
-                ['target' => '#stat-active-boxes', 'title' => 'Live', 'text' => 'Boxes online, today\'s total and alerts.'],
-                ['target' => '#boxes-tbody', 'title' => 'Each box', 'text' => 'Its place, total and last signal.'],
+                ['target' => ['iot-stats', '#stat-active-boxes'], 'title' => 'Live', 'text' => 'Active boxes, total collected and alerts.'],
+                ['target' => '#boxes-tbody', 'title' => 'Each box', 'text' => 'Its location, status, last signal and total collected.'],
             ],
         ],
 
@@ -211,7 +215,7 @@ return [
             'steps' => [
                 ['title' => 'Welcome!', 'text' => 'You make the final decision and look after the system. Here is a quick look around.'],
                 ['target' => 'stats', 'title' => 'At a glance', 'text' => 'Accounts, boxes, decisions waiting and approval rate.'],
-                ['target' => 'awaiting', 'title' => 'Waiting for you', 'text' => 'Requests the admins have reviewed.'],
+                ['target' => 'awaiting', 'title' => 'Waiting for you', 'text' => 'Requests the admins have reviewed, waiting for your final decision.'],
                 ['target' => ['nav-requests', 'tab-requests'], 'do' => 'click', 'next' => 'sa-requests', 'title' => 'Your turn', 'text' => 'Click Fund requests.'],
             ],
         ],
@@ -220,7 +224,7 @@ return [
             'roles' => ['super_admin'], 'route' => 'superadmin', 'section' => 'requests',
             'title' => 'Fund requests', 'about' => 'Find a request to decide.',
             'steps' => [
-                ['target' => '[data-sa-request-filter]', 'title' => 'Filter', 'text' => 'Those waiting for your decision come first.'],
+                ['target' => '[data-sa-request-filter]', 'title' => 'Filter', 'text' => 'Filter by status. Requests waiting for your decision are listed first.'],
                 ['target' => '[data-sa-requests] a[href*="/superadmin/fund-request/"]', 'title' => 'Open a request', 'text' => 'Open one for the final check.'],
                 ['target' => '[data-sa-request-search]', 'do' => 'fill', 'title' => 'Your turn', 'text' => 'Search an organization or request.'],
             ],
@@ -231,8 +235,8 @@ return [
             'title' => 'Final check', 'about' => 'Approve or reject, then send the funds.',
             'steps' => [
                 ['target' => '.sa-decision', 'title' => 'Decide', 'text' => 'Approve with an amount, or reject with a reason.'],
-                ['target' => '#documents', 'title' => 'Check', 'text' => 'Documents, assessment, amount needed, AI score and notes are below.'],
-                ['target' => '#transfer', 'title' => 'Send the funds', 'text' => 'After approval, send the money here. You confirm with an email code.'],
+                ['target' => '#documents', 'title' => 'Check', 'text' => 'Documents, amount needed, AI assessment and verification notes are below.'],
+                ['target' => '#transfer', 'title' => 'Transfer', 'text' => 'After approval, follow the transfer here. If bank transfers are connected, you send it with an emailed code.'],
             ],
         ],
 
@@ -247,19 +251,21 @@ return [
 
         'sa-settings' => [
             'roles' => ['super_admin'], 'route' => 'superadmin', 'section' => 'settings',
-            'title' => 'System settings', 'about' => 'Scoring, request interval, email.',
+            'title' => 'System settings', 'about' => 'Scoring, request interval, email and bank transfers.',
             'steps' => [
-                ['target' => 'sa-scores', 'title' => 'AI scoring', 'text' => 'How much each kind of need counts.'],
+                ['target' => 'sa-scores', 'title' => 'AI scoring', 'text' => 'How much each kind of need counts when funds are limited.'],
                 ['target' => 'sa-interval', 'title' => 'Request interval', 'text' => 'How long an account waits between requests.'],
-                ['target' => '#settings-mail', 'title' => 'Email', 'text' => 'Save the Brevo key and sender, then send a test email.'],
+                ['target' => '#settings-mail', 'title' => 'Email', 'text' => 'The email that sends sign-in codes and notices. Check it, then send a test email.'],
+                ['target' => '#settings-payouts', 'title' => 'Bank transfers', 'text' => 'How approved funds reach bank accounts and e-wallets, and the payout balance.'],
             ],
         ],
 
         'sa-monitor' => [
             'roles' => ['super_admin'], 'route' => 'superadmin', 'section' => 'monitor',
-            'title' => 'System monitor', 'about' => 'Boxes, outcomes and events.',
+            'title' => 'System monitor', 'about' => 'Boxes, outcomes and box sign-ins.',
             'steps' => [
                 ['target' => '[data-sa-page="monitor"] .sa-grid', 'title' => 'At a glance', 'text' => 'Donation boxes and funding outcomes.'],
+                ['target' => '#monitor-boxes', 'title' => 'Box sign-ins', 'text' => 'Give each donation box its own sign-in so no one else can change its totals.'],
             ],
         ],
 

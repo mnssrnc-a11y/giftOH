@@ -39,15 +39,25 @@ class PageController extends Controller
     public function requestStatus()
     {
         $presenter = app(FundingRequestPresenter::class);
-        $requests = array_map(function (array $request) use ($presenter): array {
+        $lineState = null;
+        $requests = array_map(function (array $request) use ($presenter, &$lineState): array {
+            $view = $presenter->present($request);
+            $stage = $view['progress']['label'];
+            if (in_array($view['stage']['key'], ['awaiting_recipients', 'to_release'], true)) {
+                // How much is still missing before the transfer (read once for the whole list).
+                $line = app(\App\Services\FundQueue::class)->rowFor((string) $request['id'], $lineState ??= app(\App\Services\FundQueue::class)->state());
+                if ($line && ! $line['covered'] && $line['known']) {
+                    $stage .= ' · ₱' . number_format($line['short'], 2) . ' more in donations needed before transfer';
+                }
+            }
             $status = match ($this->fundingService->statusOf($request)) {
                 'approved' => 'Approved',
                 'rejected' => 'Denied',
                 'completed' => 'Completed',
                 'cancelled' => 'Cancelled',
                 FundingService::STATUS_UNDER_REVIEW => 'Under review',
-                // A submitted request is with the social worker first.
-                default => 'Under assessment',
+                // With the social worker first; under review once the admin is verifying it.
+                default => $view['progress']['step'] >= 2 ? 'Under review' : 'Under assessment',
             };
             $color = match ($status) {
                 'Approved', 'Completed' => 'green',
@@ -55,7 +65,6 @@ class PageController extends Controller
                 'Cancelled' => 'gray',
                 default => 'gold',
             };
-            $view = $presenter->present($request);
 
             return [
                 'id' => (string) ($request['id'] ?? ''),
@@ -63,7 +72,7 @@ class PageController extends Controller
                 'category' => $view['category'],
                 'amount' => $this->fundingService->grantedAmountOf($request),
                 'status' => $status,
-                'stage' => $view['stage']['label'],
+                'stage' => $stage,
                 'color' => $color,
                 'date' => $request['updated_at'] ?? $request['created_at'] ?? now()->toIso8601String(),
                 'timeline' => $view['timeline'],
@@ -158,8 +167,8 @@ class PageController extends Controller
             return redirect()->route('notifications')->with('alert_error', 'Notification could not be found.');
         }
 
-        $link = NotificationService::safeLink($notification['link'] ?? null)
-            ?? (! empty($notification['request_id']) && Auth::user()->isUser() ? route('fund-request.show', $notification['request_id'], false) : null);
+        // Straight to the part of the page the notification is about (documents, messages, release…).
+        $link = NotificationService::destinationFor($notification, \App\Http\Middleware\EnsureRole::resolveRole(Auth::user()) ?? 'user');
 
         return $link ? redirect()->to($link) : redirect()->route('notifications')->with('status', 'Notification marked as read.');
     }

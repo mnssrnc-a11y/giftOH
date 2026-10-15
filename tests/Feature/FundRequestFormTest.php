@@ -148,7 +148,7 @@ class FundRequestFormTest extends TestCase
         $this->mock(\App\Repositories\FirebaseMessageRepository::class, fn ($mock) => $mock->shouldReceive('forRequest')->andReturn([]));
         $this->mock(NotificationService::class, fn ($mock) => $mock->shouldReceive('getByUser')->andReturn([]));
         $this->mock(SystemSettings::class);
-        $this->mock(\App\Services\FundQueue::class, fn ($mock) => $mock->shouldReceive('rowFor')->with('req-1')->andReturn(['position' => 2, 'covered' => false, 'ready' => false, 'short' => 500.0]));
+        $this->mock(\App\Services\FundQueue::class, fn ($mock) => $mock->shouldReceive('rowFor')->with('req-1')->andReturn(['position' => 2, 'amount' => 1000.0, 'covered' => false, 'ready' => false, 'short' => 700.0, 'raised' => 300.0, 'ahead_short' => 0.0, 'known' => true]));
 
         $this->requester()->get(route('fund-request.show', 'req-1'))->assertOk()
             ->assertSee('Release of funds: who will receive the help?')
@@ -156,7 +156,11 @@ class FundRequestFormTest extends TestCase
             ->assertSee('name="people[0][last]"', false)
             ->assertSee('Food packs / groceries, Medical assistance / medicines')
             ->assertSee('GCash')
-            ->assertSee('You are #2 in line.');
+            ->assertSee('₱700.00 more in donations is needed')
+            ->assertSee('You are #2 in line.')
+            ->assertSee('₱300.00 of ₱1,000.00 set aside for you · ₱700.00 to go')
+            ->assertSee('aria-valuenow="30"', false)
+            ->assertDontSee('still needed by requests approved before yours');
     }
 
     public function test_the_people_are_listed_after_approval_and_before_the_release(): void

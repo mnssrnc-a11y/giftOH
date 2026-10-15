@@ -13,8 +13,8 @@
         ['admin', 'A social worker interviews and assesses', "Within {$assessmentDays} days. The admin schedules the interview (the requester confirms or asks for another time), verifies the documents and records the social worker's findings, with the amount the request needs."],
         ['admin', 'The admin recommends a decision', 'Approval (with an amount, at most what the assessment says is needed) or rejection, with verification notes for the super admin.'],
         ['super_admin', 'The super admin gives the final approval', 'After checking everything about the request: the requester, documents, assessment and amount needed, notes and the AI assessment. The requester is notified either way.'],
-        ['user', 'The requester lists the people', 'With "Add person": the last, first and middle name of each person who will receive the help.'],
-        ['admin', 'The funds are sent', "Approved requests get the donations first come, first served. When the donations on hand cover a request, the admins are told to transfer it to the receiver's bank account or e-wallet and record the transfer (or the super admin sends it automatically once transfers are connected). The funds on hand go down when the money is transferred."],
+        ['user', 'The requester lists the people', 'With "Add person": the last, first and middle name of each person who will receive the help. People with the same name are each given a number.'],
+        ['admin', 'The funds are sent', "Approved requests get the donations first come, first served; the requester sees how much is still missing. When the donations on hand cover a request, the admins are told to transfer it to the receiver's bank account or e-wallet and record the transfer (or the super admin sends it automatically once transfers are connected). The funds on hand go down when the money is transferred."],
         ['user', 'The requester reports how the money was used', "Within {$liquidationDays} days: receipts and the list of people who received the help. An admin checks it and the request is completed."],
     ];
     $roleNames = ['user' => 'Requester', 'admin' => 'Admin', 'super_admin' => 'Super admin'];
@@ -22,7 +22,8 @@
         'user' => [
             'Start a request from the home feed or "Fund request". You can open the six steps in any order; everything that is missing is listed before you submit.',
             'Follow each request in "Request status". Open one to see its progress, answer the interview schedule, upload a clearer document, or message the foundation.',
-            'After approval, list the people who will receive the help. After the funds arrive, submit the liquidation.',
+            'After approval, list the people who will receive the help; two people with the same name each get a number. The request page shows how much in donations is still missing before your transfer. After the funds arrive, submit the liquidation.',
+            'Click a notification to open the exact part of the request it is about.',
             'A rejected request can be appealed up to ' . \App\Services\FundingService::MAX_APPEALS . ' times, with a reason and an updated document.',
             'Changed your mind? Cancel the request from its page any time before the funds are sent; everything still to come stops.',
             'Turn on sign-in codes by email, or dark mode, in Settings.',
@@ -37,9 +38,9 @@
         'super_admin' => [
             'Requests waiting for you are on the dashboard and in "Fund requests". Open one for the final check and approve (set the amount) or reject (give the reason).',
             'When automatic transfers are connected, send the approved amount from the request page; you confirm with a code sent to your email.',
-            'Manage accounts (roles, access) and System settings (scoring priorities, request interval, Brevo email).',
+            'Manage accounts (roles, access) and System settings (scoring priorities, request interval, email, bank transfers).',
             'The dashboard shows the release line; Transactions lists every money step and checks that no entry was changed.',
-            'System monitor and Activity log show the donation boxes, funding outcomes and every change made in the system.',
+            'System monitor and Activity log show the donation boxes (and their sign-ins), funding outcomes and every change made in the system.',
         ],
     ];
     $faq = [
@@ -48,6 +49,8 @@
             ['How long does it take?', "A social worker contacts you within {$assessmentDays} days. After the assessment the admin and the super admin decide; you get a notification at every step."],
             ['Why do I list the people only after approval?', 'The approval says how many people the help covers, so the list is made once that number is final.'],
             ['Can I cancel a request?', 'Yes, from the request page, until the funds are sent. The interview, the decision and the release of funds all stop. You can send a new request later.'],
+            ['When will my funds be sent?', 'Approved requests are funded from the donations first come, first served. Your request page shows your place in line and how much is still missing; you are notified when the funds are sent.'],
+            ['Two people on my list have the same name.', 'Give each a number in the "No." box (1, 2, 3…) so the foundation can tell them apart. The list cannot be sent until they are numbered.'],
             ['I did not get the email code.', 'Check your spam folder. If email is not set up yet, you can sign in without a code.'],
         ],
         'admin' => [

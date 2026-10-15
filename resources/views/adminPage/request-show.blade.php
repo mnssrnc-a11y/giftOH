@@ -249,12 +249,12 @@
                 <div><dt>Approved</dt><dd>{{ $peso($view['granted'] ?? $view['amount']) }}</dd></div>
                 <div><dt>{{ $disbursement['mode'] === 'e_wallet' ? 'E-wallet' : 'Bank account' }}</dt><dd>{{ $disbursement['provider'] ?? '—' }} · {{ $disbursement['account_name'] ?? '' }} · {{ $disbursement['account_number'] ?? '' }}</dd></div>
                 <div><dt>People</dt><dd>{{ count($view['beneficiaries']) ? count($view['beneficiaries']) . ' listed' : 'Not listed yet (up to ' . $view['people_limit'] . ')' }}</dd></div>
-                @if ($line ?? null)<div><dt>Release line</dt><dd>#{{ $line['position'] }} · {{ $line['covered'] ? 'covered by the donations on hand' : $peso($line['short']) . ' more needed' }}</dd></div>@endif
+                @if ($line ?? null)<div><dt>Release line</dt><dd>#{{ $line['position'] }} · {{ $line['covered'] ? 'covered by the donations on hand' : (($line['known'] ?? true) ? $peso($line['short']) . ' more needed' : 'donation total unavailable') }}</dd></div>@endif
             </dl>
             @if ($stage['key'] === 'awaiting_recipients')
                 <p>Waiting for the requester to list the people who will receive the help. You will get a notification.</p>
             @elseif ($stage['key'] === 'to_release' && ($line ?? null) && ! $line['covered'])
-                <p>The donations on hand go to the requests approved before this one first (first come, first served): <strong>{{ $peso($line['short']) }}</strong> more is needed. You will get a notification when it is ready to transfer.</p>
+                <p>The donations on hand go to the requests approved before this one first (first come, first served): @if ($line['known'] ?? true)<strong>{{ $peso($line['short']) }}</strong> more is needed.@else the donation total cannot be read right now.@endif You will get a notification when it is ready to transfer.</p>
             @elseif ($stage['key'] === 'to_release')
                 <p class="proc-ready">Ready: {{ $peso($view['granted'] ?? $view['amount']) }} of the donations on hand is set aside for this request. Transfer it, then record it here.</p>
                 <form method="POST" action="{{ route('admin.fund-request.disbursement', $view['id']) }}" enctype="multipart/form-data" class="admin-form-grid proc-form">

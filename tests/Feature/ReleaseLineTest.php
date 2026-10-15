@@ -29,7 +29,7 @@ class ReleaseLineTest extends TestCase
 {
     private array $requests = [];
 
-    private float $collected = 30000.0;
+    private ?float $collected = 30000.0;
 
     protected function setUp(): void
     {
@@ -86,6 +86,66 @@ class ReleaseLineTest extends TestCase
         $this->assertSame(5000.0, $state['rows'][2]['short'], 'c waits its turn even though ₱3,000 would fit');
         $this->assertSame(12000.0, $state['set_aside']);
         $this->assertSame(0.0, $state['free']);
+
+        // What each requester is shown: set aside so far, and how much of the gap is the line ahead.
+        $this->assertSame([12000.0, 8000.0, 0.0], array_column($state['rows'], 'raised'));
+        $this->assertSame([0.0, 0.0, 2000.0], array_column($state['rows'], 'ahead_short'), 'b still needs ₱2,000 for c to start');
+        $this->assertSame([true, true, true], array_column($state['rows'], 'known'));
+    }
+
+    public function test_an_unreadable_donation_total_is_unknown_not_zero(): void
+    {
+        $this->collected = null;
+        $this->requests = ['a' => $this->approved('a', 5000, '2026-10-01T09:00:00+08:00')];
+        $row = $this->queue()->rowFor('a');
+
+        $this->assertFalse($row['covered']);
+        $this->assertFalse($row['known']);
+        $this->assertNull($row['raised']);
+    }
+
+    /** The requester pages over the in-memory line; signed in as the owner of $id. */
+    private function asRequesterOf(string $id): void
+    {
+        $queue = $this->queue();
+        app(FirebaseFundingRepository::class)->shouldReceive('findByUserId')->andReturnUsing(
+            fn ($userId) => array_values(array_filter($this->requests, fn ($r) => $r['user_id'] === $userId)));
+        app(NotificationService::class)->shouldReceive('getByUser')->andReturn([]);
+        $this->app->instance(FundQueue::class, $queue);
+        $this->mock(FirebaseUserRepository::class, fn ($mock) => $mock->shouldReceive('findById')->andReturn(null));
+        $this->mock(\App\Services\RequestMessageService::class, fn ($mock) => $mock->shouldReceive('thread')->andReturn([])->getMock()->shouldReceive('markRead'));
+        $this->actingAs(new FirebaseUser(['id' => "user-{$id}", 'fname' => 'Maria', 'lname' => 'Santos', 'role' => 'normaluser']));
+    }
+
+    public function test_the_requester_sees_how_much_is_missing_before_the_transfer(): void
+    {
+        $this->requests = [
+            'a' => $this->approved('a', 12000, '2026-10-01T09:00:00+08:00'),
+            'b' => $this->approved('b', 10000, '2026-10-02T09:00:00+08:00'),
+            'c' => $this->approved('c', 3000, '2026-10-03T09:00:00+08:00'),
+        ];
+        $this->collected = 20000.0;
+        $this->asRequesterOf('c');
+
+        $this->get(route('fund-request.show', 'c'))->assertOk()
+            ->assertSee('₱5,000.00 more in donations is needed')
+            ->assertSee('You are #3 in line.')
+            ->assertSee('₱0.00 of ₱3,000.00 set aside for you · ₱3,000.00 to go')
+            ->assertSee('This includes ₱2,000.00 still needed by requests approved before yours');
+
+        $this->get(route('request-status'))->assertOk()
+            ->assertSee('₱5,000.00 more in donations needed before transfer');
+    }
+
+    public function test_a_covered_request_shows_no_missing_amount(): void
+    {
+        $this->requests = ['a' => $this->approved('a', 12000, '2026-10-01T09:00:00+08:00')];
+        $this->asRequesterOf('a');
+
+        $this->get(route('fund-request.show', 'a'))->assertOk()
+            ->assertSee('Your funds are ready.')
+            ->assertDontSee('more in donations is needed');
+        $this->get(route('request-status'))->assertOk()->assertDontSee('more in donations needed');
     }
 
     public function test_admins_are_told_once_when_a_request_is_ready_and_the_next_follows_after_the_transfer(): void
