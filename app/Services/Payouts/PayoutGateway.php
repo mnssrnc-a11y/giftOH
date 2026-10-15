@@ -14,4 +14,30 @@ interface PayoutGateway
      * @throws PayoutException when the provider refuses the transfer
      */
     public function send(array $transfer): array;
+
+    /**
+     * Current state of a transfer, for when the webhook did not arrive (or cannot reach this PC).
+     *
+     * @return array{id: string, status: string, failure_code: ?string}
+     *
+     * @throws PayoutException
+     */
+    public function status(string $payoutId): array;
+
+    /**
+     * Money available in the payout account (PHP), or null when it cannot be read.
+     */
+    public function balance(): ?float;
+
+    /**
+     * Banks and e-wallets this account can send to.
+     *
+     * @return array<int, array{code: string, name: string, category: string, minimum: ?float, maximum: ?float}>
+     *
+     * @throws PayoutException
+     */
+    public function channels(): array;
+
+    /** "live", "test" or "sandbox": whether real money moves. */
+    public function mode(): string;
 }

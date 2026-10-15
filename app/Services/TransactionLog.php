@@ -14,7 +14,9 @@ use Illuminate\Support\Facades\Cache;
  *
  * Entries cannot be edited or deleted: there is no way to do it in the app, and each entry carries
  * the hash of the one before it, so changing or removing an entry in the database breaks the chain
- * and verify() points at it.
+ * and verify() points at it. The hashes are signed with the app's secret key (APP_KEY), so someone
+ * with access to the database alone cannot rewrite the entries and recompute the chain. Keep
+ * APP_KEY unchanged (it also protects the saved Brevo key): a new key makes old entries fail.
  */
 class TransactionLog
 {
@@ -107,14 +109,19 @@ class TransactionLog
     }
 
     /**
-     * Hash of an entry's content. Values are normalised the way Firebase stores them (numbers as
-     * numbers, no empty values), so an entry read back hashes the same as when it was written.
+     * Signed hash (HMAC-SHA256 with APP_KEY) of an entry's content. Values are normalised the way
+     * Firebase stores them (numbers as numbers, no empty values), so an entry read back hashes the
+     * same as when it was written.
      */
     public static function hash(array $entry): string
     {
         unset($entry['hash'], $entry['id'], $entry['created_at'], $entry['updated_at']);
+        $secret = (string) config('app.key');
+        if ($secret === '') {
+            throw new \RuntimeException('APP_KEY is not set, so the transaction log cannot be signed.');
+        }
 
-        return hash('sha256', json_encode(self::normalise($entry), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        return hash_hmac('sha256', json_encode(self::normalise($entry), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'transaction-log|' . $secret);
     }
 
     private static function normalise(mixed $value): mixed

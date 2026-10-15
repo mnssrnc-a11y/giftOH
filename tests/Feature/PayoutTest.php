@@ -30,6 +30,13 @@ class PayoutTest extends TestCase
         $this->mock(IotService::class, fn ($mock) => $mock->shouldReceive('getBalance')->andReturn(50000.0));
         $this->line(['position' => 1, 'covered' => true, 'ready' => true, 'short' => 0.0]);
         $this->mock(TransactionLog::class, fn ($mock) => $mock->shouldReceive('record'));
+        $this->mock(\App\Services\SystemSettings::class, fn ($mock) => $mock->shouldReceive('payoutChannels')->andReturn([]));
+        // The payout account holds enough money; BDO takes up to ₱500,000 per transfer. No real calls.
+        Http::preventStrayRequests();
+        Http::fake([
+            'api.xendit.co/balance*' => Http::response(['balance' => 1000000]),
+            'api.xendit.co/payouts_channels*' => Http::response([['channel_code' => 'PH_BDO', 'channel_category' => 'BANK', 'currency' => 'PHP', 'channel_name' => 'BDO Unibank', 'amount_limits' => ['minimum' => 1, 'maximum' => 500000]]]),
+        ]);
     }
 
     /** The request's place in the release line (first come, first served). */
@@ -83,7 +90,7 @@ class PayoutTest extends TestCase
 
         app(PayoutService::class)->send('req-1', 'boss-1');
 
-        Http::assertSentCount(1);
+        $this->assertCount(1, Http::recorded(fn (HttpRequest $sent) => str_contains($sent->url(), '/v2/payouts')), 'paid once');
         Http::assertSent(fn (HttpRequest $sent) => $sent->url() === 'https://api.xendit.co/v2/payouts'
             && $sent->hasHeader('Authorization', 'Basic ' . base64_encode('xnd_test_secret:'))
             && $sent->hasHeader('Idempotency-key', 'goh-req-1-1')

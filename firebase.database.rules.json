@@ -6,15 +6,17 @@
     "boxes": {
       ".read": true,
       "$boxId": {
-        ".write": true
+        ".write": "auth != null && newData.exists() && root.child('device_accounts').child(auth.uid).val() === $boxId",
+        "total": { ".validate": "newData.isNumber() && newData.val() >= 0 && (!data.exists() || newData.val() >= data.val())" }
       }
     },
     "logs": {
       ".read": true,
       "$boxId": {
-        ".write": true
+        ".write": "auth != null && root.child('device_accounts').child(auth.uid).val() === $boxId"
       }
     },
+    "device_accounts": { ".read": false, ".write": false },
 
     "users": { ".indexOn": ["email"] },
     "funding_requests": { ".indexOn": ["user_id", "status_id", "created_at"] },

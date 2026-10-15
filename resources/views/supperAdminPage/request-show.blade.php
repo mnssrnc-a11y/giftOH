@@ -86,11 +86,14 @@
             <dl class="sa-facts" style="margin-bottom:16px">
                 <div><dt>Amount</dt><dd>{{ $peso($transfer['amount']) }}</dd></div>
                 <div><dt>To</dt><dd>{{ $transfer['provider'] ?? '—' }}<small>{{ $disbursement['account_name'] ?? '' }} · {{ $disbursement['account_number'] ?? '' }}</small></dd></div>
+                <div><dt>Sent through</dt><dd>{{ $transfer['mode_label'] }}@if ($transfer['channel'])<small>Channel {{ $transfer['channel'] }}</small>@endif</dd></div>
+                @if ($transfer['balance'] !== null)<div><dt>Payout account</dt><dd>{{ $peso($transfer['balance']) }}<small>{{ $transfer['mode'] === 'live' ? 'Real money' : 'Practice money' }}</small></dd></div>@endif
                 <div><dt>Release line</dt><dd>@if ($line)#{{ $line['position'] }} · {{ $line['ready'] ? 'ready to transfer' : ($line['covered'] ? 'covered, waiting for the list' : $peso($line['short']) . ' more needed') }}@else — @endif<small>First come, first served</small></dd></div>
                 @if (! empty($transfer['payout']['payout_id']))<div><dt>Provider reference</dt><dd>{{ $transfer['payout']['payout_id'] }}<small>{{ $transfer['payout']['provider_status'] ?? '' }}{{ ! empty($transfer['payout']['failure_code']) ? ' · ' . $transfer['payout']['failure_code'] : '' }}</small></dd></div>@endif
             </dl>
             @if ($payoutState === 'processing')
                 <div class="sa-note">The transfer was sent {{ \Carbon\Carbon::parse($transfer['payout']['requested_at'])->diffForHumans() }}. The release is recorded automatically when the bank or e-wallet confirms it.</div>
+                <form method="POST" action="{{ route('superadmin.payout.sync', $view['id']) }}" class="sa-inline-form" style="margin-top:10px">@csrf<button class="sa-button secondary" type="submit">Check transfer status</button></form>
             @elseif ($transfer['code_sent'] && $transfer['ready'])
                 <form method="POST" action="{{ route('superadmin.payout.confirm', $view['id']) }}" class="sa-decision-form" style="max-width:420px">
                     @csrf

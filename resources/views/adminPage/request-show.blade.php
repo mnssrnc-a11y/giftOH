@@ -180,6 +180,9 @@
                 </details>
                 <div class="proc-next"><button type="button" class="admin-button" data-tab-go="decision">Next: decision →</button></div>
             @endif
+        @elseif ($pending && empty($assessment['interview_at']))
+            <p class="proc-empty">Schedule the interview first: the assessment records what the social worker found in it.</p>
+            <div class="proc-next"><button type="button" class="admin-button" data-tab-go="interview">← Go to the interview</button></div>
         @elseif ($pending)
             <p class="admin-field-hint">After the interview, record the social worker's findings and the amount the request needs. Approval requires "recommended".</p>
             @include('adminPage.partials.assessment-form')

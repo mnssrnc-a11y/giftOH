@@ -264,6 +264,9 @@ class FundingService
 
         $number = $count + 1;
         $timestamp = now()->toIso8601String();
+        // The appeal is assessed again: the interview stays, the earlier findings and amount move to the history.
+        $assessment = (array) ($request['assessment'] ?? []);
+        $interviewKeys = ['interview_at', 'social_worker', 'mode', 'mode_label', 'location', 'scheduled_at', 'scheduled_by', 'interview_response'];
         $history = array_values((array) ($request['appeal_history'] ?? []));
         $history[] = [
             'number' => $number,
@@ -272,6 +275,7 @@ class FundingService
             'document' => $documentPath,
             'previous_decision_at' => $request['rejected_at'] ?? null,
             'previous_reason' => $request['final_notes'] ?? $request['admin_notes'] ?? null,
+            'previous_assessment' => array_diff_key($assessment, array_flip($interviewKeys)) ?: null,
         ];
 
         $updated = $this->fundingRequests->update($requestId, [
@@ -281,6 +285,8 @@ class FundingService
             'appeals' => $number,
             'appeal_history' => $history,
             'documents' => array_merge((array) ($request['documents'] ?? []), ["appeal_{$number}" => $documentPath]),
+            'assessment' => array_intersect_key($assessment, array_flip($interviewKeys)) ?: null,
+            'amount_requested' => 0,
             // The admins review it again from the start of their decision.
             'admin_decision' => null,
             'admin_recommended_amount' => null,
@@ -474,7 +480,8 @@ class FundingService
     public function recordAssessment(string $requestId, array $result, string|int $adminId): ?array
     {
         $request = $this->getRequestById($requestId);
-        if ($request === null || $this->statusOf($request) !== 'pending') {
+        // The findings come from the interview, so it must be scheduled first.
+        if ($request === null || $this->statusOf($request) !== 'pending' || empty($request['assessment']['interview_at'])) {
             return null;
         }
 

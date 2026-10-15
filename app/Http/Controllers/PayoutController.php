@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Mail\TransactionVerificationCode;
+use App\Services\AuditLogger;
 use App\Services\MailSettingsService;
+use App\Services\SystemSettings;
 use App\Services\Payouts\PayoutException;
 use App\Services\Payouts\PayoutService;
 use App\Services\FundingService;
@@ -64,6 +66,7 @@ class PayoutController extends Controller
     {
         if ($request->boolean('cancel')) {
             session()->forget(self::SESSION_KEY);
+            $this->codes->forget(Auth::user()->email, self::CODES);
 
             return $this->back($id)->with('status', 'Transfer cancelled. Nothing was sent.');
         }
@@ -78,6 +81,8 @@ class PayoutController extends Controller
         if (! $result['success']) {
             return $this->back($id)->with('alert_error', $result['error']);
         }
+        // A code works once.
+        $this->codes->forget($user->email, self::CODES);
         session()->forget(self::SESSION_KEY);
 
         try {
@@ -88,7 +93,61 @@ class PayoutController extends Controller
             return $this->back($id)->with('alert_error', 'The transfer was not sent: ' . $exception->getMessage());
         }
 
-        return $this->back($id)->with('status', '₱' . number_format($payout['amount'], 2) . ' sent. The release is recorded automatically when the bank or e-wallet confirms it.');
+        return $this->back($id)->with('status', '₱' . number_format($payout['amount'], 2) . ' sent' . ($payout['mode'] === 'live' ? '' : ' (' . $this->payouts->modeLabel($payout['mode']) . ')')
+            . '. The release is recorded automatically when the bank or e-wallet confirms it.');
+    }
+
+    /** "Check transfer status": ask the provider how the transfer ended (no webhook needed). */
+    public function sync(string $id)
+    {
+        try {
+            $status = $this->payouts->sync($id);
+        } catch (PayoutException $exception) {
+            report($exception);
+
+            return $this->back($id)->with('alert_error', 'The status could not be checked: ' . $exception->getMessage());
+        }
+
+        return $this->back($id)->with('status', match ($status) {
+            'succeeded' => 'The transfer went through. The release of funds is recorded.',
+            'failed' => 'The transfer did not go through. See the reason below.',
+            default => 'The transfer is still being processed. Check again in a little while.',
+        });
+    }
+
+    /** System settings → Bank transfers: which payout channel each bank / e-wallet uses. */
+    public function saveChannels(Request $request, SystemSettings $settings, AuditLogger $audit)
+    {
+        $providers = collect(config('funding.transfer_modes'))->flatMap(fn (array $mode) => $mode['providers'])->all();
+        $validated = $request->validate([
+            'channels' => 'array',
+            'channels.*' => ['nullable', 'string', 'max:40', 'regex:/^[A-Z0-9_]+$/'],
+        ], ['channels.*.regex' => 'A channel code uses capital letters, numbers and _ only (for example PH_BDO).']);
+        $channels = array_intersect_key(array_filter((array) ($validated['channels'] ?? [])), array_flip($providers));
+
+        $settings->setPayoutChannels($channels);
+        $audit->record('settings', 'Payout channels saved: ' . count($channels) . ' bank(s) / e-wallet(s)');
+
+        return redirect()->to(route('superadmin') . '#settings-payouts')->with('status', 'Payout channels saved.');
+    }
+
+    /** System settings → Bank transfers: check the key and read the payout account balance. */
+    public function testConnection()
+    {
+        if (! $this->payouts->enabled()) {
+            return redirect()->to(route('superadmin') . '#settings-payouts')->with('alert_error', 'Automatic transfers are not connected: set PAYOUT_DRIVER (and XENDIT_SECRET_KEY for Xendit) first.');
+        }
+
+        try {
+            $channels = count($this->payouts->gateway()->channels());
+            $balance = $this->payouts->gateway()->balance();
+        } catch (PayoutException $exception) {
+            return redirect()->to(route('superadmin') . '#settings-payouts')->with('alert_error', 'Connection failed: ' . $exception->getMessage());
+        }
+
+        return redirect()->to(route('superadmin') . '#settings-payouts')->with('status', 'Connected to ' . $this->payouts->modeLabel($this->payouts->mode())
+            . ": {$channels} bank(s) / e-wallet(s) available"
+            . ($balance !== null ? ', payout account balance ₱' . number_format($balance, 2) : ', balance could not be read') . '.');
     }
 
     /** The payout provider's result (no sign-in: checked with the webhook token). */

@@ -159,6 +159,8 @@
         </div>
     </article>
 
+    @include('supperAdminPage.partials.payout-settings', ['p' => $payoutSettings])
+
     @elseif ($key === 'monitor')
     <div class="sa-grid equal">
         <article class="sa-card"><div class="sa-card-head"><h2>IoT devices</h2><a class="sa-link" href="{{ route('iot-monitor') }}">Live monitor ↗</a></div><div class="sa-card-body">{!! $deviceList() !!}</div></article>
@@ -169,6 +171,7 @@
             <div class="sa-note">Approval rate counts finalized requests only.</div>
         </div></article>
     </div>
+    @include('supperAdminPage.partials.box-sign-ins', ['devices' => $devices, 'accounts' => $boxAccounts])
     <article class="sa-card"><div class="sa-card-head"><h2>Audit events</h2><a class="sa-link" href="#activity">Full log ↗</a></div><div class="sa-card-body">{!! $eventList(8) !!}</div></article>
 
     @elseif ($key === 'requests')

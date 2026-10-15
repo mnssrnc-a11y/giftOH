@@ -12,6 +12,7 @@ use App\Models\FirebaseUser;
 use App\Services\VerificationService;
 use App\Mail\PasswordResetCode;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use App\Mail\LoginAuthCode;
 use App\Mail\VerifyEmail;
 use App\Rules\RealEmail;
@@ -189,14 +190,25 @@ class AccountController extends Controller
             'password' => 'required',
             'role' => 'nullable|in:user,admin',
         ]);
+        // Five wrong passwords lock the account's sign-in for 15 minutes (on top of the per-device limit on the route).
+        $lock = 'login-failures:' . sha1(strtolower(trim((string) $request->email)));
+        if (RateLimiter::tooManyAttempts($lock, 5)) {
+            return back()->withErrors([
+                'email' => 'Too many wrong passwords. Try again in ' . max(1, (int) ceil(RateLimiter::availableIn($lock) / 60)) . ' minute(s), or reset your password.',
+            ])->onlyInput('email');
+        }
+
         $user = $this->firebaseUsers->findByEmail($request->email);
         $passwordHash = is_array($user) ? ($user['password'] ?? '') : ($user->password ?? '');
 
         if (!$user || !Hash::check($request->password, $passwordHash)) {
+            RateLimiter::hit($lock, 15 * 60);
+
             return back()->withErrors([
                 'email' => 'These credentials do not match our records.',
             ])->onlyInput('email');
         }
+        RateLimiter::clear($lock);
 
         $isActive = is_array($user) ? ($user['is_active'] ?? true) : $user->is_active;
         if (! $isActive) {
@@ -273,7 +285,7 @@ class AccountController extends Controller
         if (!$record || !Hash::check($request->token, $record['token'])) {
             return back()->withErrors(['email' => 'Invalid or expired reset session. Please start over.']);
         }
-        if (now()->diffInMinutes($record['created_at']) > 5) {
+        if (VerificationService::isExpired($record['created_at'] ?? null, 5)) {
             $this->verificationService->forget($request->email, 'password_reset_tokens');
             return back()->withErrors(['email' => 'Reset session expired. Please start over.']);
         }

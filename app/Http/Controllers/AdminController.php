@@ -157,8 +157,10 @@ class AdminController extends Controller
             'notes' => $validated['notes'] ?? null,
         ];
 
+        // Codes off, or email not set up (no code could be sent): the decision goes through without
+        // a code, the same as signing in.
         $user = Auth::user();
-        if (! filter_var($user->email_notifications ?? true, FILTER_VALIDATE_BOOLEAN)) {
+        if (! filter_var($user->email_notifications ?? true, FILTER_VALIDATE_BOOLEAN) || ! app(\App\Services\MailSettingsService::class)->canSend()) {
             return $this->submitReview($pending);
         }
 

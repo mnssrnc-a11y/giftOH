@@ -11,6 +11,8 @@ class FirebaseService
 {
     protected Database $database;
     protected Messaging $messaging;
+    protected ?Factory $factory = null;
+    protected ?\Kreait\Firebase\Contract\Auth $auth = null;
 
     public function __construct()
     {
@@ -44,6 +46,7 @@ class FirebaseService
 
         $this->database = $factory->createDatabase();
         $this->messaging = $factory->createMessaging();
+        $this->factory = $factory;
     }
 
     /**
@@ -101,5 +104,11 @@ class FirebaseService
     public function getMessaging(): Messaging
     {
         return $this->messaging;
+    }
+
+    /** Firebase Authentication (sign-ins of the smart donation boxes), created when first needed. */
+    public function getAuth(): \Kreait\Firebase\Contract\Auth
+    {
+        return $this->auth ??= ($this->factory ?? throw new \RuntimeException('Firebase is not connected.'))->createAuth();
     }
 }

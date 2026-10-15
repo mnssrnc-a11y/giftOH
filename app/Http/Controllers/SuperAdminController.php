@@ -34,7 +34,7 @@ class SuperAdminController extends Controller
     ) {
     }
 
-    public function index(FirebaseAuditLogRepository $auditLogs, MailSettingsService $mail, FundingRules $rules, FundQueue $queue, TransactionLog $ledger)
+    public function index(FirebaseAuditLogRepository $auditLogs, MailSettingsService $mail, FundingRules $rules, FundQueue $queue, TransactionLog $ledger, \App\Services\Payouts\PayoutService $payouts)
     {
         // New donations come in from the boxes: see if the next request in line is now covered.
         $queue->refreshSoon();
@@ -67,6 +67,8 @@ class SuperAdminController extends Controller
             'intervalDays' => $this->settings->requestIntervalDays(),
             'minIntervalDays' => SystemSettings::MIN_REQUEST_INTERVAL_DAYS,
             'mail' => $mail->current(),
+            'payoutSettings' => $this->payoutSettings($payouts),
+            'boxAccounts' => $this->boxAccounts(),
             'mailPending' => $mail->pending(),
             'logs' => $this->logs($auditLogs),
             'selfId' => (string) Auth::id(),
@@ -83,6 +85,16 @@ class SuperAdminController extends Controller
     {
         $request = $this->fundingService->getRequestById($id);
         abort_if($request === null, 404);
+
+        // A transfer in progress: ask the provider how it ended (at most every 15 seconds).
+        if (($request['disbursement']['payout']['status'] ?? null) === 'processing' && \Illuminate\Support\Facades\Cache::add("payout-sync:{$id}", true, 15)) {
+            try {
+                $payouts->sync($id);
+                $request = $this->fundingService->getRequestById($id) ?? $request;
+            } catch (\App\Services\Payouts\PayoutException $exception) {
+                report($exception);
+            }
+        }
 
         $view = $presenter->present($request, forAdmin: true);
         $requester = ! empty($request['user_id']) ? $this->users->findById($request['user_id']) : null;
@@ -107,7 +119,8 @@ class SuperAdminController extends Controller
             'transactions' => $ledger->latest($id),
             'outcomes' => $this->outcomes(),
             'transfer' => in_array($view['stage']['key'], ['awaiting_recipients', 'to_release', 'released'], true) || ! empty($view['disbursement']['payout'])
-                ? $payouts->readiness($request) + ['enabled' => $payouts->enabled(), 'code_sent' => session('pending_payout') === $id]
+                ? $payouts->readiness($request) + ['enabled' => $payouts->enabled(), 'code_sent' => session('pending_payout') === $id,
+                    'mode' => $payouts->mode(), 'mode_label' => $payouts->modeLabel($payouts->mode()), 'balance' => $payouts->balance()]
                 : null,
         ]);
     }
@@ -304,6 +317,61 @@ class SuperAdminController extends Controller
         return $this->toSection('settings-mail')->with('status', 'Email settings saved. Verification codes are now sent from ' . ($pending['email'] ?? 'the new address') . '.');
     }
 
+    /**
+     * System monitor → Box sign-ins: create a donation box's Firebase sign-in, or give it a new
+     * password. The password is shown once, to be put in the box.
+     */
+    public function issueBoxSignIn(string $box, \App\Services\BoxAccountService $boxes)
+    {
+        $known = array_column($this->iotService->getBoxes() ?? [], 'id');
+        abort_unless(in_array($box, array_map('strval', $known), true), 404);
+
+        try {
+            $credentials = $boxes->issue($box);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return $this->toSection('monitor')->with('alert_error', 'The box sign-in could not be created: ' . $exception->getMessage());
+        }
+        $this->audit->record('settings', "Sign-in created for donation box {$box}", null, ['email' => $credentials['email']]);
+
+        return $this->toSection('monitor')->with('box_credentials', ['box' => $box, 'email' => $credentials['email'], 'password' => $credentials['password']]);
+    }
+
+    /**
+     * System settings → Bank transfers: how transfers are connected, and the payout channel of each
+     * bank / e-wallet (the provider's list is read at most once an hour).
+     */
+    private function payoutSettings(\App\Services\Payouts\PayoutService $payouts): array
+    {
+        $available = [];
+        $error = null;
+        if ($payouts->enabled()) {
+            try {
+                $available = $payouts->channels();
+            } catch (\App\Services\Payouts\PayoutException $exception) {
+                $error = $exception->getMessage();
+            }
+        }
+        $providers = collect(config('funding.transfer_modes'))->map(fn (array $mode) => $mode['providers'])->all();
+
+        return [
+            'driver' => config('payouts.driver'),
+            'enabled' => $payouts->enabled(),
+            'mode' => $payouts->mode(),
+            'mode_label' => $payouts->modeLabel($payouts->mode()),
+            'key_set' => filled(config('payouts.xendit.secret_key')),
+            'webhook_set' => filled(config('payouts.xendit.webhook_token')),
+            'webhook_url' => route('webhooks.payouts'),
+            'balance' => $payouts->balance(),
+            'providers' => $providers,
+            'codes' => collect($providers)->flatten()->mapWithKeys(fn ($provider) => [$provider => $payouts->channelFor($provider)])->all(),
+            'saved' => $this->settings->payoutChannels(),
+            'available' => $available,
+            'error' => $error,
+        ];
+    }
+
     private function accounts(): array
     {
         $accounts = array_map(function (array $user): array {
@@ -380,6 +448,18 @@ class SuperAdminController extends Controller
             ], $auditLogs->latest(300));
         } catch (\Throwable) {
             return [];
+        }
+    }
+
+    /** Box id => whether it has its own sign-in (null when it cannot be read). */
+    private function boxAccounts(): ?array
+    {
+        try {
+            return app(\App\Services\BoxAccountService::class)->accounts();
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return null;
         }
     }
 

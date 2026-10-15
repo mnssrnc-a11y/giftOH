@@ -276,6 +276,8 @@ class FundingRequestPresenter
             [$request['cancelled_at'] ?? null, 'Cancelled by the requester', $request['cancel_reason'] ?? null],
         ];
         foreach ((array) ($request['appeal_history'] ?? []) as $appeal) {
+            $previous = (array) ($appeal['previous_assessment'] ?? []);
+            $events[] = [$previous['assessed_at'] ?? null, 'Assessment completed' . ($forAdmin ? ': ' . (($previous['outcome'] ?? '') === 'recommended' ? 'recommended' : 'not recommended') : ''), null];
             $events[] = [$appeal['previous_decision_at'] ?? null, 'Rejected', $appeal['previous_reason'] ?? null];
             $events[] = [$appeal['at'] ?? null, 'Appeal ' . ($appeal['number'] ?? '') . ' submitted', $appeal['reason'] ?? null];
         }

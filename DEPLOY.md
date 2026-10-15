@@ -89,41 +89,97 @@ was taken), change `APP_URL` in **Environment** to that address and save.
 
 Every `git push` to `main` redeploys automatically.
 
-## Automatic transfers (optional, real money)
+## Automatic transfers (bank-to-bank / e-wallet)
 
 Until this is set up, an admin sends each grant from the foundation's bank or e-wallet and records
-the release with the proof (the "manual" process). With a payout provider connected, the super
-admin sends the approved amount from the request page with one click, confirmed by an emailed code;
-the provider reports the result and the release is recorded by itself.
+the release with the proof (the "manual" process). With transfers connected, the super admin sends
+the approved amount from the request page (Transfer of funds), confirmed by a code emailed to them;
+the result is recorded by itself as the release of funds. Three settings, by `PAYOUT_DRIVER`:
 
-The app is built for **Xendit Payouts** (Philippines: InstaPay / PESONet to banks, and GCash). What
-you need:
+| `PAYOUT_DRIVER` | What happens | Real money? |
+|---|---|---|
+| `manual` (default) | Admins transfer by hand and record it | — |
+| `sandbox` | A built-in practice bank: send, code, confirmation and release all work | **No** |
+| `xendit` | Xendit Payouts API: InstaPay / PESONet to banks, and e-wallets | Test key: no · live key: **yes** |
 
-1. A **Xendit business account** that has passed verification (KYB): the foundation's SEC (or DTI)
-   registration, BIR Certificate of Registration, articles/by-laws, IDs of the authorized
-   signatories, and the foundation's own bank account for settlement.
-2. **Money-out enabled** and a **funded Xendit balance** (top it up from the foundation's bank);
-   transfers are paid from this balance.
-3. A **secret API key** with "Money-out" write permission (Settings → API keys), first the test key,
-   then the live key.
-4. The **webhook verification token** (Settings → Webhooks), and the payout webhook URL set to
-   `https://<your-site>/webhooks/payouts`.
-5. The **channel code** of each bank / e-wallet you want to send to, copied from Xendit's channel
-   list into `config/payouts.php` (BDO, BPI, Security Bank, UnionBank and GCash are filled in).
-   PayPal is not a Xendit channel; PayPal grants stay manual.
-
-Then set, in `.env` and on Render:
+### Practise now: the sandbox (no account needed)
 
 ```
-PAYOUT_DRIVER=xendit
-XENDIT_SECRET_KEY=xnd_development_...   # test key first
-XENDIT_WEBHOOK_TOKEN=...
+PAYOUT_DRIVER=sandbox
+PAYOUT_SANDBOX_BALANCE=100000      # practice payout account
+PAYOUT_SANDBOX_SETTLE_SECONDS=20   # a transfer is confirmed this long after it is sent
 ```
 
-Test with the test key (no real money moves), then switch to the live key. For every transfer the
-app sends the receiver's account number and account name (exactly as on the account), the channel
-code, the amount in pesos and a reference (`goh-<request id>`); an account in another person's name
-is refused by the bank.
+Every bank and e-wallet on the request form works. Account numbers 999999, 121212 and 123456 fail on
+purpose (like Xendit's test mode), so you can show a failed transfer too. Email must be set up,
+because the super admin confirms each transfer with an emailed code.
+
+### Xendit (test, then real money)
+
+1. Sign up at dashboard.xendit.co. **Test mode** works right away: no verification, no real money.
+2. Settings → API keys → generate a **secret key** with **Money-out: Write** permission
+   (test keys start with `xnd_development_`).
+3. Settings → Webhooks → copy the **verification token**, and set the **Payouts** webhook URL to
+   `https://<your-site>/webhooks/payouts` (the exact URL is shown in System settings → Bank transfers).
+4. Set, in `.env` and on Render:
+
+   ```
+   PAYOUT_DRIVER=xendit
+   XENDIT_SECRET_KEY=xnd_development_...
+   XENDIT_WEBHOOK_TOKEN=...
+   ```
+
+5. In the app, System settings → **Bank transfers** → *Test the connection*, then pick the
+   **payout channel** of each bank / e-wallet from the list Xendit returns for your account, and
+   save. (BDO, BPI, Security Bank, UnionBank, AUB and GCash are filled in.) PayPal is not a Xendit
+   channel; PayPal grants stay manual.
+6. Try a transfer. In test mode any account number succeeds, except Xendit's failure test numbers
+   (999999 rejected by the channel, 121212 invalid account, 123456 temporary error).
+
+For **real money**, Xendit must first verify the foundation (KYB): SEC or DTI registration, BIR
+Certificate of Registration, articles/by-laws, IDs of the authorized signatories, and the
+foundation's bank account. Then top up the Xendit balance from the foundation's bank (transfers are
+paid from it) and replace the key with the live one (`xnd_production_...`). The app shows
+"Xendit (real money)" everywhere once a live key is in.
+
+**What is sent for each transfer:** the receiver's account number and account name (exactly as on
+the account), the channel code, the amount in pesos and a reference (`goh-<request id>`). An
+account in another person's name is refused by the bank. InstaPay arrives in about 15 minutes (up
+to ₱50,000); PESONet the same banking day (cut-off 2 PM).
+
+**If the webhook cannot reach the app** (for example on your own PC), the result is still picked up:
+the request page checks the transfer when it is opened, the *Check transfer status* button asks
+Xendit directly, and `php artisan payouts:sync` runs every minute with the scheduler.
+
+## Protect the donation boxes (do this before real transfers)
+
+The release line uses the smart boxes' totals as donations on hand. With the old database rules
+anyone with the public Firebase settings could change a total, so each box now signs in and may
+write only its own totals, and a total can never go down.
+
+1. Firebase console → **Authentication** → Sign-in method → turn on **Email/Password**.
+2. In the app, super admin → **System monitor** → **Box sign-ins** → *Create sign-in* for each box.
+   The email and password are shown once; the app does not keep the password.
+3. Put them in each box's program. With the ESP32 *Firebase ESP Client* library:
+
+   ```cpp
+   config.api_key = "<FIREBASE_API_KEY from .env>";
+   config.database_url = "<FIREBASE_DATABASE_URL from .env>";
+   auth.user.email = "box-<box id>@boxes.giftofhope.org";
+   auth.user.password = "<password from Box sign-ins>";
+   Firebase.begin(&config, &auth);
+   ```
+
+   The box keeps writing to `boxes/<box id>` as before; its `total` must only grow.
+4. When every box is reporting again with its sign-in, publish the protected rules (the current
+   rules are backed up first, and can be restored with the command it prints):
+
+   ```
+   php artisan firebase:deploy-rules --dry-run   # shows the change
+   php artisan firebase:deploy-rules
+   ```
+
+   A box that is not signed in stops reporting once these rules are live, so do step 3 first.
 
 ## Good to know
 

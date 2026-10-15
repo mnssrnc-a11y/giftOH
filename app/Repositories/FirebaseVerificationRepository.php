@@ -39,7 +39,7 @@ class FirebaseVerificationRepository extends FirebaseRepository
             return false;
         }
 
-        if (now()->diffInMinutes($record['created_at']) > $expirationMinutes) {
+        if (\App\Services\VerificationService::isExpired($record['created_at'], $expirationMinutes)) {
             $this->forget($type, $email);
             return false;
         }

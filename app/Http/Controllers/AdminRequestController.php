@@ -106,6 +106,11 @@ class AdminRequestController extends Controller
 
     public function recordAssessment(Request $request, string $id)
     {
+        if (empty($this->funding->getRequestById($id)['assessment']['interview_at'] ?? null)) {
+            return redirect()->to(route('admin.fund-request.show', $id) . '#interview')
+                ->with('alert_error', 'Schedule the interview first: the assessment records what the social worker found in it.');
+        }
+
         // The social worker / admin decides how much the request needs from the assessment.
         $validated = $request->validate([
             'outcome' => 'required|in:recommended,not_recommended',

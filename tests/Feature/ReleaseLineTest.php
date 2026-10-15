@@ -205,7 +205,9 @@ class ReleaseLineTest extends TestCase
             ->get(route('admin.fund-request.show', 'req-1'))
             ->assertOk()
             ->assertSee('id="social_worker" name="social_worker" required maxlength="120" value="Liza Ramos"', false)
-            ->assertSee('id="assessment_sw" name="social_worker" maxlength="120" value="Liza Ramos"', false)
+            // No interview yet: the assessment step asks for it first instead of showing its form.
+            ->assertDontSee('id="assessment_sw"', false)
+            ->assertSee('Schedule the interview first: the assessment records what the social worker found in it.')
             ->assertSee('No money has moved on this request yet.');
 
         // Step by step: no interview yet, so the interview step is open and the others wait.

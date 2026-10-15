@@ -18,21 +18,21 @@ use App\Http\Controllers\SuperAdminController;
 Route::get('/config/firebase', [ConfigController::class, 'firebaseConfig'])->name('config.firebase');
 Route::get('/', [PageController::class, 'landing'])->name('landing');
 // Result of an automatic transfer, sent by the payout provider (checked with its webhook token).
-Route::post('/webhooks/payouts', [PayoutController::class, 'webhook'])->middleware('throttle:120,1')->name('webhooks.payouts');
+Route::post('/webhooks/payouts', [PayoutController::class, 'webhook'])->middleware('throttle:120,1,webhooks.payouts')->name('webhooks.payouts');
 // Public uploads (profile pictures) when they are kept in Firebase instead of public/storage.
 Route::get('/storage/{path}', [PublicFileController::class, 'show'])->where('path', '.*')->name('storage.public');
 Route::get('/login', [PageController::class, 'login'])->name('login');
-Route::post('/login', [AccountController::class, 'storeLogin'])->name('login.store');
+Route::post('/login', [AccountController::class, 'storeLogin'])->middleware('throttle:10,1,login.store')->name('login.store');
 Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/register', [AccountController::class, 'register'])->name('register');
-Route::post('/register', [AccountController::class, 'storeRegister'])->name('register.store');
+Route::post('/register', [AccountController::class, 'storeRegister'])->middleware('throttle:5,10,register.store')->name('register.store');
 Route::get('/register/verify', [AccountController::class, 'showRegisterVerifyForm'])->name('register.verify-code.form');
-Route::post('/register/verify', [VerificationController::class, 'verifyRegister'])->name('register.verify-code');
-Route::post('/register/resend-code', [VerificationController::class, 'resendRegisterCode'])->name('register.resend-code');
+Route::post('/register/verify', [VerificationController::class, 'verifyRegister'])->middleware('throttle:10,1,register.verify-code')->name('register.verify-code');
+Route::post('/register/resend-code', [VerificationController::class, 'resendRegisterCode'])->middleware('throttle:3,10,register.resend-code')->name('register.resend-code');
 Route::post('/logout', [PageController::class, 'logout'])->name('logout');
 Route::get('/login/verify', [AccountController::class, 'showLoginVerifyForm'])->name('login.verify-code.form');
-Route::post('/login/verify', [VerificationController::class, 'verifyLogin'])->name('login.verify-code');
-Route::post('/login/resend-code', [VerificationController::class, 'resendLoginCode'])->name('login.resend-code');
+Route::post('/login/verify', [VerificationController::class, 'verifyLogin'])->middleware('throttle:10,1,login.verify-code')->name('login.verify-code');
+Route::post('/login/resend-code', [VerificationController::class, 'resendLoginCode'])->middleware('throttle:3,10,login.resend-code')->name('login.resend-code');
 // Account pages and request files: any signed-in role, never guests.
 Route::middleware('auth')->group(function () {
     // Notifications for every role: requesters about their requests, staff about work waiting for them.
@@ -41,29 +41,29 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications', [AccountController::class, 'notifications'])->name('notifications');
     // Help & tour: how the system works, and the guided tour for new users.
     Route::get('/help', [HelpController::class, 'show'])->name('help');
-    Route::post('/tour/complete', [HelpController::class, 'completeTour'])->middleware('throttle:20,1')->name('tour.complete');
+    Route::post('/tour/complete', [HelpController::class, 'completeTour'])->middleware('throttle:20,1,tour.complete')->name('tour.complete');
     Route::get('/settings', [PageController::class, 'settings'])->name('settings');
     Route::post('/settings', [PageController::class, 'updateSettings'])->name('settings.update');
-    Route::post('/settings/profile-picture', [AccountController::class, 'updateProfilePicture'])->middleware('throttle:10,1')->name('settings.profile-picture');
+    Route::post('/settings/profile-picture', [AccountController::class, 'updateProfilePicture'])->middleware('throttle:10,1,settings.profile-picture')->name('settings.profile-picture');
     // Every role manages its own name, phone and password (the controller only touches the signed-in account).
     Route::get('/user/update', fn () => view('users.update'))->name('user.edit');
     Route::post('/user/update', [AccountController::class, 'updateUser'])->name('user.update');
     Route::get('/change-password', [AccountController::class, 'showChangePasswordForm'])->name('change-password.form');
-    Route::post('/change-password', [AccountController::class, 'changePassword'])->middleware('throttle:5,1')->name('change-password');
+    Route::post('/change-password', [AccountController::class, 'changePassword'])->middleware('throttle:5,1,change-password')->name('change-password');
     // Private files of a funding request: the requester and admins/super admins only (checked in the controller).
     Route::get('/fund-request/{id}/files/{path}', [FundingFileController::class, 'show'])->where('path', '.*')->name('fund-request.file');
     // Requester ↔ foundation conversation on a request (owner or staff; checked in the controller).
     Route::get('/fund-request/{id}/messages', [RequestConversationController::class, 'index'])->name('fund-request.messages');
-    Route::post('/fund-request/{id}/messages', [RequestConversationController::class, 'store'])->middleware('throttle:30,1')->name('fund-request.messages.store');
+    Route::post('/fund-request/{id}/messages', [RequestConversationController::class, 'store'])->middleware('throttle:30,1,fund-request.messages.store')->name('fund-request.messages.store');
 });
 
 // Password Reset Flow
 Route::get('/forgot-password', [AccountController::class, 'forgotPassword'])->name('forgot-password');
-Route::post('/forgot-password/send-code', [AccountController::class, 'sendResetCode'])->name('password.send-code');
+Route::post('/forgot-password/send-code', [AccountController::class, 'sendResetCode'])->middleware('throttle:3,10,password.send-code')->name('password.send-code');
 Route::get('/forgot-password/verify-code', [AccountController::class, 'showVerifyCodeForm'])->name('password.verify-code.form');
-Route::post('/forgot-password/verify-code', [VerificationController::class, 'verifyPasswordReset'])->name('password.verify-code');
+Route::post('/forgot-password/verify-code', [VerificationController::class, 'verifyPasswordReset'])->middleware('throttle:10,1,password.verify-code')->name('password.verify-code');
 Route::get('/reset-password', [AccountController::class, 'showResetForm'])->name('password.reset.form');
-Route::post('/reset-password', [AccountController::class, 'updatePassword'])->name('password.update');
+Route::post('/reset-password', [AccountController::class, 'updatePassword'])->middleware('throttle:10,1,password.update')->name('password.update');
 
 // Old UI prototype page, now behind login.
 Route::get('/dashboard', fn () => redirect()->route(auth()->user()->homeRoute()))->middleware('auth')->name('dashboard');
@@ -76,16 +76,16 @@ Route::middleware(['auth', 'role:user'])->group(function(){
 
     // Fund Requests & Transactions
     Route::get('/fund-request', [PageController::class, 'fundrequest'])->name('fund-request');
-    Route::post('/fund-request', [FundController::class, 'storeFund'])->middleware('throttle:5,1')->name('fund-request.store');
+    Route::post('/fund-request', [FundController::class, 'storeFund'])->middleware('throttle:5,1,fund-request.store')->name('fund-request.store');
     Route::get('/fund-request/{id}', [PageController::class, 'showFundRequest'])->name('fund-request.show');
-    Route::post('/fund-request/{id}/liquidation', [FundController::class, 'submitLiquidation'])->middleware('throttle:5,1')->name('fund-request.liquidation');
-    Route::post('/fund-request/{id}/appeal', [FundController::class, 'appeal'])->middleware('throttle:5,1')->name('fund-request.appeal');
+    Route::post('/fund-request/{id}/liquidation', [FundController::class, 'submitLiquidation'])->middleware('throttle:5,1,fund-request.liquidation')->name('fund-request.liquidation');
+    Route::post('/fund-request/{id}/appeal', [FundController::class, 'appeal'])->middleware('throttle:5,1,fund-request.appeal')->name('fund-request.appeal');
     // The requester stops the request before the funds go out: everything still to come is cancelled.
-    Route::post('/fund-request/{id}/cancel', [FundController::class, 'cancel'])->middleware('throttle:5,1')->name('fund-request.cancel');
+    Route::post('/fund-request/{id}/cancel', [FundController::class, 'cancel'])->middleware('throttle:5,1,fund-request.cancel')->name('fund-request.cancel');
     // After approval: the people who will receive the help (Add person: last, first, middle name).
-    Route::post('/fund-request/{id}/beneficiaries', [FundController::class, 'submitBeneficiaries'])->middleware('throttle:10,1')->name('fund-request.beneficiaries');
+    Route::post('/fund-request/{id}/beneficiaries', [FundController::class, 'submitBeneficiaries'])->middleware('throttle:10,1,fund-request.beneficiaries')->name('fund-request.beneficiaries');
     Route::post('/fund-request/{id}/interview-response', [RequestConversationController::class, 'interviewResponse'])->name('fund-request.interview-response');
-    Route::post('/fund-request/{id}/documents/{field}', [RequestConversationController::class, 'resubmitDocument'])->middleware('throttle:10,1')->name('fund-request.document');
+    Route::post('/fund-request/{id}/documents/{field}', [RequestConversationController::class, 'resubmitDocument'])->middleware('throttle:10,1,fund-request.document')->name('fund-request.document');
 
     Route::get('/dashboarduser', [PageController::class, 'dashboardUser'])->name('dashboarduser');
 });
@@ -100,14 +100,14 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin', [AdminController::class, 'admin'])->name('admin');
     // Admin decisions are recommendations; the super admin finalizes them.
     Route::get('/admin/fund-request/verify', [AdminController::class, 'showApprovalVerifyForm'])->name('admin.fund-request.verify.form');
-    Route::post('/admin/fund-request/verify', [VerificationController::class, 'verifyApprovalAction'])->name('admin.fund-request.verify');
-    Route::post('/admin/fund-request/resend-code', [VerificationController::class, 'resendApprovalCode'])->name('admin.fund-request.resend-code');
+    Route::post('/admin/fund-request/verify', [VerificationController::class, 'verifyApprovalAction'])->middleware('throttle:10,1,admin.fund-request.verify')->name('admin.fund-request.verify');
+    Route::post('/admin/fund-request/resend-code', [VerificationController::class, 'resendApprovalCode'])->middleware('throttle:3,10,admin.fund-request.resend-code')->name('admin.fund-request.resend-code');
     Route::get('/admin/fund-request/{id}/recommendation', [AdminController::class, 'recommendation'])->name('admin.fund-request.recommendation');
     // Request processing: social worker assessment, AI scoring, release of funds, liquidation review.
     Route::get('/admin/fund-request/{id}', [AdminRequestController::class, 'show'])->name('admin.fund-request.show');
     Route::post('/admin/fund-request/{id}/interview', [AdminRequestController::class, 'scheduleInterview'])->name('admin.fund-request.interview');
     Route::post('/admin/fund-request/{id}/assessment', [AdminRequestController::class, 'recordAssessment'])->name('admin.fund-request.assessment');
-    Route::post('/admin/fund-request/{id}/notes', [AdminRequestController::class, 'addNote'])->middleware('throttle:30,1')->name('admin.fund-request.notes');
+    Route::post('/admin/fund-request/{id}/notes', [AdminRequestController::class, 'addNote'])->middleware('throttle:30,1,admin.fund-request.notes')->name('admin.fund-request.notes');
     Route::post('/admin/fund-request/{id}/documents/{field}/review', [AdminRequestController::class, 'reviewDocument'])->name('admin.fund-request.document-review');
     Route::post('/admin/fund-request/{id}/ai-score', [AdminRequestController::class, 'rescore'])->name('admin.fund-request.ai-score');
     Route::post('/admin/fund-request/{id}/disbursement', [AdminRequestController::class, 'recordDisbursement'])->name('admin.fund-request.disbursement');
@@ -123,12 +123,18 @@ Route::middleware(['auth', 'role:super_admin'])->group(function () {
     Route::get('/superadmin/fund-request/{id}', [SuperAdminController::class, 'showRequest'])->name('superadmin.fund-request.show');
     Route::post('/superadmin/fund-request/{id}/finalize', [SuperAdminController::class, 'finalize'])->name('superadmin.fund-request.finalize');
     // Automatic transfer of the approved funds, confirmed with an emailed code.
-    Route::post('/superadmin/fund-request/{id}/payout', [PayoutController::class, 'start'])->middleware('throttle:5,10')->name('superadmin.payout.start');
-    Route::post('/superadmin/fund-request/{id}/payout/confirm', [PayoutController::class, 'confirm'])->middleware('throttle:10,10')->name('superadmin.payout.confirm');
+    Route::post('/superadmin/fund-request/{id}/payout', [PayoutController::class, 'start'])->middleware('throttle:5,10,superadmin.payout.start')->name('superadmin.payout.start');
+    Route::post('/superadmin/fund-request/{id}/payout/confirm', [PayoutController::class, 'confirm'])->middleware('throttle:10,10,superadmin.payout.confirm')->name('superadmin.payout.confirm');
+    Route::post('/superadmin/fund-request/{id}/payout/sync', [PayoutController::class, 'sync'])->middleware('throttle:30,1,superadmin.payout.sync')->name('superadmin.payout.sync');
+    // System monitor → Box sign-ins: each donation box signs in to write only its own totals.
+    Route::post('/superadmin/boxes/{box}/sign-in', [SuperAdminController::class, 'issueBoxSignIn'])->middleware('throttle:10,1,superadmin.boxes.sign-in')->name('superadmin.boxes.sign-in');
+    // Bank transfers in System settings: the payout channel for each bank / e-wallet, and a connection test.
+    Route::post('/superadmin/settings/payouts', [PayoutController::class, 'saveChannels'])->name('superadmin.settings.payouts');
+    Route::post('/superadmin/settings/payouts/test', [PayoutController::class, 'testConnection'])->middleware('throttle:10,1,superadmin.settings.payouts.test')->name('superadmin.settings.payouts.test');
     Route::post('/superadmin/accounts/{id}', [SuperAdminController::class, 'updateAccount'])->name('superadmin.accounts.update');
     Route::post('/superadmin/settings/scores', [SuperAdminController::class, 'updateScores'])->name('superadmin.settings.scores');
     Route::post('/superadmin/settings/interval', [SuperAdminController::class, 'updateInterval'])->name('superadmin.settings.interval');
-    Route::post('/superadmin/settings/mail', [SuperAdminController::class, 'startMailChange'])->middleware('throttle:5,10')->name('superadmin.settings.mail');
-    Route::post('/superadmin/settings/mail/confirm', [SuperAdminController::class, 'confirmMailChange'])->name('superadmin.settings.mail.confirm');
-    Route::post('/superadmin/settings/mail/test', [SuperAdminController::class, 'testMail'])->middleware('throttle:5,10')->name('superadmin.settings.mail.test');
+    Route::post('/superadmin/settings/mail', [SuperAdminController::class, 'startMailChange'])->middleware('throttle:5,10,superadmin.settings.mail')->name('superadmin.settings.mail');
+    Route::post('/superadmin/settings/mail/confirm', [SuperAdminController::class, 'confirmMailChange'])->middleware('throttle:10,1,superadmin.settings.mail.confirm')->name('superadmin.settings.mail.confirm');
+    Route::post('/superadmin/settings/mail/test', [SuperAdminController::class, 'testMail'])->middleware('throttle:5,10,superadmin.settings.mail.test')->name('superadmin.settings.mail.test');
 });

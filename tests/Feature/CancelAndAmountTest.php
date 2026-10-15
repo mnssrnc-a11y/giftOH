@@ -122,7 +122,8 @@ class CancelAndAmountTest extends TestCase
 
     public function test_the_assessment_sets_the_amount_needed_and_approval_waits_for_it(): void
     {
-        $pending = ['id' => 'req-1', 'user_id' => 'user-1', 'status' => 'pending', 'status_name' => 'pending', 'beneficiary_count' => 30];
+        $pending = ['id' => 'req-1', 'user_id' => 'user-1', 'status' => 'pending', 'status_name' => 'pending', 'beneficiary_count' => 30,
+            'assessment' => ['interview_at' => now()->subDay()->toIso8601String(), 'social_worker' => 'Liza']];
         $funding = $this->service($pending, $saved);
 
         $this->assertNull($funding->amountNeeded($pending));
@@ -140,6 +141,7 @@ class CancelAndAmountTest extends TestCase
     {
         $funding = $this->mock(FundingService::class);
         $funding->shouldReceive('getPendingRequests')->andReturn([]);
+        $funding->shouldReceive('getRequestById')->with('req-1')->andReturn(['id' => 'req-1', 'assessment' => ['interview_at' => now()->subDay()->toIso8601String()]]);
         $funding->shouldNotReceive('recordAssessment');
 
         $this->as('admin', 'admin-1')->post(route('admin.fund-request.assessment', 'req-1'), ['outcome' => 'recommended', 'verified_beneficiaries' => 25, 'notes' => 'Visited.'])

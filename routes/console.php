@@ -60,3 +60,6 @@ Illuminate\Support\Facades\Schedule::command('security:scan-files --quarantine')
 // Release line: focus the donations on hand on approved requests (first come, first served) and
 // tell the admins when the next one is ready to transfer. New donations come in from the boxes.
 Illuminate\Support\Facades\Schedule::command('funds:queue')->everyFiveMinutes()->withoutOverlapping();
+
+// Automatic transfers still in progress: record how they ended when the provider's webhook did not arrive.
+Illuminate\Support\Facades\Schedule::command('payouts:sync')->everyMinute()->withoutOverlapping();

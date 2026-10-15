@@ -118,6 +118,22 @@ class SystemSettings
         $this->write('mail_brevo_key', Crypt::encryptString($key));
     }
 
+    /**
+     * Payout channel code per bank / e-wallet, chosen by the super admin from the list the payout
+     * provider returns (System settings → Bank transfers). Added to config/payouts.php's codes.
+     *
+     * @return array<string, string> provider name => channel code
+     */
+    public function payoutChannels(): array
+    {
+        return array_filter((array) ($this->all()['payout_channels'] ?? []), fn ($code) => is_string($code) && $code !== '');
+    }
+
+    public function setPayoutChannels(array $channels): void
+    {
+        $this->write('payout_channels', array_filter($channels, fn ($code) => is_string($code) && $code !== ''));
+    }
+
     private function write(string $key, mixed $value): void
     {
         $this->firebase->getDatabase()->getReference("system_settings/{$key}")->set($value);
