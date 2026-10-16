@@ -33,7 +33,7 @@
             'Approval needs: the social worker recommends it, every required document is verified, and the amount needed is recorded. Your decision goes to the super admin.',
             'After approval the request joins the release line (first come, first served). When you are told its funds are ready, transfer the money and record the release with the proof.',
             'Check each liquidation: verify it, or return it with remarks.',
-            'Post updates (with photos) in "Updates"; see reports in "Reports" and the donation boxes in "IoT box monitor".',
+            'Post updates (with photos) in "Updates", and edit or delete them there; see reports in "Reports" and the donation boxes in "IoT box monitor".',
         ],
         'super_admin' => [
             'Requests waiting for you are on the dashboard and in "Fund requests". Open one for the final check and approve (set the amount) or reject (give the reason).',

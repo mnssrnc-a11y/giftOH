@@ -20,6 +20,7 @@
                     <span class="brand-verified-check" aria-hidden="true">✓</span>
                     <span><strong>Verified organization</strong><small>Social Action Center of Pampanga (SACOP) ↗</small></span>
                 </a>
+                <a class="brand-associated-link" href="#associated">See organizations associated with SACOP ↓</a>
             </div>
             <div class="landing-logo">
                 <img src="{{ asset('images/logo-full.png') }}" alt="Gift of Hope, charity home platform" width="768" height="538">
@@ -36,6 +37,19 @@
             <div class="brand-updates">@include('partials.announcements', ['posts' => $posts])</div>
         </section>
     @endif
+
+    {{-- Associated with SACOP: the reference for checking that an organization is connected with SACOP. --}}
+    <section class="brand-section" id="associated" aria-labelledby="associated-title">
+        <div class="brand-section-head">
+            <h2 id="associated-title">Associated with SACOP</h2>
+            <p>Communities, organizations and parishes connected with the Social Action Center of Pampanga. Each one links to the SACOP page that shows it.</p>
+        </div>
+        <div class="brand-updates">@include('partials.sacop-associated')</div>
+        <div class="assoc-serves">
+            <h3>SACOP also serves</h3>
+            <ul>@foreach (config('sacop.serves') as $group => $about)<li><strong>{{ $group }}</strong>{{ $about }}</li>@endforeach</ul>
+        </div>
+    </section>
 
     <section class="brand-section" aria-labelledby="how-title">
         <div class="brand-section-head">

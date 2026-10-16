@@ -330,6 +330,7 @@ function initAdminUI() {
         if (target.matches('[data-page-next]') && state.page < Math.ceil(filteredFunding().length / state.pageSize)) { state.page++; renderFunding(); }
         if (target.dataset.decisionOpen) openDecision(target.dataset.requestId, target.dataset.decisionOpen);
         if (target.matches('[data-compile-post]')) compileUpdate();
+        if (target.dataset.editPost) openEditPost(target.dataset.editPost);
         if (target.dataset.reportTab) { app.querySelectorAll('[data-report-tab]').forEach(tab => tab.classList.toggle('is-active', tab === target)); app.querySelectorAll('[data-report-panel]').forEach(panel => panel.classList.toggle('is-active', panel.dataset.reportPanel === target.dataset.reportTab)); }
         if (target.matches('[data-report-clear]')) { app.querySelectorAll('[data-report-search],[data-report-from],[data-report-to]').forEach(input => input.value = ''); applyReportFilters(); }
         if (target.matches('[data-export-csv]')) exportActiveReport();
@@ -363,6 +364,12 @@ function initAdminUI() {
         }
         if (event.target.matches('[data-profile-input]')) previewProfilePhoto(event.target);
         if (event.target.matches('[data-post-image]')) previewPostImage(event.target);
+        if (event.target.matches('[data-edit-image]')) previewEditImage(event.target);
+        if (event.target.matches('[data-edit-remove-image]')) {
+            const form = event.target.closest('form');
+            form.querySelector('[data-edit-image-preview]')?.classList.toggle('is-removed', event.target.checked);
+            if (event.target.checked) form.querySelector('[data-edit-image]').value = '';
+        }
         if (event.target.matches('[data-two-factor-switch]')) {
             const toggle = event.target;
             const enabling = toggle.checked;
@@ -417,16 +424,39 @@ function initAdminUI() {
         hint.textContent = `${file.name} selected. Click “Save photo” to update your profile.`;
     }
 
+    const postPhotoProblem = file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ? 'The photo must be a JPG, PNG or WebP image.'
+        : file.size > 5 * 1024 * 1024 ? 'The photo must not be larger than 5 MB.' : null;
+
     // Photo for a new update: checked and previewed before it is posted.
     function previewPostImage(input) {
         const file = input.files?.[0];
         const preview = app.querySelector('[data-post-image-preview]');
         if (!file) { preview.hidden = true; return; }
-        const problem = !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ? 'The photo must be a JPG, PNG or WebP image.'
-            : file.size > 5 * 1024 * 1024 ? 'The photo must not be larger than 5 MB.' : null;
+        const problem = postPhotoProblem(file);
         if (problem) { input.value = ''; preview.hidden = true; showSnack(problem); return; }
         preview.src = URL.createObjectURL(file);
         preview.hidden = false;
+    }
+
+    // Edit an update: its form (rendered with it, filled in) opens in the dialog.
+    function openEditPost(id) {
+        const template = app.querySelector(`[data-edit-post-form="${CSS.escape(id)}"]`);
+        if (template) openModal(template.innerHTML);
+    }
+
+    // A new photo for an edited update replaces the current one in the preview.
+    function previewEditImage(input) {
+        const form = input.closest('form');
+        const preview = form.querySelector('[data-edit-image-preview]');
+        const file = input.files?.[0];
+        if (!file) return;
+        const problem = postPhotoProblem(file);
+        if (problem) { input.value = ''; showSnack(problem); return; }
+        preview.src = URL.createObjectURL(file);
+        preview.hidden = false;
+        preview.classList.remove('is-removed');
+        const remove = form.querySelector('[data-edit-remove-image]');
+        if (remove) remove.checked = false;
     }
 
     app.querySelector('[data-profile-form]')?.addEventListener('submit', event => {

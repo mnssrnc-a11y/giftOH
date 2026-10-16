@@ -65,12 +65,18 @@ class FundingRules
 
     /**
      * Funds are only sent to an account in the receiver's name: the organization or its contact person.
+     * A name with a short form in brackets ("… Association, Inc. (SAPA, Inc.)") also matches either part.
      */
     public function accountNameMatches(string $accountName, array $receiverNames): bool
     {
         $normalize = static fn (string $value): string => trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z0-9 ]/', ' ', strtolower($value))));
         $account = $normalize($accountName);
 
+        foreach ($receiverNames as $name) {
+            if (preg_match('/^(.+?)\s*\(([^()]+)\)\s*$/', (string) $name, $parts)) {
+                array_push($receiverNames, $parts[1], $parts[2]);
+            }
+        }
         foreach ($receiverNames as $name) {
             if ($account !== '' && $account === $normalize((string) $name)) {
                 return true;

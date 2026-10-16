@@ -114,6 +114,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/admin/fund-request/{id}/liquidation', [AdminRequestController::class, 'reviewLiquidation'])->name('admin.fund-request.liquidation');
     Route::post('/admin/fund-request/{id}/action', [AdminController::class, 'initiateApprovalAction'])->name('admin.fund-request.action');
     Route::post('/admin/posts', [AdminController::class, 'storePost'])->name('admin.posts.store');
+    Route::put('/admin/posts/{id}', [AdminController::class, 'updatePost'])->name('admin.posts.update');
     Route::delete('/admin/posts/{id}', [AdminController::class, 'destroyPost'])->name('admin.posts.destroy');
 });
 

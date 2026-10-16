@@ -218,19 +218,24 @@ class AdminController extends Controller
             ->with('status', "{$verb} recorded and sent to the super admin for finalization.");
     }
 
+    /** The fields of an update, for posting and for editing. */
+    private const POST_RULES = [
+        'title' => 'required|string|max:150',
+        'body' => 'required|string|max:10000',
+        'type' => 'required|in:announcement,funding_update,compiled_report',
+        'audience' => 'required|in:' . FirebaseAdminPostRepository::AUDIENCE_PUBLIC . ',' . FirebaseAdminPostRepository::AUDIENCE_USERS,
+        // Optional photo shown with the update (scanned for malware like every upload).
+        'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+    ];
+
+    private const POST_MESSAGES = [
+        'image.image' => 'The photo must be a JPG, PNG or WebP image.',
+        'image.max' => 'The photo must not be larger than 5 MB.',
+    ];
+
     public function storePost(Request $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:150',
-            'body' => 'required|string|max:10000',
-            'type' => 'required|in:announcement,funding_update,compiled_report',
-            'audience' => 'required|in:' . FirebaseAdminPostRepository::AUDIENCE_PUBLIC . ',' . FirebaseAdminPostRepository::AUDIENCE_USERS,
-            // Optional photo shown with the update (scanned for malware like every upload).
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
-        ], [
-            'image.image' => 'The photo must be a JPG, PNG or WebP image.',
-            'image.max' => 'The photo must not be larger than 5 MB.',
-        ]);
+        $validated = $request->validate(self::POST_RULES, self::POST_MESSAGES);
 
         $image = $request->hasFile('image') ? $request->file('image')->store('announcements', 'public') : null;
         $this->posts->create(array_merge(collect($validated)->except('image')->all(), [
@@ -246,16 +251,52 @@ class AdminController extends Controller
         return $this->toSection('updates')->with('status', "Update posted. It now appears {$where}.");
     }
 
-    public function destroyPost(string $id)
+    /**
+     * Edit an update: its text, type, who can see it, and its photo (replace or remove). The
+     * updates belong to the foundation, so any admin can edit them; each change is logged.
+     */
+    public function updatePost(Request $request, string $id, \App\Services\AuditLogger $audit)
     {
         $post = $this->posts->findById($id);
         abort_if($post === null, 404);
-        abort_unless((string) ($post['author_id'] ?? '') === (string) Auth::id(), 403, 'You can only delete your own updates.');
+
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), self::POST_RULES + ['remove_image' => 'nullable|boolean'], self::POST_MESSAGES);
+        if ($validator->fails()) {
+            // Without the input: it would fill the "New update" form instead.
+            return $this->toSection('updates')->with('alert_error', 'The update was not saved. ' . $validator->errors()->first());
+        }
+
+        $changes = collect($validator->validated())->only(['title', 'body', 'type', 'audience'])->all() + [
+            'edited_by' => (string) Auth::id(),
+            'edited_at' => now()->toIso8601String(),
+        ];
+        $oldImage = $post['image'] ?? null;
+        if ($request->hasFile('image')) {
+            $changes['image'] = $request->file('image')->store('announcements', 'public');
+        } elseif ($request->boolean('remove_image')) {
+            $changes['image'] = null;
+        }
+        $this->posts->update($id, $changes);
+        if (array_key_exists('image', $changes) && ! empty($oldImage)) {
+            Storage::disk('public')->delete($oldImage);
+        }
+        $audit->record('updates', "Edited the update \"{$changes['title']}\"", $id);
+
+        return $this->toSection('updates')->with('status', 'Update saved. The new version now shows ' . ($changes['audience'] === FirebaseAdminPostRepository::AUDIENCE_PUBLIC
+            ? 'on the landing page and user pages.' : 'on signed-in users\' pages.'));
+    }
+
+    /** Delete an update (any admin; logged), with its photo. */
+    public function destroyPost(string $id, \App\Services\AuditLogger $audit)
+    {
+        $post = $this->posts->findById($id);
+        abort_if($post === null, 404);
 
         $this->posts->delete($id);
         if (! empty($post['image'])) {
             Storage::disk('public')->delete($post['image']);
         }
+        $audit->record('updates', 'Deleted the update "' . ($post['title'] ?? 'Update') . '"', $id);
 
         return $this->toSection('updates')->with('status', 'Update deleted.');
     }

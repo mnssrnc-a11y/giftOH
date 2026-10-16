@@ -181,6 +181,9 @@ class AdminDashboardService
             'author_id' => (string) ($post['author_id'] ?? ''),
             'date' => $post['created_at'] ?? '',
             'image' => FirebaseAdminPostRepository::imageUrl($post),
+            // Set when an admin edited it after posting.
+            'edited_at' => $post['edited_at'] ?? null,
+            'editor' => empty($post['edited_by']) ? null : ($this->nameOf($this->user($post['edited_by'])) ?: 'Admin'),
         ], $posts);
     }
 

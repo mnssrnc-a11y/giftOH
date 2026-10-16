@@ -126,7 +126,10 @@
 /* ---------- Announcements slideshow ---------- */
 .hope-carousel { --slide-card: #fff; --slide-text: var(--brand-ink); --slide-muted: var(--brand-muted); --slide-line: var(--brand-line); position: relative; padding: 16px 18px 18px; }
 .hope-shell .hope-carousel { --slide-card: var(--card); --slide-text: var(--text); --slide-muted: var(--muted); --slide-line: var(--line); }
+/* "clip", not just "hidden": focusing a button in a slide must not scroll the window sideways
+   (the slides would then sit off by that much). */
 .hope-carousel-viewport { overflow: hidden; border-radius: 12px; }
+@supports (overflow: clip) { .hope-carousel-viewport { overflow: clip; } }
 .hope-carousel-track { display: flex; transition: transform .7s cubic-bezier(.45, 0, .2, 1); }
 .hope-slide { flex: 0 0 100%; min-width: 0; display: grid; grid-template-columns: 1fr; overflow: hidden; border: 1px solid var(--slide-line); border-radius: 12px; background: var(--slide-card); color: var(--slide-text); }
 .hope-slide.has-image { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); }
@@ -372,6 +375,30 @@
 .brand-verified-check { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 auto; border-radius: 50%; background: #fff; color: var(--brand-good); font-size: 18px; font-weight: 800; }
 .brand-verified strong { display: block; font-size: 14px; }
 .brand-verified small { display: block; font-size: 12px; color: #e3f2fd; }
+.brand-associated-link { display: inline-block; margin-top: 10px; color: #fff; font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.brand-associated-link:focus-visible { outline: 3px solid var(--brand-cyan); outline-offset: 2px; }
+
+/* Landing page: "Associated with SACOP" slideshow. The plain card sits under the photo and shows
+   when an organization has no photo or it cannot load. */
+#associated { scroll-margin-top: 16px; }
+.assoc-media { position: relative; min-height: 240px; max-height: 320px; overflow: hidden; background: linear-gradient(135deg, var(--brand) 0%, var(--brand-strong) 55%, #0b3d7a 100%); }
+.assoc-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.assoc-art { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 6px; color: #fff; text-align: center; }
+.assoc-art span { display: grid; place-items: center; width: 84px; height: 84px; border: 2px solid #ffffff80; border-radius: 50%; background: #ffffff1f; font-size: 30px; font-weight: 800; letter-spacing: 1px; }
+.assoc-art small { font-size: 12px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: #e3f2fd; }
+.assoc-check { color: var(--brand-good); font-weight: 700; }
+.assoc-slide .hope-slide-body { display: flex; flex-direction: column; gap: 6px; }
+.assoc-slide .hope-slide-body h3 { margin: 6px 0 0; }
+.assoc-slide .assoc-place { font-weight: 600; color: var(--slide-text); }
+.assoc-source { width: fit-content; margin-top: 4px; color: var(--brand); font-size: 13px; font-weight: 700; text-decoration: none; }
+.assoc-source:hover { text-decoration: underline; }
+.assoc-credit { margin-top: auto; padding-top: 6px; font-size: 11px; color: var(--slide-muted); }
+.assoc-serves { max-width: 900px; margin: 28px auto 0; }
+.assoc-serves h3 { margin: 0 0 12px; font-size: 16px; font-weight: 700; color: var(--brand-ink); text-align: center; }
+.assoc-serves ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.assoc-serves li { padding: 14px 16px; border: 1px solid var(--brand-line); border-radius: 12px; background: #fff; font-size: 13px; line-height: 1.5; color: var(--brand-muted); }
+.assoc-serves strong { display: block; margin-bottom: 4px; font-size: 14px; color: var(--brand-ink); }
+@media (max-width: 720px) { .assoc-media { min-height: 0; aspect-ratio: 16 / 9; } }
 
 /* ---------- Phone mode ---------- */
 .ws-tabbar { display: none; }

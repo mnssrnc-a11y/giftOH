@@ -38,6 +38,10 @@
         <span class="sa-eyebrow" style="display:block;margin-top:12px">FINAL CHECK</span>
         <h1>{{ $view['organization'] }}</h1>
         <p>{{ $view['category'] }} · {{ $view['beneficiary_count'] }} people listed · submitted {{ $day($view['created_at']) }} · request {{ \Illuminate\Support\Str::limit($view['id'], 8, '') }}</p>
+        {{-- Associated with SACOP (config/sacop.php): links to the SACOP page that shows it. --}}
+        @if ($associated = \App\Support\SacopAssociated::find($view['organization']))
+            <a class="sa-badge" href="{{ $associated['source'] }}" target="_blank" rel="noopener" style="background:#e6f4ec;color:#1e7a4f">✓ Associated with SACOP · {{ $associated['kind'] }} ↗</a>
+        @endif
     </div>
     <span class="sa-badge {{ $stageBadge }}">{{ $stage['label'] }}</span>
 </div>

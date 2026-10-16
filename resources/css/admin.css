@@ -86,3 +86,17 @@
 .admin-price-fixed{font-weight:700}.admin-price-fixed small{display:block;font-weight:400;color:var(--admin-muted)}
 .admin-sidebar-signout{display:flex;gap:14px;margin:0 26px 14px}.admin-sidebar-signout a,.admin-sidebar-signout button{border:0;background:none;padding:0;color:#bbdefb;font:inherit;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer}.admin-sidebar-signout a:hover,.admin-sidebar-signout button:hover{color:#fff}
 .admin-security-item span a{color:#1565c0;font-weight:700;text-decoration:none}.admin-security-item span a:hover{text-decoration:underline}.is-dark .admin-security-item span a{color:#90caf9}
+
+/* Published updates: the choice to edit or delete each one, and a slideshow (one update at a
+   time, moved with the arrows and dots) once there are more than three. */
+.admin-post-actions{justify-content:flex-end;margin-top:4px}
+.admin-post-actions form{margin:0}
+.admin-post-list.is-carousel{max-height:none;overflow:visible}
+.admin-post-carousel{--slide-card:var(--admin-surface);--slide-text:var(--admin-text);--slide-muted:var(--admin-muted);--slide-line:var(--admin-border);padding:0}
+.admin-post-slide{flex:0 0 100%;min-width:0;display:flex}
+.admin-post-slide .admin-post{flex:1;min-width:0}
+.admin-post-slide .admin-post p{max-height:240px;overflow:auto}
+.admin-post-count{margin-left:6px;color:var(--admin-muted);font-size:11px;font-weight:700;white-space:nowrap}
+.admin-check{display:flex;align-items:center;gap:8px;margin-top:8px;color:var(--admin-text);font-size:12px;font-weight:600}
+.admin-post-image.is-removed{opacity:.35;filter:grayscale(1)}
+.admin-post-image[hidden]{display:none}

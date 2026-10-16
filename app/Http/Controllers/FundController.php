@@ -48,7 +48,7 @@ class FundController extends Controller
 
         // Every rule runs before anything is reported, so the requester sees all missing fields at once.
         $validated = $request->validate(array_merge([
-            'org_choice' => ['required', Rule::in(array_merge(config('funding.known_organizations'), ['other']))],
+            'org_choice' => ['required', Rule::in(array_merge(\App\Support\SacopAssociated::names(), config('funding.known_organizations'), ['other']))],
             'org_name_other' => 'required_if:org_choice,other|nullable|string|max:255',
             'contact_person' => 'required|string|max:255',
             'contact_email' => 'required|email|max:255',

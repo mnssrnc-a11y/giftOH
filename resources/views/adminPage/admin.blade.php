@@ -153,23 +153,7 @@
         </article>
         <article class="admin-card">
             <div class="admin-card-head"><div><h3>Published updates</h3><p>{{ count($posts) }} {{ \Illuminate\Support\Str::plural('post', count($posts)) }}</p></div></div>
-            <div class="admin-card-body admin-post-list">
-                @forelse ($posts as $post)
-                    <article class="admin-post">
-                        <div class="admin-post-head"><div><strong>{{ $post['title'] }}</strong><small>{{ $post['author'] }} · {{ $when($post['date']) }}</small></div><div class="admin-actions"><span class="admin-status {{ $post['audience'] === 'public' ? 'approved' : 'cancelled' }}">{{ $post['audience'] === 'public' ? 'Public' : 'Users only' }}</span><span class="admin-status in-progress">{{ $postTypes[$post['type']] ?? 'Update' }}</span></div></div>
-                        @if ($post['image'])<img class="admin-post-image" src="{{ $post['image'] }}" alt="Photo for {{ $post['title'] }}" loading="lazy">@endif
-                        <p>{{ $post['body'] }}</p>
-                        @if ($post['author_id'] === (string) $admin->getAuthIdentifier())
-                            <form method="POST" action="{{ route('admin.posts.destroy', $post['id']) }}" data-delete-post>
-                                @csrf @method('DELETE')
-                                <button class="admin-button" type="submit">Delete</button>
-                            </form>
-                        @endif
-                    </article>
-                @empty
-                    <div class="admin-empty admin-state-visible"><strong>No updates posted yet</strong><p>Your first update will appear here, on user pages, and (if public) on the landing page.</p></div>
-                @endforelse
-            </div>
+            @include('adminPage.partials.published-updates')
         </article>
     </div>
 </section>

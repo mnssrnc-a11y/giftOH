@@ -1,7 +1,8 @@
 // Announcement slideshow (home feed and landing page). With two or more announcements the next
 // one slides in every few seconds, and after the last it carries on to the first (a copy of the
 // first slide sits at the end so the loop never jumps backwards). Hover, keyboard focus, a hidden
-// tab or the pause button stop it.
+// tab or the pause button stop it. A slideshow marked data-carousel-manual (the admin's published
+// updates) only moves with its arrows and dots, so nothing slides away while it is being managed.
 const INTERVAL_MS = 6000;
 
 document.querySelectorAll('[data-carousel]').forEach(carousel => {
@@ -9,13 +10,17 @@ document.querySelectorAll('[data-carousel]').forEach(carousel => {
     const slides = [...track.querySelectorAll('[data-carousel-slide]')];
     const dots = [...carousel.querySelectorAll('[data-carousel-dot]')];
     const pauseButton = carousel.querySelector('[data-carousel-pause]');
+    const counter = carousel.querySelector('[data-carousel-count]');
+    const manual = carousel.hasAttribute('data-carousel-manual');
     const count = slides.length;
     if (count < 2) return;
 
     const clone = slides[0].cloneNode(true);
     clone.setAttribute('aria-hidden', 'true');
     clone.removeAttribute('data-carousel-slide');
+    clone.inert = true;
     clone.querySelectorAll('img').forEach(img => img.setAttribute('alt', ''));
+    clone.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
     track.appendChild(clone);
 
     let index = 0;
@@ -33,6 +38,7 @@ document.querySelectorAll('[data-carousel]').forEach(carousel => {
             slide.inert = i !== real;
         });
         dots.forEach((dot, i) => dot.toggleAttribute('aria-current', i === real));
+        if (counter) counter.textContent = `${real + 1} of ${count}`;
         if (!animate) {
             track.getBoundingClientRect(); // apply the jump before transitions come back
             track.style.transition = '';
@@ -44,7 +50,7 @@ document.querySelectorAll('[data-carousel]').forEach(carousel => {
         if (event.target === track && index === count) show(0, false);
     });
 
-    const running = () => !pausedByUser && !hovering && document.visibilityState === 'visible';
+    const running = () => !manual && !pausedByUser && !hovering && document.visibilityState === 'visible';
     const schedule = () => {
         clearInterval(timer);
         timer = running() ? setInterval(() => show(index >= count ? 1 : index + 1), INTERVAL_MS) : null;
@@ -79,4 +85,12 @@ document.querySelectorAll('[data-carousel]').forEach(carousel => {
 
     show(0, false);
     schedule();
+});
+
+// A slide photo from another site (the organizations associated with SACOP) that cannot load gives way to the plain
+// card under it, instead of a broken image. Runs after the slideshows copy their first slide.
+document.querySelectorAll('img[data-slide-photo]').forEach(img => {
+    // (A lazy photo that has not started loading also looks "complete" with no size in some browsers.)
+    if (img.loading !== 'lazy' && img.complete && img.naturalWidth === 0) img.remove();
+    else img.addEventListener('error', () => img.remove(), { once: true });
 });

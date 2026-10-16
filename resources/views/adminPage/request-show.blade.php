@@ -83,6 +83,10 @@
     <div>
         <h2>{{ $view['organization'] }}</h2>
         <p>{{ $view['category'] }} · {{ $view['beneficiary_count'] }} people · {{ $view['amount'] > 0 ? $peso($view['amount']) : 'amount not set' }} · submitted {{ $day($view['created_at']) }}</p>
+        {{-- Associated with SACOP (config/sacop.php): links to the SACOP page that shows it. --}}
+        @if ($associated = \App\Support\SacopAssociated::find($view['organization']))
+            <a class="admin-status approved" href="{{ $associated['source'] }}" target="_blank" rel="noopener" style="margin-top:6px;text-decoration:none">✓ Associated with SACOP · {{ $associated['kind'] }} ↗</a>
+        @endif
     </div>
     <div class="admin-actions">
         <span class="admin-status {{ $stageClass }}">{{ $stage['label'] }}</span>

@@ -71,7 +71,12 @@
                     <x-fr-field name="org_choice" label="Organization" wide>
                         <select id="org_choice" name="org_choice" required aria-describedby="org_choice-error" data-org-choice>
                             <option value="">Choose your organization…</option>
-                            @foreach ($organizations as $organization)<option value="{{ $organization }}" @selected($oldChoice === $organization)>{{ $organization }}</option>@endforeach
+                            <optgroup label="Associated with SACOP">
+                                @foreach (\App\Support\SacopAssociated::names() as $organization)<option value="{{ $organization }}" @selected($oldChoice === $organization)>{{ $organization }}</option>@endforeach
+                            </optgroup>
+                            <optgroup label="Charity homes">
+                                @foreach ($organizations as $organization)<option value="{{ $organization }}" @selected($oldChoice === $organization)>{{ $organization }}</option>@endforeach
+                            </optgroup>
                             <option value="other" @selected($oldChoice === 'other')>Others (not on the list)</option>
                         </select>
                     </x-fr-field>
