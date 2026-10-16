@@ -18,17 +18,17 @@
                     @csrf
                     <div>
                         <label for="fname" class="block text-sm font-semibold text-gray-700 mb-2">First Name</label>
-                        <input type="text" name="fname" id="fname" value="{{ old('fname', Auth::user()->fname) }}" required
+                        <input type="text" name="fname" id="fname" placeholder="e.g. Juan" value="{{ old('fname', Auth::user()->fname) }}" required
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1976D2]" />
                     </div>
                     <div>
                         <label for="lname" class="block text-sm font-semibold text-gray-700 mb-2">Last Name</label>
-                        <input type="text" name="lname" id="lname" value="{{ old('lname', Auth::user()->lname) }}" required
+                        <input type="text" name="lname" id="lname" placeholder="e.g. Dela Cruz" value="{{ old('lname', Auth::user()->lname) }}" required
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1976D2]" />
                     </div>
                     <div>
                         <label for="contact_number" class="block text-sm font-semibold text-gray-700 mb-2">Contact Number</label>
-                        <input type="text" name="contact_number" id="contact_number" value="{{ old('contact_number', Auth::user()->phone) }}" required
+                        <input type="text" name="contact_number" id="contact_number" placeholder="e.g. 09171234567" value="{{ old('contact_number', Auth::user()->phone) }}" required
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1976D2]" />
                     </div>
                     <button type="submit"

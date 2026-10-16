@@ -21,19 +21,19 @@
                 <div >
                     <div>
                         <label for="fname" class="block text-sm font-medium text-gray-700">First Name</label>
-                        <input id="fname" name="fname" type="text" required autofocus
+                        <input id="fname" name="fname" type="text" placeholder="e.g. Juan" required autofocus
                             value="{{ old('fname') }}"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
                     </div>
                     <div>
                         <label for="lname" class="block text-sm font-medium text-gray-700">Last Name</label>
-                        <input id="lname" name="lname" type="text" required
+                        <input id="lname" name="lname" type="text" placeholder="e.g. Dela Cruz" required
                             value="{{ old('lname') }}"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
                     </div>
                     <div>
                         <label for="mname" class="block text-sm font-medium text-gray-700">Middle Name</label>
-                        <input id="mname" name="mname" type="text"
+                        <input id="mname" name="mname" type="text" placeholder="e.g. Santos"
                             value="{{ old('mname') }}"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
                     </div>
@@ -42,7 +42,7 @@
                 <div>
                     <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
                     <div class="mt-1 flex rounded-md shadow-sm">
-                        <input id="email_username" name="email_username" type="text" required placeholder="youremail"
+                        <input id="email_username" name="email_username" type="text" required placeholder="e.g. juan.delacruz"
                             value="{{ old('email_username', str_ends_with(old('email'), '@gmail.com') ? substr(old('email'), 0, -10) : '') }}"
                             class="block w-full rounded-l-md border-gray-300 focus:ring-blue-500 focus:border-blue-500">
                         <span class="inline-flex items-center rounded-r-md border border-l-0 border-gray-300 bg-gray-100 px-3 text-gray-600">@gmail.com</span>
@@ -52,7 +52,7 @@
 
                 <div>
                     <label for="contact_number" class="block text-sm font-medium text-gray-700">Contact Number</label>
-                    <input id="contact_number" name="contact_number" type="text" required
+                    <input id="contact_number" name="contact_number" type="text" placeholder="e.g. 09171234567" required
                         value="{{ old('contact_number') }}"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 </div>
@@ -96,21 +96,21 @@
                 </div>
                 <div>
                     <label for="street_address" class="block text-sm font-medium text-gray-700">Street Address</label>
-                    <input id="street_address" name="street_address" type="text" required
+                    <input id="street_address" name="street_address" type="text" placeholder="e.g. 123 Rizal St., Purok 2" required
                         value="{{ old('street_address') }}"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 </div>
 </div>
                 <div>
                     <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-                    <input id="password" name="password" type="password" required
+                    <input id="password" name="password" type="password" placeholder="At least 8 characters" required
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 </div>
 
                 <p id="password-rules" class="text-sm text-red-700" role="alert" aria-live="polite"></p>
                 <div>
                     <label for="password_confirmation" class="block text-sm font-medium text-gray-700">Confirm Password</label>
-                    <input id="password_confirmation" name="password_confirmation" type="password" required
+                    <input id="password_confirmation" name="password_confirmation" type="password" placeholder="Type the password again" required
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 </div>
 

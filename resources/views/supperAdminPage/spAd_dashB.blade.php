@@ -106,7 +106,7 @@
                 @csrf<input type="hidden" name="_section" value="settings">
                 <p>Higher scores get a larger share when funds are limited.</p>
                 <div class="sa-fields" style="margin-top:20px">
-                    @foreach ($scores as $name => $score)<label class="sa-field">{{ $categoryLabels[$name] ?? $name }}<input name="scores[{{ \Illuminate\Support\Str::slug($name) }}]" type="number" min="0" max="100" step="1" value="{{ (int) $score }}" required></label>@endforeach
+                    @foreach ($scores as $name => $score)<label class="sa-field">{{ $categoryLabels[$name] ?? $name }}<input name="scores[{{ \Illuminate\Support\Str::slug($name) }}]" type="number" min="0" max="100" step="1" value="{{ (int) $score }}" placeholder="0–100" required></label>@endforeach
                 </div>
                 <div class="sa-actions"><button class="sa-button">Save scores</button></div>
             </form>
@@ -116,7 +116,7 @@
                 @csrf<input type="hidden" name="_section" value="settings">
                 <p>Minimum days between two requests from the same account.</p>
                 <div class="sa-note">Current: <strong>{{ $intervalDays }} days</strong></div>
-                <label class="sa-field" style="margin-top:20px">New interval (days)<input type="number" name="days" min="{{ $minIntervalDays }}" max="1000" step="1" value="{{ $intervalDays }}" required><small>Must be greater than 92 days.</small></label>
+                <label class="sa-field" style="margin-top:20px">New interval (days)<input type="number" name="days" placeholder="e.g. {{ $minIntervalDays }}" min="{{ $minIntervalDays }}" max="1000" step="1" value="{{ $intervalDays }}" required><small>Must be greater than 92 days.</small></label>
                 <div class="sa-actions"><button class="sa-button">Save interval</button></div>
             </form>
         </article>
@@ -133,7 +133,7 @@
                 <form method="POST" action="{{ route('superadmin.settings.mail.confirm') }}">
                     @csrf<input type="hidden" name="_section" value="settings-mail">
                     <p>We sent a 6-digit code to <strong>{{ $mailPending['email'] }}</strong> using the new settings. Enter it to save them.</p>
-                    <div class="sa-fields"><label class="sa-field">Verification code<input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label></div>
+                    <div class="sa-fields"><label class="sa-field">Verification code<input name="code" placeholder="6-digit code, e.g. 123456" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label></div>
                     <div class="sa-actions"><button class="sa-button secondary" name="cancel" value="1" formnovalidate>Cancel</button><button class="sa-button">Confirm and save</button></div>
                 </form>
             @else
@@ -143,10 +143,10 @@
                         @if ($mail['driver'] === 'brevo')
                         <label class="sa-field full">Brevo API key{{ $mail['key_hint'] ? ' (leave empty to keep the saved key)' : '' }}<input type="password" name="api_key" autocomplete="new-password" placeholder="xkeysib-…" @if (! $mail['key_hint']) required @endif><small>In Brevo: SMTP &amp; API → API keys → Generate a new API key. It starts with “xkeysib-”.</small></label>
                         @endif
-                        <label class="sa-field">Sender email<input type="email" name="email" value="{{ old('email', $mail['from_address']) }}" required><small>{{ $mail['driver'] === 'brevo' ? 'Must be a verified sender in Brevo (Senders, domains & IPs).' : 'The Gmail address that sends codes.' }}</small></label>
-                        <label class="sa-field">Name shown to recipients<input name="app_name" value="{{ old('app_name', $mail['from_name']) }}" maxlength="80" required></label>
+                        <label class="sa-field">Sender email<input type="email" name="email" value="{{ old('email', $mail['from_address']) }}" placeholder="e.g. giftofhope.foundation@gmail.com" required><small>{{ $mail['driver'] === 'brevo' ? 'Must be a verified sender in Brevo (Senders, domains & IPs).' : 'The Gmail address that sends codes.' }}</small></label>
+                        <label class="sa-field">Name shown to recipients<input name="app_name" placeholder="e.g. Gift of Hope" value="{{ old('app_name', $mail['from_name']) }}" maxlength="80" required></label>
                         @if ($mail['driver'] !== 'brevo')
-                        <label class="sa-field full">Gmail app password<input type="password" name="password" autocomplete="new-password" minlength="8" required><small>Create one at myaccount.google.com/apppasswords (2-Step Verification must be on). It is never shown again.</small></label>
+                        <label class="sa-field full">Gmail app password<input type="password" name="password" autocomplete="new-password" minlength="8" placeholder="The 16-letter app password from Google" required><small>Create one at myaccount.google.com/apppasswords (2-Step Verification must be on). It is never shown again.</small></label>
                         @endif
                     </div>
                     <p class="sa-muted" style="margin-top:14px">We send a 6-digit code to the sender email with these settings. They are saved only after you enter the code.</p>

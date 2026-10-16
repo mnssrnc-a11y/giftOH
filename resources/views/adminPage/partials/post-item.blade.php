@@ -31,8 +31,8 @@
             @csrf @method('PUT')
             <div class="admin-field"><label for="edit-post-type">Type</label><select id="edit-post-type" class="admin-select" name="type" style="width:100%">@foreach ($postTypes as $value => $label)<option value="{{ $value }}" @selected($post['type'] === $value)>{{ $label }}</option>@endforeach</select></div>
             <div class="admin-field"><label for="edit-post-audience">Who can see it</label><select id="edit-post-audience" class="admin-select" name="audience" style="width:100%"><option value="public" @selected($post['audience'] === 'public')>Everyone: landing page and user pages</option><option value="users" @selected($post['audience'] === 'users')>Signed-in users only</option></select></div>
-            <div class="admin-field"><label for="edit-post-title">Title</label><input id="edit-post-title" class="admin-input" name="title" maxlength="150" required value="{{ $post['title'] }}"></div>
-            <div class="admin-field"><label for="edit-post-body">Message</label><textarea id="edit-post-body" class="admin-textarea" name="body" rows="8" maxlength="10000" required>{{ $post['body'] }}</textarea></div>
+            <div class="admin-field"><label for="edit-post-title">Title</label><input id="edit-post-title" class="admin-input" name="title" placeholder="e.g. Rice drive for Promised Land families" maxlength="150" required value="{{ $post['title'] }}"></div>
+            <div class="admin-field"><label for="edit-post-body">Message</label><textarea id="edit-post-body" class="admin-textarea" name="body" placeholder="e.g. Thank you to everyone who donated! This week we delivered 40 sacks of rice to…" rows="8" maxlength="10000" required>{{ $post['body'] }}</textarea></div>
             <div class="admin-field">
                 <label for="edit-post-image">{{ $post['image'] ? 'Replace the photo' : 'Add a photo' }} <span style="font-weight:400">(optional)</span></label>
                 @if ($post['image'])<img class="admin-post-image" src="{{ $post['image'] }}" alt="Current photo" data-edit-image-preview>@else<img class="admin-post-image" alt="Selected photo" data-edit-image-preview hidden>@endif

@@ -126,8 +126,8 @@
                 @csrf
                 <div class="admin-field"><label for="post-type">Type</label><select id="post-type" class="admin-select" name="type" style="width:100%" data-post-type>@foreach ($postTypes as $value => $label)<option value="{{ $value }}" @selected(old('type') === $value)>{{ $label }}</option>@endforeach</select></div>
                 <div class="admin-field"><label for="post-audience">Who can see it</label><select id="post-audience" class="admin-select" name="audience" style="width:100%"><option value="public" @selected(old('audience', 'public') === 'public')>Everyone: landing page and user pages</option><option value="users" @selected(old('audience') === 'users')>Signed-in users only</option></select></div>
-                <div class="admin-field"><label for="post-title">Title</label><input id="post-title" class="admin-input" name="title" maxlength="150" required value="{{ old('title') }}" data-post-title></div>
-                <div class="admin-field"><label for="post-body">Message</label><textarea id="post-body" class="admin-textarea" name="body" rows="10" maxlength="10000" required data-post-body>{{ old('body') }}</textarea></div>
+                <div class="admin-field"><label for="post-title">Title</label><input id="post-title" class="admin-input" name="title" placeholder="e.g. Rice drive for Promised Land families" maxlength="150" required value="{{ old('title') }}" data-post-title></div>
+                <div class="admin-field"><label for="post-body">Message</label><textarea id="post-body" class="admin-textarea" name="body" placeholder="e.g. Thank you to everyone who donated! This week we delivered 40 sacks of rice to…" rows="10" maxlength="10000" required data-post-body>{{ old('body') }}</textarea></div>
                 <div class="admin-field">
                     <label for="post-image">Photo <span style="font-weight:400">(optional)</span></label>
                     <input id="post-image" type="file" name="image" accept="image/jpeg,image/png,image/webp" class="admin-input" style="width:100%;height:auto;padding:9px" data-post-image>

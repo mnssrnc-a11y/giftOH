@@ -51,7 +51,7 @@
                         @csrf
                         <h3 class="text-base font-bold text-gray-900">Appeal this decision</h3>
                         <p class="text-sm text-gray-600">Explain what has changed and attach an updated supporting document. The foundation reviews the request again. You have {{ $appealsLeft }} appeal(s) left.</p>
-                        <textarea name="reason" required maxlength="2000" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600" placeholder="What is different now?">{{ old('reason') }}</textarea>
+                        <textarea name="reason" required maxlength="2000" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600" placeholder="e.g. We now have a new certificate of indigency from the barangay.">{{ old('reason') }}</textarea>
                         <input type="file" name="document" required accept=".jpg,.jpeg,.png,.pdf" class="block w-full text-sm">
                         <button type="submit" class="rounded-lg bg-blue-700 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-800">Send appeal</button>
                     </form>
@@ -95,7 +95,7 @@
                                     @csrf
                                     <input type="hidden" name="response" value="reschedule_requested">
                                     <label class="text-xs font-semibold text-gray-600">Date and time that works for you<input type="datetime-local" name="preferred_at" required min="{{ now()->format('Y-m-d\TH:i') }}" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"></label>
-                                    <label class="text-xs font-semibold text-gray-600">Why the current schedule doesn't work<input name="note" required maxlength="1000" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"></label>
+                                    <label class="text-xs font-semibold text-gray-600">Why the current schedule doesn't work<input name="note" required maxlength="1000" placeholder="e.g. We have a community activity that morning; the afternoon works better." class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"></label>
                                     <div class="md:col-span-2"><button class="rounded-lg bg-[#0D47A1] px-4 py-2 font-semibold text-white">Send request</button></div>
                                 </form>
                             </details>
@@ -138,7 +138,7 @@
                         @csrf
                         <p class="text-gray-700">Cancelling stops everything still to come: the interview, the decision and the release of funds. It cannot be undone. You can send a new request once the super admin confirms the cancellation.</p>
                         <label class="block text-xs font-semibold text-gray-600">Why are you cancelling? <span class="font-normal">(optional)</span>
-                            <textarea name="cancel_reason" maxlength="1000" rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">{{ old('cancel_reason') }}</textarea></label>
+                            <textarea name="cancel_reason" placeholder="e.g. Another sponsor has already covered our needs." maxlength="1000" rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">{{ old('cancel_reason') }}</textarea></label>
                         <label class="flex items-start gap-2 text-gray-800"><input type="checkbox" name="confirm" value="1" required class="mt-1"> I understand the request and its release of funds will be cancelled.</label>
                         <button type="submit" class="rounded-lg bg-red-700 px-5 py-2 font-semibold text-white hover:bg-red-800">Cancel request</button>
                     </form>
@@ -183,12 +183,12 @@
                         @csrf
                         <div><label class="mb-1 block text-sm font-semibold text-gray-700" for="receipts">Receipts / liquidation sheet <span class="text-red-500">*</span></label><input id="receipts" type="file" name="receipts[]" multiple required accept="image/*,.pdf" class="block w-full text-sm"><p class="mt-1 text-xs text-gray-400">Up to 10 files, JPG/PNG/PDF.</p></div>
                         <div><label class="mb-1 block text-sm font-semibold text-gray-700" for="recipient_list">Signed list of recipients <span class="text-red-500">*</span></label><input id="recipient_list" type="file" name="recipient_list" required accept="image/*,.pdf" class="block w-full text-sm"><p class="mt-1 text-xs text-gray-400">Photo or scan of the list with names and signatures.</p></div>
-                        <div><label class="mb-1 block text-sm font-semibold text-gray-700" for="amount_spent">Amount spent (₱) <span class="text-red-500">*</span></label><input id="amount_spent" type="number" step="0.01" min="0" name="amount_spent" data-amount-buttons required value="{{ old('amount_spent') }}" class="w-full rounded-lg border border-gray-300 px-4 py-2"></div>
+                        <div><label class="mb-1 block text-sm font-semibold text-gray-700" for="amount_spent">Amount spent (₱) <span class="text-red-500">*</span></label><input id="amount_spent" type="number" placeholder="e.g. 4800" step="0.01" min="0" name="amount_spent" data-amount-buttons required value="{{ old('amount_spent') }}" class="w-full rounded-lg border border-gray-300 px-4 py-2"></div>
                         <div><label class="mb-1 block text-sm font-semibold text-gray-700" for="photos">Distribution photos <span class="font-normal text-gray-400">(optional)</span></label><input id="photos" type="file" name="photos[]" multiple accept="image/*" class="block w-full text-sm"></div>
                         @php($listed = $view['recipients'] ?: array_map(fn ($name) => ['last' => '', 'first' => $name, 'middle' => ''], $view['beneficiaries']))
                         <div class="md:col-span-2"><span class="mb-1 block text-sm font-semibold text-gray-700">People who received the donation <span class="font-normal text-gray-400">(check the list; add or remove people)</span></span>
                             @include('partials.people-list', ['name' => 'recipients', 'people' => old('recipients', $listed), 'limit' => 100, 'required' => false])</div>
-                        <div class="md:col-span-2"><label class="mb-1 block text-sm font-semibold text-gray-700" for="notes">Notes <span class="font-normal text-gray-400">(optional)</span></label><textarea id="notes" name="notes" rows="2" maxlength="2000" class="w-full rounded-lg border border-gray-300 px-4 py-2">{{ old('notes') }}</textarea></div>
+                        <div class="md:col-span-2"><label class="mb-1 block text-sm font-semibold text-gray-700" for="notes">Notes <span class="font-normal text-gray-400">(optional)</span></label><textarea id="notes" name="notes" placeholder="e.g. Distributed on Oct 20 at the barangay hall; two families were absent." rows="2" maxlength="2000" class="w-full rounded-lg border border-gray-300 px-4 py-2">{{ old('notes') }}</textarea></div>
                         <div class="md:col-span-2"><button class="rounded-xl bg-[#0D47A1] px-6 py-3 font-bold text-white hover:bg-[#1565C0]">Submit liquidation</button></div>
                     </form>
                 @elseif ($liquidation)

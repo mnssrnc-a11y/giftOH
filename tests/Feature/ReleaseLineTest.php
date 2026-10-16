@@ -318,7 +318,7 @@ class ReleaseLineTest extends TestCase
         $response = $this->actingAs(new FirebaseUser(['id' => 'admin-1', 'fname' => 'Liza', 'lname' => 'Ramos', 'role' => 'admin']))
             ->get(route('admin.fund-request.show', 'req-1'))
             ->assertOk()
-            ->assertSee('id="social_worker" name="social_worker" required maxlength="120" value="Liza Ramos"', false)
+            ->assertSee('id="social_worker" name="social_worker" placeholder="e.g. Liza Ramos, RSW" required maxlength="120" value="Liza Ramos"', false)
             // No interview yet: the assessment step asks for it first instead of showing its form.
             ->assertDontSee('id="assessment_sw"', false)
             ->assertSee('Schedule the interview first: the assessment records what the social worker found in it.')

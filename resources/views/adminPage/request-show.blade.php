@@ -133,9 +133,9 @@
             <form method="POST" action="{{ route('admin.fund-request.interview', $view['id']) }}" class="admin-form-grid proc-form">
                 @csrf
                 <div class="admin-field"><label for="interview_at">Date & time</label><input id="interview_at" type="datetime-local" name="interview_at" required value="{{ old('interview_at', isset($assessment['interview_at']) ? \Carbon\Carbon::parse($assessment['interview_at'])->format('Y-m-d\TH:i') : '') }}"></div>
-                <div class="admin-field"><label for="social_worker">Social worker</label><input id="social_worker" name="social_worker" required maxlength="120" value="{{ old('social_worker', ($assessment['social_worker'] ?? '') ?: auth()->user()->fullName()) }}"></div>
+                <div class="admin-field"><label for="social_worker">Social worker</label><input id="social_worker" name="social_worker" placeholder="e.g. Liza Ramos, RSW" required maxlength="120" value="{{ old('social_worker', ($assessment['social_worker'] ?? '') ?: auth()->user()->fullName()) }}"></div>
                 <div class="admin-field"><label for="mode">Interview type</label><select id="mode" name="mode" class="admin-select" style="width:100%">@foreach (config('funding.assessment_modes') as $value => $text)<option value="{{ $value }}" @selected(old('mode', $assessment['mode'] ?? '') === $value)>{{ $text }}</option>@endforeach</select></div>
-                <div class="admin-field"><label for="location">Location / link <span style="font-weight:400">(optional)</span></label><input id="location" name="location" maxlength="255" value="{{ old('location', $assessment['location'] ?? '') }}"></div>
+                <div class="admin-field"><label for="location">Location / link <span style="font-weight:400">(optional)</span></label><input id="location" name="location" placeholder="e.g. Barangay hall, or meet.google.com/abc-defg-hij" maxlength="255" value="{{ old('location', $assessment['location'] ?? '') }}"></div>
                 <div class="proc-actions"><button class="admin-button primary" type="submit">{{ empty($assessment['interview_at']) ? 'Schedule & notify requester' : 'Reschedule & notify' }}</button></div>
             </form>
         @endif
@@ -157,7 +157,7 @@
                         <form method="POST" action="{{ route('admin.fund-request.document-review', [$view['id'], $document['field']]) }}">
                             @csrf
                             @if ($document['status'] !== 'verified')<button class="admin-button success" name="decision" value="verified">Verify</button>@endif
-                            <input name="remarks" class="admin-input" maxlength="1000" placeholder="What is wrong? (to ask for a new file)">
+                            <input name="remarks" class="admin-input" maxlength="1000" placeholder="e.g. The letter is blurry; please upload a clearer scan.">
                             <button class="admin-button warning" name="decision" value="resubmit">Ask to resubmit</button>
                         </form>
                     @endif
@@ -276,7 +276,7 @@
                         @csrf
                         <strong>Send {{ $peso($transfer['amount']) }} to {{ $account }}</strong>
                         <p>We emailed you a 6-digit code. Enter it to send the money through {{ $transfer['mode_label'] }}. Money that is sent cannot be taken back.</p>
-                        <div class="admin-field"><label for="payout-code">Code from your email</label><input id="payout-code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required autofocus></div>
+                        <div class="admin-field"><label for="payout-code">Code from your email</label><input id="payout-code" name="code" placeholder="6-digit code, e.g. 123456" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required autofocus></div>
                         <div class="admin-actions"><button class="admin-button" name="cancel" value="1" formnovalidate>Cancel</button><button class="admin-button success" type="submit">Send {{ $peso($transfer['amount']) }}</button></div>
                     </form>
                 @else
@@ -285,7 +285,7 @@
                         @csrf
                         <input type="hidden" name="method" value="bank_transfer">
                         {{-- Set with the quick-amount buttons only: the field cannot be clicked or typed in. --}}
-                        <div class="admin-field" style="grid-column:1/-1"><label for="amount">Amount released (₱)</label><input id="amount" type="number" name="amount" step="0.01" min="1" max="{{ $view['granted'] ?? $view['amount'] }}" required readonly tabindex="-1" data-amount-buttons value="{{ old('amount', $view['granted'] ?? $view['amount']) }}" aria-describedby="amount-hint"><p class="admin-field-hint" id="amount-hint">Starts at the approved amount, {{ $peso($view['granted'] ?? $view['amount']) }}. Change it with the buttons: Clear, then add. It cannot be typed.</p></div>
+                        <div class="admin-field" style="grid-column:1/-1"><label for="amount">Amount released (₱)</label><input id="amount" type="number" name="amount" placeholder="Add the amount with the buttons below" step="0.01" min="1" max="{{ $view['granted'] ?? $view['amount'] }}" required readonly tabindex="-1" data-amount-buttons value="{{ old('amount', $view['granted'] ?? $view['amount']) }}" aria-describedby="amount-hint"><p class="admin-field-hint" id="amount-hint">Starts at the approved amount, {{ $peso($view['granted'] ?? $view['amount']) }}. Change it with the buttons: Clear, then add. It cannot be typed.</p></div>
 
                         {{-- 1. Send it now through the payout provider (Xendit), to the requester's account. --}}
                         @if ($transfer)
@@ -314,9 +314,9 @@
                             <summary>{{ ($transfer['enabled'] ?? false) ? 'Sent it yourself? Record the transfer' : 'Record the transfer' }}</summary>
                             <div class="admin-form-grid">
                                 <div class="admin-field"><label for="released_at">Date released</label><input id="released_at" type="date" name="released_at" required max="{{ now()->toDateString() }}" value="{{ old('released_at', now()->toDateString()) }}"></div>
-                                <div class="admin-field"><label for="reference_no">Transfer reference no.</label><input id="reference_no" name="reference_no" maxlength="120" required value="{{ old('reference_no') }}"></div>
+                                <div class="admin-field"><label for="reference_no">Transfer reference no.</label><input id="reference_no" name="reference_no" placeholder="e.g. GCash ref. 9012345678901" maxlength="120" required value="{{ old('reference_no') }}"></div>
                                 <div class="admin-field"><label for="proof">Proof (transfer slip)</label><input id="proof" type="file" name="proof" required accept=".jpg,.jpeg,.png,.pdf" style="height:auto;padding:9px"></div>
-                                <div class="admin-field"><label for="release_notes">Notes <span style="font-weight:400">(optional)</span></label><input id="release_notes" name="notes" maxlength="2000" value="{{ old('notes') }}"></div>
+                                <div class="admin-field"><label for="release_notes">Notes <span style="font-weight:400">(optional)</span></label><input id="release_notes" name="notes" placeholder="e.g. Sent from the foundation's BDO account" maxlength="2000" value="{{ old('notes') }}"></div>
                                 <div class="proc-actions" style="grid-column:1/-1"><button class="admin-button" type="submit">Record release & request liquidation</button></div>
                             </div>
                         </details>
@@ -363,7 +363,7 @@
             @if ($stage['key'] === 'liquidation_review')
                 <form method="POST" action="{{ route('admin.fund-request.liquidation', $view['id']) }}" class="admin-post-form proc-form">
                     @csrf
-                    <div class="admin-field"><label for="remarks">Remarks <span style="font-weight:400">(required when returning)</span></label><textarea id="remarks" name="remarks" class="admin-textarea" style="min-height:70px" maxlength="2000">{{ old('remarks') }}</textarea></div>
+                    <div class="admin-field"><label for="remarks">Remarks <span style="font-weight:400">(required when returning)</span></label><textarea id="remarks" name="remarks" placeholder="e.g. Please add the receipt for the hygiene kits (₱1,200)." class="admin-textarea" style="min-height:70px" maxlength="2000">{{ old('remarks') }}</textarea></div>
                     <div class="admin-actions"><button class="admin-button warning" name="decision" value="returned">Return for corrections</button><button class="admin-button success" name="decision" value="verified">Verify & complete</button></div>
                 </form>
             @elseif ($stage['key'] === 'liquidation_returned')

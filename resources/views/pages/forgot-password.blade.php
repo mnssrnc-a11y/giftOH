@@ -49,7 +49,7 @@
                             required
                             autofocus
                             value="{{ old('email') }}"
-                            placeholder="admin@giftofhope.org"
+                            placeholder="e.g. juan.delacruz@gmail.com"
                             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1976D2]"
                         />
                     </div>

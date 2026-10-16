@@ -84,7 +84,7 @@ if (form && config) {
         label.firstChild.textContent = text;
         input.type = kind === 'email' ? 'email' : 'text';
         input.inputMode = kind === 'email' ? 'email' : kind === 'mobile' ? 'tel' : 'numeric';
-        input.placeholder = kind === 'email' ? 'name@example.com' : kind === 'mobile' ? '09171234567' : 'Digits only';
+        input.placeholder = kind === 'email' ? 'e.g. hopehome@gmail.com' : kind === 'mobile' ? 'e.g. 09171234567' : 'e.g. 001234567890 (digits only)';
     }
 
     // Saved as "street, barangay, town, Pampanga" (data-address-part gives the order).

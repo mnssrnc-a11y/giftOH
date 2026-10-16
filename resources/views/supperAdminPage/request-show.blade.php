@@ -66,14 +66,14 @@
                 <form method="POST" action="{{ route('superadmin.fund-request.finalize', $view['id']) }}" class="sa-decision-form" data-sa-confirm="Approve this request? This is the final decision and the requester is notified immediately.">
                     @csrf
                     <input type="hidden" name="decision" value="approved"><input type="hidden" name="from" value="detail">
-                    <label class="sa-field">Amount to grant (₱)<input type="number" name="amount" min="1" max="{{ $view['amount'] }}" step="0.01" data-amount-buttons required value="{{ old('amount', $review['amount'] ?? $view['amount']) }}"><small>Prefilled with the admin's recommendation; at most {{ $peso($view['amount']) }}.</small></label>
-                    <label class="sa-field">Note (optional)<textarea name="notes" maxlength="1000">{{ old('notes') }}</textarea></label>
+                    <label class="sa-field">Amount to grant (₱)<input type="number" name="amount" min="1" placeholder="e.g. 12500" max="{{ $view['amount'] }}" step="0.01" data-amount-buttons required value="{{ old('amount', $review['amount'] ?? $view['amount']) }}"><small>Prefilled with the admin's recommendation; at most {{ $peso($view['amount']) }}.</small></label>
+                    <label class="sa-field">Note (optional)<textarea name="notes" maxlength="1000" placeholder="e.g. Approved as recommended by the admin.">{{ old('notes') }}</textarea></label>
                     <button class="sa-button" type="submit">Approve request</button>
                 </form>
                 <form method="POST" action="{{ route('superadmin.fund-request.finalize', $view['id']) }}" class="sa-decision-form" data-sa-confirm="Reject this request? This is the final decision and the requester is notified immediately.">
                     @csrf
                     <input type="hidden" name="decision" value="rejected"><input type="hidden" name="from" value="detail">
-                    <label class="sa-field">Reason shown to the requester<textarea name="notes" maxlength="1000" required placeholder="Why the request is rejected"></textarea></label>
+                    <label class="sa-field">Reason shown to the requester<textarea name="notes" maxlength="1000" required placeholder="e.g. The certificate of indigency could not be verified with the barangay."></textarea></label>
                     <button class="sa-button danger" type="submit">Reject request</button>
                 </form>
             </div>
@@ -123,7 +123,7 @@
             @elseif ($transfer['code_sent'] && $transfer['ready'])
                 <form method="POST" action="{{ route('superadmin.payout.confirm', $view['id']) }}" class="sa-decision-form" style="max-width:420px">
                     @csrf
-                    <label class="sa-field">Code from your email<input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
+                    <label class="sa-field">Code from your email<input name="code" placeholder="6-digit code, e.g. 123456" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
                     <div class="sa-actions" style="justify-content:flex-start;margin-top:0"><button class="sa-button secondary" name="cancel" value="1" formnovalidate>Cancel</button><button class="sa-button">Send {{ $peso($transfer['amount']) }}</button></div>
                 </form>
             @elseif ($transfer['ready'])

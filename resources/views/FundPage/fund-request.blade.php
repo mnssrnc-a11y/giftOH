@@ -80,9 +80,9 @@
                             <option value="other" @selected($oldChoice === 'other')>Others (not on the list)</option>
                         </select>
                     </x-fr-field>
-                    <x-fr-field name="org_name_other" label="Name of your organization" wide maxlength="255" autocomplete="organization" placeholder="Type the full name" data-org-other data-receiver-name />
-                    <x-fr-field name="contact_person" label="Contact person" maxlength="255" autocomplete="name" placeholder="Full name" data-receiver-name />
-                    <x-fr-field name="contact_email" label="Contact email" type="email" :value="auth()->user()->email" maxlength="255" autocomplete="email" />
+                    <x-fr-field name="org_name_other" label="Name of your organization" wide maxlength="255" autocomplete="organization" placeholder="e.g. Bahay Pag-asa Foundation Inc." data-org-other data-receiver-name />
+                    <x-fr-field name="contact_person" label="Contact person" maxlength="255" autocomplete="name" placeholder="e.g. Maria Santos" data-receiver-name />
+                    <x-fr-field name="contact_email" label="Contact email" type="email" placeholder="e.g. hopehome@gmail.com" :value="auth()->user()->email" maxlength="255" autocomplete="email" />
                     <x-fr-field name="phone" label="Contact number" type="tel" :value="auth()->user()->phone" inputmode="tel" maxlength="13" autocomplete="tel" placeholder="09171234567" pattern="(\+?63|0)9[0-9]{9}" />
                 </div>
             </section>
@@ -123,9 +123,9 @@
                 </x-fr-field>
                 <div class="fr-grid">
                     <x-fr-field name="purpose" label="Purpose of the request" wide hint="As stated in your formal letter: what the help is for and why it is needed.">
-                        <textarea id="purpose" name="purpose" required rows="5" maxlength="5000" aria-describedby="purpose-error purpose-hint">{{ old('purpose') }}</textarea>
+                        <textarea id="purpose" name="purpose" placeholder="e.g. Rice, canned goods and hygiene kits for 30 elderly residents for one month." required rows="5" maxlength="5000" aria-describedby="purpose-error purpose-hint">{{ old('purpose') }}</textarea>
                     </x-fr-field>
-                    <x-fr-field name="beneficiary_count" label="How many people will receive the help?" type="number" inputmode="numeric" min="{{ $limits['min'] }}" max="{{ $limits['max'] }}" step="1"
+                    <x-fr-field name="beneficiary_count" label="How many people will receive the help?" type="number" inputmode="numeric" min="{{ $limits['min'] }}" max="{{ $limits['max'] }}" step="1" placeholder="e.g. {{ intdiv($limits['min'] + $limits['max'], 2) }}"
                         hint="Between {{ $limits['min'] }} and {{ $limits['max'] }}. You list their names after approval, when the funds are released." />
                 </div>
             </section>
@@ -148,8 +148,8 @@
                             @endforeach
                         </select>
                     </x-fr-field>
-                    <x-fr-field name="account_name" label="Account name" maxlength="255" hint="Exactly as on the account. It must match the organization name or the contact person." data-account-name />
-                    <x-fr-field name="account_number" label="Account number" maxlength="255" autocomplete="off" data-account-number />
+                    <x-fr-field name="account_name" label="Account name" placeholder="e.g. Hope Home Foundation Inc." maxlength="255" hint="Exactly as on the account. It must match the organization name or the contact person." data-account-name />
+                    <x-fr-field name="account_number" label="Account number" placeholder="e.g. 09171234567" maxlength="255" autocomplete="off" data-account-number />
                 </div>
                 <p class="fr-preview" data-account-hint aria-live="polite"></p>
             </section>
