@@ -28,7 +28,8 @@ class AdminDashboardService
 
     public function build(array $iotMetrics): array
     {
-        $requests = $this->fundingRows();
+        // A request the requester cancelled leaves the admins' work: only the super admin keeps it.
+        $requests = array_values(array_filter($this->fundingRows(), fn (array $row): bool => $row['status'] !== 'cancelled'));
         $donations = $this->donationRows();
         $posts = $this->postRows();
         $totalFunds = $iotMetrics['totalFunds'] ?? null;
@@ -101,6 +102,8 @@ class AdminDashboardService
                 'admin_notes' => $request['admin_notes'] ?? null,
                 'staff_notes' => $this->funding->staffNotesOf($request),
                 'review' => $this->reviewTrail($request),
+                // A cancellation the super admin has confirmed (the requester may ask again).
+                'cancel_confirmed' => $status === 'cancelled' && $this->funding->cancellationConfirmed($request),
                 'unread_messages' => $unread[(string) ($request['id'] ?? '')]['count'] ?? 0,
                 'last_message_at' => $unread[(string) ($request['id'] ?? '')]['last_at'] ?? null,
             ];

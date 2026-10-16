@@ -14,7 +14,8 @@ const STAGE_TABS = {
     release: item => ['awaiting_recipients', 'to_release'].includes(item.stage.key),
     liquidation: item => ['released', 'liquidation_review', 'liquidation_returned'].includes(item.stage.key),
     completed: item => item.stage.key === 'completed',
-    rejected: item => ['rejected', 'cancelled'].includes(item.stage.key),
+    // Cancelled requests are not on the admins' list (the super admin keeps them).
+    rejected: item => item.stage.key === 'rejected',
 };
 const STATUS_LABELS = { awaiting: 'Awaiting super admin', pending: 'Pending', approved: 'Approved', rejected: 'Rejected', completed: 'Completed', cancelled: 'Cancelled' };
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#039;', '"':'&quot;' })[char]);
@@ -149,7 +150,7 @@ function initAdminUI() {
                 <input type="hidden" name="action" value="${action}">
                 <input type="hidden" name="ai_amount" value="" data-ai-amount>
                 ${approving ? `<div class="admin-ai-panel" data-ai-panel><div class="admin-ai-head"><span class="admin-eyebrow">AI assistance</span><strong>Recommended amount</strong></div><div class="admin-loading admin-state-visible" style="padding:14px 0"><div class="admin-spinner"></div>Weighing total funds and priorities…</div></div>
-                <div class="admin-field" style="margin-top:14px"><label for="decision-amount">Amount to release (₱)</label><input id="decision-amount" class="admin-input" style="width:100%" type="number" name="amount" min="1" max="${item.amount}" step="0.01" required data-decision-amount></div>` : ''}
+                <div class="admin-field" style="margin-top:14px"><label for="decision-amount">Amount to release (₱)</label><input id="decision-amount" class="admin-input" style="width:100%" type="number" name="amount" min="1" max="${item.amount}" step="0.01" required data-decision-amount data-amount-buttons></div>` : ''}
                 <div class="admin-field" style="margin-top:14px"><label for="decision-notes">${approving ? 'Note for the super admin (optional)' : 'Reason for rejection'}</label><textarea id="decision-notes" class="admin-textarea" style="min-height:80px" name="notes" maxlength="1000" ${approving ? '' : 'required'}></textarea></div>
                 <div class="admin-notice" style="margin-top:14px">Your decision is sent to the super admin for finalization. The requester is notified only after the final decision.</div>
                 <div class="admin-modal-actions"><button type="button" class="admin-button" data-modal-close>Cancel</button><button class="admin-button ${approving ? 'success' : 'danger'}" type="submit">${approving ? 'Submit approval' : 'Submit rejection'}</button></div>
@@ -175,7 +176,8 @@ function initAdminUI() {
             }
 
             form.querySelector('[data-ai-amount]').value = rec.recommended_amount;
-            if (!amountInput.value) amountInput.value = rec.recommended_amount;
+            // Announced, so the quick-amount total under the field updates too.
+            if (!amountInput.value) { amountInput.value = rec.recommended_amount; amountInput.dispatchEvent(new Event('input', { bubbles: true })); }
             const perPerson = rec.per_person !== null && rec.people ? ` · ${money(rec.per_person)} × ${rec.people} people` : '';
             panel.innerHTML = `<div class="admin-ai-head"><span class="admin-eyebrow">AI assistance · ${rec.source === 'ai' ? escapeHtml(rec.provider) : 'priority rules (no AI provider answered)'}</span><strong>${money(rec.recommended_amount)} <small>(${rec.coverage}% of request${perPerson})</small></strong><span class="admin-status ${rec.priority_label === 'critical' ? 'critical' : rec.priority_label === 'high' ? 'approved' : 'in-progress'}">${escapeHtml(rec.priority_label)} priority · ${rec.priority_score}/100</span></div>
                 <div class="admin-ai-figures"><span><b>${money(rec.total_funds)}</b>Total funds</span><span><b>${money(rec.committed_funds + rec.reserved_funds)}</b>Committed</span><span><b>${money(rec.available_funds)}</b>Available</span><span><b>${rec.queue_size}</b>In queue</span></div>
@@ -185,7 +187,7 @@ function initAdminUI() {
             const warnIfOverBudget = () => { panel.querySelector('[data-over-budget]').hidden = !(Number(amountInput.value) > rec.available_funds); };
             amountInput.addEventListener('input', warnIfOverBudget);
             warnIfOverBudget();
-            panel.querySelector('[data-use-recommendation]').addEventListener('click', () => { amountInput.value = rec.recommended_amount; amountInput.focus(); warnIfOverBudget(); });
+            panel.querySelector('[data-use-recommendation]').addEventListener('click', () => { amountInput.value = rec.recommended_amount; amountInput.dispatchEvent(new Event('input', { bubbles: true })); amountInput.focus(); });
         } catch (error) {
             console.error('Fund recommendation failed:', error);
             if (panel.isConnected) panel.innerHTML = '<div class="admin-ai-head"><span class="admin-eyebrow">AI assistance</span><strong>Recommendation unavailable</strong></div><p>Enter the amount manually, or close and try again.</p>';
@@ -260,7 +262,6 @@ function initAdminUI() {
             `• Awaiting final approval: ${count('awaiting')}`,
             `• Approved: ${count('approved') + count('completed')}${granted ? ` (${money(granted)} granted)` : ''}`,
             `• Rejected: ${count('rejected')}`,
-            ...(count('cancelled') ? [`• Cancelled by the requester: ${count('cancelled')}`] : []),
             '',
             'By category:',
             ...byCategory.map(([category, group]) => `• ${category} — ${group.count} request(s), ${money(group.amount)}`),
@@ -331,6 +332,7 @@ function initAdminUI() {
         if (target.dataset.decisionOpen) openDecision(target.dataset.requestId, target.dataset.decisionOpen);
         if (target.matches('[data-compile-post]')) compileUpdate();
         if (target.dataset.editPost) openEditPost(target.dataset.editPost);
+        if (target.matches('[data-confirm-payout]')) { event.preventDefault(); confirmPayout(target); }
         if (target.dataset.reportTab) { app.querySelectorAll('[data-report-tab]').forEach(tab => tab.classList.toggle('is-active', tab === target)); app.querySelectorAll('[data-report-panel]').forEach(panel => panel.classList.toggle('is-active', panel.dataset.reportPanel === target.dataset.reportTab)); }
         if (target.matches('[data-report-clear]')) { app.querySelectorAll('[data-report-search],[data-report-from],[data-report-to]').forEach(input => input.value = ''); applyReportFilters(); }
         if (target.matches('[data-export-csv]')) exportActiveReport();
@@ -436,6 +438,17 @@ function initAdminUI() {
         if (problem) { input.value = ''; preview.hidden = true; showSnack(problem); return; }
         preview.src = URL.createObjectURL(file);
         preview.hidden = false;
+    }
+
+    // Release step: "Send through Xendit" sends the amount released (set with the amount buttons)
+    // after a last check; the code to confirm it is then emailed to the admin.
+    function confirmPayout(button) {
+        const form = button.form;
+        const amount = Number(form.querySelector('[name=amount]')?.value);
+        if (!amount) { showSnack('Choose the amount released with the amount buttons first.'); return; }
+        confirmDialog(`Send ${money(amount)} through Xendit?`,
+            `To <strong>${escapeHtml(button.dataset.payoutTo)}</strong>. We will email you a code to confirm it. Money that is sent cannot be taken back.`,
+            'Email me the code', 'success', () => { closeModal(); form.requestSubmit(button); });
     }
 
     // Edit an update: its form (rendered with it, filled in) opens in the dialog.

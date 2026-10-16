@@ -81,6 +81,25 @@ class PayoutTest extends TestCase
         $this->assertSame(['Not enough donations yet: this request is #2 in line and ₱4,000.00 more is needed.'], $check['problems']);
     }
 
+    public function test_a_bank_or_e_wallet_spelled_differently_still_finds_its_channel(): void
+    {
+        $this->mock(NotificationService::class);
+        $payouts = app(PayoutService::class);
+
+        foreach (['GCash', 'Gcash', 'GCASH', ' g-cash '] as $spelling) {
+            $this->assertSame('PH_GCASH', $payouts->channelFor($spelling), $spelling);
+        }
+        $this->assertSame('PH_BDO', $payouts->channelFor('bdo unibank'));
+        $this->assertNull($payouts->channelFor('PayPal'), 'not a Xendit channel');
+        $this->assertNull($payouts->channelFor(''));
+        $this->assertNull($payouts->channelFor(null));
+
+        // An older request saved as "Gcash" can be sent.
+        $this->funding($gcash = array_replace_recursive($this->request, ['disbursement' => ['provider' => 'Gcash', 'mode' => 'e_wallet']]));
+        Http::fake(['api.xendit.co/payouts_channels*' => Http::response([['channel_code' => 'PH_GCASH', 'channel_category' => 'EWALLET', 'currency' => 'PHP', 'channel_name' => 'GCash', 'amount_limits' => ['minimum' => 1, 'maximum' => 100000]]])]);
+        $this->assertSame('PH_GCASH', $payouts->readiness($gcash)['channel']);
+    }
+
     public function test_sending_pays_the_receiver_account_once_through_xendit(): void
     {
         Http::fake(['api.xendit.co/v2/payouts' => Http::response(['id' => 'disb-77', 'status' => 'ACCEPTED'])]);

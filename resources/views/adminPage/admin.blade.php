@@ -168,7 +168,7 @@
         <article><span>Approval rate</span><strong>{{ is_null($fundingSummary['approvalRate']) ? '—' : $fundingSummary['approvalRate'] . '%' }}</strong><small>{{ $fundingSummary['decidedCount'] }} finalized decision(s)</small></article>
     </div>
     <div class="admin-tabs" data-funding-tabs>
-        @foreach (['all' => 'All requests', 'assessment' => 'Assessment (' . $fundingSummary['needsAssessment'] . ')', 'decision' => 'Ready for decision', 'awaiting' => 'Awaiting super admin', 'release' => 'To release (' . $fundingSummary['toRelease'] . ')', 'liquidation' => 'Liquidation (' . $fundingSummary['liquidationPending'] . ')', 'completed' => 'Completed', 'rejected' => 'Rejected / cancelled'] as $key => $label)<button class="admin-tab {{ $key === 'all' ? 'is-active' : '' }}" data-status-tab="{{ $key }}">{{ $label }}</button>@endforeach
+        @foreach (['all' => 'All requests', 'assessment' => 'Assessment (' . $fundingSummary['needsAssessment'] . ')', 'decision' => 'Ready for decision', 'awaiting' => 'Awaiting super admin', 'release' => 'To release (' . $fundingSummary['toRelease'] . ')', 'liquidation' => 'Liquidation (' . $fundingSummary['liquidationPending'] . ')', 'completed' => 'Completed', 'rejected' => 'Rejected'] as $key => $label)<button class="admin-tab {{ $key === 'all' ? 'is-active' : '' }}" data-status-tab="{{ $key }}">{{ $label }}</button>@endforeach
     </div>
     <div class="admin-card">
         <div class="admin-card-body">

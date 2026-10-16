@@ -47,3 +47,10 @@ services:
         sync: false
       - key: MAIL_FROM_ADDRESS
         sync: false
+      # Automatic transfers (DEPLOY.md → Automatic transfers): manual, sandbox or xendit, and the Xendit keys.
+      - key: PAYOUT_DRIVER
+        sync: false
+      - key: XENDIT_SECRET_KEY
+        sync: false
+      - key: XENDIT_WEBHOOK_TOKEN
+        sync: false

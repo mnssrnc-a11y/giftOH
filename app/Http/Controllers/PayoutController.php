@@ -16,12 +16,16 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 /**
- * Automatic transfer of approved funds: the super admin starts it, confirms with a code emailed
- * to them, and the payout provider reports the result to the webhook.
+ * Automatic transfer of approved funds: an admin (from the Release step, with the amount released)
+ * or the super admin starts it, confirms with a code emailed to them, and the payout provider
+ * reports the result to the webhook. Each returns to their own request page.
  */
 class PayoutController extends Controller
 {
     private const SESSION_KEY = 'pending_payout';
+
+    /** The amount the pending transfer is for (null: the whole approved amount). */
+    private const SESSION_AMOUNT = 'pending_payout_amount';
 
     private const CODES = 'transaction_verification_codes';
 
@@ -32,18 +36,23 @@ class PayoutController extends Controller
     ) {
     }
 
-    /** Step 1: check the transfer can be made, then email the super admin a code. */
-    public function start(string $id, MailSettingsService $mail)
+    /** Step 1: check the transfer can be made, then email the person sending it a code. */
+    public function start(Request $http, string $id, MailSettingsService $mail)
     {
         $request = $this->funding->getRequestById($id);
         abort_if($request === null, 404);
 
-        $check = $this->payouts->readiness($request);
+        // From the admin's Release step: the amount released, chosen with the amount buttons (the
+        // super admin's transfer card sends the whole approved amount).
+        $amount = $http->routeIs('admin.*')
+            ? (float) $http->validate(['amount' => 'required|numeric|min:1'], ['amount.required' => 'Choose the amount released with the amount buttons.'])['amount']
+            : null;
+        $check = $this->payouts->readiness($request, $amount);
         if (! $check['ready']) {
             return $this->back($id)->with('alert_error', $check['problems'][0]);
         }
         if (! $mail->canSend()) {
-            return $this->back($id)->with('alert_error', 'Email is not set up, so the transfer code cannot be sent. Save the Brevo key in System settings first.');
+            return $this->back($id)->with('alert_error', 'Email is not set up, so the transfer code cannot be sent. The super admin sets it up in System settings.');
         }
 
         $user = Auth::user();
@@ -56,7 +65,7 @@ class PayoutController extends Controller
             return $this->back($id)->with('alert_error', 'The transfer code could not be emailed. Try again in a few minutes.');
         }
         $this->codes->store($user->email, $code, self::CODES);
-        session([self::SESSION_KEY => $id]);
+        session([self::SESSION_KEY => $id, self::SESSION_AMOUNT => $check['amount']]);
 
         return $this->back($id)->with('status', "We emailed a 6-digit code to {$user->email}. Enter it to send ₱" . number_format($check['amount'], 2) . '.');
     }
@@ -65,7 +74,7 @@ class PayoutController extends Controller
     public function confirm(Request $request, string $id)
     {
         if ($request->boolean('cancel')) {
-            session()->forget(self::SESSION_KEY);
+            session()->forget([self::SESSION_KEY, self::SESSION_AMOUNT]);
             $this->codes->forget(Auth::user()->email, self::CODES);
 
             return $this->back($id)->with('status', 'Transfer cancelled. Nothing was sent.');
@@ -83,17 +92,18 @@ class PayoutController extends Controller
         }
         // A code works once.
         $this->codes->forget($user->email, self::CODES);
-        session()->forget(self::SESSION_KEY);
+        $amount = session(self::SESSION_AMOUNT);
+        session()->forget([self::SESSION_KEY, self::SESSION_AMOUNT]);
 
         try {
-            $payout = $this->payouts->send($id, Auth::id());
+            $payout = $this->payouts->send($id, Auth::id(), $amount === null ? null : (float) $amount);
         } catch (PayoutException $exception) {
             report($exception);
 
             return $this->back($id)->with('alert_error', 'The transfer was not sent: ' . $exception->getMessage());
         }
 
-        return $this->back($id)->with('status', '₱' . number_format($payout['amount'], 2) . ' sent' . ($payout['mode'] === 'live' ? '' : ' (' . $this->payouts->modeLabel($payout['mode']) . ')')
+        return $this->back($id)->with('status', '₱' . number_format($payout['amount'], 2) . ' sent through ' . $this->payouts->modeLabel($payout['mode'])
             . '. The release is recorded automatically when the bank or e-wallet confirms it.');
     }
 
@@ -165,8 +175,11 @@ class PayoutController extends Controller
         return response()->json(['received' => true, 'handled' => $handled]);
     }
 
+    /** Back to the request page of whoever is sending: the admin's Release step, or the super admin's transfer card. */
     private function back(string $id)
     {
-        return redirect()->to(route('superadmin.fund-request.show', $id) . '#transfer');
+        return Auth::user()?->isAdmin()
+            ? redirect()->to(route('admin.fund-request.show', $id) . '#release')
+            : redirect()->to(route('superadmin.fund-request.show', $id) . '#transfer');
     }
 }

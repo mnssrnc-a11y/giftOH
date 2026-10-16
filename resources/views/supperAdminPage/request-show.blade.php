@@ -66,7 +66,7 @@
                 <form method="POST" action="{{ route('superadmin.fund-request.finalize', $view['id']) }}" class="sa-decision-form" data-sa-confirm="Approve this request? This is the final decision and the requester is notified immediately.">
                     @csrf
                     <input type="hidden" name="decision" value="approved"><input type="hidden" name="from" value="detail">
-                    <label class="sa-field">Amount to grant (₱)<input type="number" name="amount" min="1" max="{{ $view['amount'] }}" step="0.01" required value="{{ old('amount', $review['amount'] ?? $view['amount']) }}"><small>Prefilled with the admin's recommendation; at most {{ $peso($view['amount']) }}.</small></label>
+                    <label class="sa-field">Amount to grant (₱)<input type="number" name="amount" min="1" max="{{ $view['amount'] }}" step="0.01" data-amount-buttons required value="{{ old('amount', $review['amount'] ?? $view['amount']) }}"><small>Prefilled with the admin's recommendation; at most {{ $peso($view['amount']) }}.</small></label>
                     <label class="sa-field">Note (optional)<textarea name="notes" maxlength="1000">{{ old('notes') }}</textarea></label>
                     <button class="sa-button" type="submit">Approve request</button>
                 </form>
@@ -76,6 +76,28 @@
                     <label class="sa-field">Reason shown to the requester<textarea name="notes" maxlength="1000" required placeholder="Why the request is rejected"></textarea></label>
                     <button class="sa-button danger" type="submit">Reject request</button>
                 </form>
+            </div>
+        @endif
+
+        {{-- Cancelled by the requester: it left the admins' list and stays here on record. Confirming
+             the cancellation lets the requester send a new request. --}}
+        @if ($view['cancelled'])
+            @php($cancel = $view['cancelled'])
+            <div class="sa-cancel" id="cancellation">
+                <h3>Cancellation</h3>
+                <dl class="sa-facts">
+                    <div><dt>Cancelled</dt><dd>{{ $dayTime($cancel['at']) }}<small>{{ $cancel['stage'] ? 'At: ' . $cancel['stage'] : 'By the requester' }}</small></dd></div>
+                    <div><dt>Confirmation</dt><dd>@if ($cancel['confirmed_at'])Confirmed {{ $dayTime($cancel['confirmed_at']) }}<small>by {{ $cancel['confirmed_by'] ?? 'the super admin' }} · the requester can send a new request</small>@else<span class="sa-badge amber">Waiting for you</span><small>The requester cannot send a new request until you confirm.</small>@endif</dd></div>
+                </dl>
+                @if (! $cancel['confirmed_at'])
+                    <form method="POST" action="{{ route('superadmin.fund-request.confirm-cancellation', $view['id']) }}" class="sa-decision-form" data-sa-confirm="Confirm this cancellation? The request stays on record, and the requester can send a new request.">
+                        @csrf
+                        <label class="sa-field">Note (optional)<textarea name="note" maxlength="1000" placeholder="e.g. Checked with the requester by phone">{{ old('note') }}</textarea><small>Kept with the record; not shown to the requester.</small></label>
+                        <button class="sa-button" type="submit">Confirm cancellation</button>
+                    </form>
+                @elseif ($cancel['confirm_note'])
+                    <div class="sa-note">Note: “{{ $cancel['confirm_note'] }}”</div>
+                @endif
             </div>
         @endif
     </div>

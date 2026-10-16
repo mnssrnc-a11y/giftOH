@@ -601,3 +601,34 @@
 .thread-system time { display: block; margin-top: 2px; font-size: 11px; color: var(--brand-muted); }
 .hope-shell.dark .thread-system, .is-dark .thread-system { background: #13294b; border-color: #24467a; color: #e3f2fd; }
 .hope-shell.dark .thread-system time, .is-dark .thread-system time { color: #9fb6d6; }
+
+/* Quick amounts under peso fields (resources/js/amount-buttons.js): +1,000 / +500 / +200 / +100. */
+.amount-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.amount-quick button { min-height: 34px; padding: 5px 12px; border: 1px solid var(--brand-sky-2); border-radius: 999px; background: var(--brand-sky); color: #0d47a1; font: inherit; font-size: 13px; font-weight: 700; line-height: 1.2; cursor: pointer; }
+.amount-quick button:hover:not(:disabled) { background: var(--brand-sky-2); }
+.amount-quick button:focus-visible { outline: 3px solid var(--brand-cyan); outline-offset: 2px; }
+.amount-quick button:disabled { opacity: .4; cursor: not-allowed; }
+.amount-quick .amount-quick-clear { border-color: #d1d5db; background: transparent; color: var(--brand-muted); }
+.amount-quick-total { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--brand-ink); }
+.amount-quick-total.is-over { color: var(--brand-bad); }
+.hope-shell.dark .amount-quick button, .is-dark .amount-quick button { border-color: #24467a; background: #13294b; color: #cfe3ff; }
+.hope-shell.dark .amount-quick .amount-quick-clear, .is-dark .amount-quick .amount-quick-clear { background: transparent; color: #9fb6d6; }
+.hope-shell.dark .amount-quick-total, .is-dark .amount-quick-total { color: #e3f2fd; }
+.hope-shell.dark .amount-quick-total.is-over, .is-dark .amount-quick-total.is-over { color: #ff8a80; }
+
+/* Release step: send through Xendit (or record a transfer made by hand). */
+.proc-transfer { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 4px; padding: 14px 16px; border: 1px solid var(--brand-sky-2); border-radius: 12px; background: #f5faff; }
+.proc-transfer > strong { font-size: 15px; color: var(--brand-ink); }
+.proc-transfer p { margin: 0; font-size: 13px; color: var(--brand-muted); }
+.proc-transfer small { font-size: 12px; color: var(--brand-muted); }
+.proc-transfer .proc-facts { width: 100%; margin: 4px 0; }
+.proc-transfer .admin-field { width: min(100%, 260px); }
+.proc-transfer.is-processing { border-color: #f7d070; background: #fffbea; }
+.proc-transfer-failed { padding: 8px 10px; border-radius: 8px; background: var(--brand-bad-bg); color: var(--brand-bad) !important; font-weight: 600; }
+.proc-transfer-problems { margin: 0; padding-left: 18px; font-size: 13px; color: var(--brand-muted); }
+.proc-manual { padding: 12px 14px; border: 1px dashed var(--brand-line); border-radius: 12px; }
+.proc-manual > summary { cursor: pointer; font-weight: 700; color: var(--brand-strong); }
+.proc-manual[open] > summary { margin-bottom: 12px; }
+.is-dark .proc-transfer, .hope-shell.dark .proc-transfer { border-color: #24467a; background: #13294b; }
+.is-dark .proc-transfer > strong, .hope-shell.dark .proc-transfer > strong { color: #e3f2fd; }
+.is-dark .proc-transfer.is-processing { border-color: #8a6d1f; background: #2b2410; }

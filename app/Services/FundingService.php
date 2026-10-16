@@ -39,8 +39,12 @@ class FundingService
         $cutoff = now()->subDays($days);
 
         foreach ($this->getRequestsByUser($userId) as $request) {
-            // A cancelled request was never granted: it does not hold up the next one.
+            // A cancelled request was never granted: once the super admin confirms the cancellation,
+            // it does not hold up the next one.
             if ($this->statusOf($request) === 'cancelled') {
+                if (! $this->cancellationConfirmed($request)) {
+                    return 'Your cancelled request is waiting for the super admin to confirm the cancellation. You can send a new request once it is confirmed.';
+                }
                 continue;
             }
             if (in_array($this->statusOf($request), ['pending', self::STATUS_UNDER_REVIEW], true)) {
@@ -342,7 +346,7 @@ class FundingService
             },
             'completed' => ['completed', 'Completed', 6],
             'rejected' => ['rejected', 'Rejected', 0],
-            'cancelled' => ['cancelled', 'Cancelled by the requester', 0],
+            'cancelled' => ['cancelled', $this->cancellationConfirmed($request) ? 'Cancelled · confirmed by the super admin' : 'Cancelled · waiting for the super admin to confirm', 0],
             default => ['other', ucfirst($this->statusOf($request)), 0],
         };
 
@@ -551,6 +555,43 @@ class FundingService
                 'approved_by' => (string) $userId,
                 'approval_status' => 'cancelled',
                 'approval_notes' => $reason,
+                'decision_at' => $timestamp,
+            ]);
+        }
+
+        return $updated;
+    }
+
+    /** The super admin confirmed the requester's cancellation (the requester may then ask again). */
+    public function cancellationConfirmed(array $request): bool
+    {
+        return ! empty($request['cancel_confirmed_at']);
+    }
+
+    /**
+     * The super admin confirms a cancellation: the request stays on record, and the requester
+     * can send a new request.
+     */
+    public function confirmCancellation(string $requestId, string|int $userId, ?string $note): ?array
+    {
+        $request = $this->getRequestById($requestId);
+        if ($request === null || $this->statusOf($request) !== 'cancelled' || $this->cancellationConfirmed($request)) {
+            return null;
+        }
+
+        $timestamp = now()->toIso8601String();
+        $updated = $this->fundingRequests->update($requestId, [
+            'cancel_confirmed_at' => $timestamp,
+            'cancel_confirmed_by' => (string) $userId,
+            'cancel_confirm_note' => $note,
+        ]);
+        if ($updated !== null) {
+            $this->approvals->create([
+                'request_id' => (string) $requestId,
+                'stage' => 'cancellation_confirmed',
+                'approved_by' => (string) $userId,
+                'approval_status' => 'cancelled',
+                'approval_notes' => $note,
                 'decision_at' => $timestamp,
             ]);
         }

@@ -18,6 +18,8 @@ use App\Services\IotService;
 use App\Services\NotificationService;
 use App\Services\SystemSettings;
 use App\Services\TransactionLog;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Mockery;
 use Tests\TestCase;
 
@@ -202,6 +204,58 @@ class ReleaseLineTest extends TestCase
         $this->post(route('admin.fund-request.disbursement', 'b'), ['method' => 'e_wallet', 'amount' => 10000])
             ->assertRedirect(route('admin.fund-request.show', 'b'))
             ->assertSessionHas('alert_error', 'Not enough donations yet: this request is #2 in line and ₱2,000.00 more is needed before it can be transferred.');
+    }
+
+    /** A release form for request "a" (approved ₱12,000, covered), with the amount chosen by the buttons. */
+    private function release(?float $amount, bool $records): \Illuminate\Testing\TestResponse
+    {
+        Storage::fake(config('funding.files_disk'));
+        $request = $this->approved('a', 12000, '2026-10-01T09:00:00+08:00');
+        $funding = $this->mock(FundingService::class);
+        $funding->shouldReceive('getRequestById')->with('a')->andReturn($request);
+        $records
+            ? $funding->shouldReceive('recordDisbursement')->once()->with('a', Mockery::on(fn ($data) => $data['amount'] === $amount), 'admin-1')->andReturn($request)
+            : $funding->shouldNotReceive('recordDisbursement');
+        $this->mock(FundQueue::class, function ($mock) {
+            $mock->shouldReceive('rowFor')->with('a')->andReturn(['id' => 'a', 'position' => 1, 'covered' => true, 'ready' => true, 'short' => 0.0]);
+            $mock->shouldReceive('refresh');
+        });
+        $this->mock(IotService::class, fn ($mock) => $mock->shouldReceive('getBalance')->andReturn(18000.0));
+        $this->mock(TransactionLog::class, fn ($mock) => $records
+            ? $mock->shouldReceive('record')->once()->with('transferred', $request, $amount, Mockery::type('array'))
+            : $mock->shouldNotReceive('record'));
+        $this->actingAs(new FirebaseUser(['id' => 'admin-1', 'fname' => 'Jo', 'lname' => 'Admin', 'role' => 'admin']));
+
+        return $this->post(route('admin.fund-request.disbursement', 'a'), array_filter([
+            'method' => 'e_wallet', 'amount' => $amount, 'released_at' => now()->toDateString(), 'reference_no' => 'GC-123',
+            'proof' => UploadedFile::fake()->createWithContent('slip.pdf', "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF"),
+        ], fn ($value) => $value !== null));
+    }
+
+    public function test_the_amount_chosen_with_the_buttons_is_released(): void
+    {
+        $this->release(10500.0, true)->assertRedirect()->assertSessionHasNoErrors();
+    }
+
+    public function test_no_manual_release_while_a_xendit_transfer_is_on_its_way(): void
+    {
+        $funding = $this->mock(FundingService::class);
+        $funding->shouldReceive('getRequestById')->with('a')->andReturn($this->approved('a', 12000, '2026-10-01T09:00:00+08:00', [
+            'disbursement' => ['method' => 'e_wallet', 'provider' => 'GCash', 'account_name' => 'Home a', 'account_number' => '09171234567', 'payout' => ['status' => 'processing']],
+        ]));
+        $funding->shouldNotReceive('recordDisbursement');
+        $this->mock(FundQueue::class, fn ($mock) => $mock->shouldReceive('rowFor')->andReturn(['id' => 'a', 'position' => 1, 'covered' => true, 'ready' => true, 'short' => 0.0]));
+        $this->actingAs(new FirebaseUser(['id' => 'admin-1', 'fname' => 'Jo', 'lname' => 'Admin', 'role' => 'admin']));
+
+        $this->post(route('admin.fund-request.disbursement', 'a'), ['method' => 'e_wallet', 'amount' => 12000, 'released_at' => now()->toDateString(), 'reference_no' => 'GC-1'])
+            ->assertRedirect(route('admin.fund-request.show', 'a') . '#release')
+            ->assertSessionHas('alert_error', fn ($message) => str_starts_with($message, 'A transfer through Xendit is on its way'));
+    }
+
+    public function test_the_release_cannot_be_more_than_approved_or_empty(): void
+    {
+        $this->release(12100.0, false)->assertSessionHasErrors(['amount' => 'The released amount cannot exceed the approved amount.']);
+        $this->release(null, false)->assertSessionHasErrors(['amount' => 'Choose the amount released with the amount buttons.']);
     }
 
     public function test_the_transaction_log_is_chained_and_cannot_be_changed_unnoticed(): void

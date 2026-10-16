@@ -260,23 +260,82 @@
             @elseif ($stage['key'] === 'to_release' && ($line ?? null) && ! $line['covered'])
                 <p>The donations on hand go to the requests approved before this one first (first come, first served): @if ($line['known'] ?? true)<strong>{{ $peso($line['short']) }}</strong> more is needed.@else the donation total cannot be read right now.@endif You will get a notification when it is ready to transfer.</p>
             @elseif ($stage['key'] === 'to_release')
-                <p class="proc-ready">Ready: {{ $peso($view['granted'] ?? $view['amount']) }} of the donations on hand is set aside for this request. Transfer it, then record it here.</p>
-                <form method="POST" action="{{ route('admin.fund-request.disbursement', $view['id']) }}" enctype="multipart/form-data" class="admin-form-grid proc-form">
-                    @csrf
-                    <input type="hidden" name="method" value="bank_transfer">
-                    <div class="admin-field"><label for="amount">Amount released (₱)</label><input id="amount" type="number" name="amount" step="0.01" min="1" max="{{ $view['granted'] ?? $view['amount'] }}" required value="{{ old('amount', $view['granted'] ?? $view['amount']) }}"></div>
-                    <div class="admin-field"><label for="released_at">Date released</label><input id="released_at" type="date" name="released_at" required max="{{ now()->toDateString() }}" value="{{ old('released_at', now()->toDateString()) }}"></div>
-                    <div class="admin-field"><label for="reference_no">Transfer reference no.</label><input id="reference_no" name="reference_no" maxlength="120" required value="{{ old('reference_no') }}"></div>
-                    <div class="admin-field"><label for="proof">Proof (transfer slip)</label><input id="proof" type="file" name="proof" required accept=".jpg,.jpeg,.png,.pdf" style="height:auto;padding:9px"></div>
-                    <div class="admin-field" style="grid-column:1/-1"><label for="release_notes">Notes <span style="font-weight:400">(optional)</span></label><input id="release_notes" name="notes" maxlength="2000" value="{{ old('notes') }}"></div>
-                    <div class="proc-actions"><button class="admin-button success" type="submit">Record release & request liquidation</button></div>
-                </form>
+                @php($payoutState = $transfer['payout']['status'] ?? null)
+                @php($account = trim(($transfer['provider'] ?? $disbursement['provider'] ?? '') . ' · ' . ($disbursement['account_name'] ?? '') . ' · ' . ($disbursement['account_number'] ?? ''), ' ·'))
+                @if ($payoutState === 'processing')
+                    {{-- Sent through Xendit: waiting for the bank or e-wallet. --}}
+                    <div class="proc-transfer is-processing" role="status">
+                        <strong>{{ $peso($transfer['payout']['amount'] ?? $transfer['amount']) }} is on its way to {{ $account }}</strong>
+                        <p>Sent through {{ $transfer['mode_label'] }} {{ \Carbon\Carbon::parse($transfer['payout']['requested_at'])->diffForHumans() }}. The release is recorded here automatically when the bank or e-wallet confirms it.</p>
+                        <small>Provider reference {{ $transfer['payout']['payout_id'] ?? '—' }} · {{ $transfer['payout']['provider_status'] ?? 'PENDING' }}</small>
+                        <form method="POST" action="{{ route('admin.payout.sync', $view['id']) }}">@csrf<button class="admin-button" type="submit">↻ Check transfer status</button></form>
+                    </div>
+                @elseif ($transfer && $transfer['code_sent'] && $transfer['ready'])
+                    {{-- Step 2 of sending: the code emailed to this admin. --}}
+                    <form method="POST" action="{{ route('admin.payout.confirm', $view['id']) }}" class="proc-transfer">
+                        @csrf
+                        <strong>Send {{ $peso($transfer['amount']) }} to {{ $account }}</strong>
+                        <p>We emailed you a 6-digit code. Enter it to send the money through {{ $transfer['mode_label'] }}. Money that is sent cannot be taken back.</p>
+                        <div class="admin-field"><label for="payout-code">Code from your email</label><input id="payout-code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required autofocus></div>
+                        <div class="admin-actions"><button class="admin-button" name="cancel" value="1" formnovalidate>Cancel</button><button class="admin-button success" type="submit">Send {{ $peso($transfer['amount']) }}</button></div>
+                    </form>
+                @else
+                    <p class="proc-ready">Ready: {{ $peso($view['granted'] ?? $view['amount']) }} of the donations on hand is set aside for this request. Send it through Xendit, or send it yourself and record it.</p>
+                    <form method="POST" action="{{ route('admin.fund-request.disbursement', $view['id']) }}" enctype="multipart/form-data" class="admin-form-grid proc-form" id="release-form">
+                        @csrf
+                        <input type="hidden" name="method" value="bank_transfer">
+                        {{-- Set with the quick-amount buttons only: the field cannot be clicked or typed in. --}}
+                        <div class="admin-field" style="grid-column:1/-1"><label for="amount">Amount released (₱)</label><input id="amount" type="number" name="amount" step="0.01" min="1" max="{{ $view['granted'] ?? $view['amount'] }}" required readonly tabindex="-1" data-amount-buttons value="{{ old('amount', $view['granted'] ?? $view['amount']) }}" aria-describedby="amount-hint"><p class="admin-field-hint" id="amount-hint">Starts at the approved amount, {{ $peso($view['granted'] ?? $view['amount']) }}. Change it with the buttons: Clear, then add. It cannot be typed.</p></div>
+
+                        {{-- 1. Send it now through the payout provider (Xendit), to the requester's account. --}}
+                        @if ($transfer)
+                            <div class="proc-transfer" style="grid-column:1/-1">
+                                <strong>Send through Xendit</strong>
+                                <dl class="proc-facts">
+                                    <div><dt>To</dt><dd>{{ $account }}</dd></div>
+                                    <div><dt>Sent through</dt><dd>{{ $transfer['enabled'] ? $transfer['mode_label'] : 'Xendit is not connected yet' }}@if ($transfer['enabled'] && $transfer['channel']) · channel {{ $transfer['channel'] }}@endif</dd></div>
+                                    @if ($transfer['balance'] !== null)<div><dt>Payout account</dt><dd>{{ $peso($transfer['balance']) }} {{ $transfer['mode'] === 'live' ? '(real money)' : '(practice money)' }}</dd></div>@endif
+                                </dl>
+                                @if ($payoutState === 'failed')
+                                    <p class="proc-transfer-failed">The last transfer did not go through ({{ $transfer['payout']['failure_code'] ?? $transfer['payout']['provider_status'] ?? 'failed' }}). Check the account details, then try again or send it yourself.</p>
+                                @endif
+                                @if ($transfer['ready'])
+                                    <button class="admin-button success" type="submit" formaction="{{ route('admin.payout.start', $view['id']) }}" formnovalidate data-confirm-payout data-payout-to="{{ $account }}">➤ Send through Xendit</button>
+                                    <small>You confirm with a code emailed to you. The status shows here.</small>
+                                @else
+                                    <button class="admin-button" type="button" disabled>➤ Send through Xendit</button>
+                                    <ul class="proc-transfer-problems">@foreach ($transfer['problems'] as $problem)<li>{{ $problem }}</li>@endforeach</ul>
+                                @endif
+                            </div>
+                        @endif
+
+                        {{-- 2. Or record a transfer made outside the system. --}}
+                        <details class="proc-manual" style="grid-column:1/-1" @if (! ($transfer['enabled'] ?? false) || $errors->hasAny(['released_at', 'reference_no', 'proof', 'notes'])) open @endif>
+                            <summary>{{ ($transfer['enabled'] ?? false) ? 'Sent it yourself? Record the transfer' : 'Record the transfer' }}</summary>
+                            <div class="admin-form-grid">
+                                <div class="admin-field"><label for="released_at">Date released</label><input id="released_at" type="date" name="released_at" required max="{{ now()->toDateString() }}" value="{{ old('released_at', now()->toDateString()) }}"></div>
+                                <div class="admin-field"><label for="reference_no">Transfer reference no.</label><input id="reference_no" name="reference_no" maxlength="120" required value="{{ old('reference_no') }}"></div>
+                                <div class="admin-field"><label for="proof">Proof (transfer slip)</label><input id="proof" type="file" name="proof" required accept=".jpg,.jpeg,.png,.pdf" style="height:auto;padding:9px"></div>
+                                <div class="admin-field"><label for="release_notes">Notes <span style="font-weight:400">(optional)</span></label><input id="release_notes" name="notes" maxlength="2000" value="{{ old('notes') }}"></div>
+                                <div class="proc-actions" style="grid-column:1/-1"><button class="admin-button" type="submit">Record release & request liquidation</button></div>
+                            </div>
+                        </details>
+                    </form>
+                @endif
             @else
                 <dl class="proc-facts">
                     <div><dt>Released</dt><dd>{{ $peso($disbursement['amount']) }} · {{ $day($disbursement['released_at']) }} · ref. {{ $disbursement['reference_no'] ?? '—' }} · by {{ $disbursement['recorded_by'] ?? 'admin' }}</dd></div>
+                    @if (($transfer['payout']['status'] ?? null) === 'succeeded')<div><dt>Sent through</dt><dd>{{ app(\App\Services\Payouts\PayoutService::class)->modeLabel($transfer['payout']['mode'] ?? 'manual') }} · {{ \Carbon\Carbon::parse($transfer['payout']['completed_at'] ?? $transfer['payout']['requested_at'])->format('M d, Y g:i A') }}</dd></div>@endif
                     @if ($disbursement['proof'])<div><dt>Proof</dt><dd><a class="admin-button" href="{{ $disbursement['proof']['url'] }}" target="_blank" rel="noopener">Open proof</a></dd></div>@endif
                 </dl>
                 <div class="proc-next"><button type="button" class="admin-button" data-tab-go="liquidation">Next: liquidation →</button></div>
+            @endif
+            {{-- The money record stays on this step: every send, failure and release for this request. --}}
+            @if (($transactions ?? []) !== [])
+                <details class="proc-change" @if (in_array($transfer['payout']['status'] ?? null, ['processing', 'failed'], true)) open @endif>
+                    <summary>Transactions for this request ({{ count($transactions) }})</summary>
+                    @include('partials.transactions', ['transactions' => $transactions, 'withRequest' => false])
+                </details>
             @endif
             @if ($view['beneficiaries'])
                 <details class="proc-change"><summary>People who will receive the help ({{ count($view['beneficiaries']) }})</summary><ol style="columns:2;font-size:12px;padding-left:20px">@foreach ($view['beneficiaries'] as $name)<li>{{ $name }}</li>@endforeach</ol></details>

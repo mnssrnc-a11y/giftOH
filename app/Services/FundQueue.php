@@ -129,7 +129,7 @@ class FundQueue
             $to = trim(($disbursement['provider'] ?? $disbursement['bank_name'] ?? 'the account') . ' · ' . ($disbursement['account_name'] ?? ''), ' ·');
             $this->notifications->notifyAdmins($row['id'], 'funds_ready', 'Funds ready · transfer now',
                 '₱' . number_format($row['amount'], 2) . " for {$row['organization']} is covered by the donations on hand (#{$row['position']} in line). "
-                . "Transfer it to {$to}, then record the transfer.");
+                . "Send it to {$to} with \"Send through Xendit\" on its Release step, or transfer it yourself and record it.");
             $this->ledger->record('set_aside', $row['request'], $row['amount'], [
                 'position' => $row['position'],
                 'funds_on_hand' => round((float) $state['balance'], 2),

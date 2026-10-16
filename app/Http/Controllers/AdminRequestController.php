@@ -11,9 +11,12 @@ use App\Services\FundingRules;
 use App\Services\FundingService;
 use App\Services\FundQueue;
 use App\Services\IotService;
+use App\Services\Payouts\PayoutException;
+use App\Services\Payouts\PayoutService;
 use App\Services\TransactionLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -34,10 +37,26 @@ class AdminRequestController extends Controller
     ) {
     }
 
-    public function show(string $id, IotService $iot, FundQueue $queue)
+    public function show(string $id, IotService $iot, FundQueue $queue, PayoutService $payouts)
     {
         $request = $this->funding->getRequestById($id);
         abort_if($request === null, 404);
+        // Cancelled by the requester: the process stopped and it left the admins' list (an older
+        // notification may still point here). The super admin keeps the record.
+        if ($this->funding->statusOf($request) === 'cancelled') {
+            return redirect()->to(route('admin') . '#funding')
+                ->with('status', ($request['org_name'] ?? 'This organization') . ' cancelled that request. It is no longer on your list; the super admin keeps its record.');
+        }
+
+        // A transfer in progress: ask the provider how it ended (at most every 15 seconds).
+        if (($request['disbursement']['payout']['status'] ?? null) === 'processing' && Cache::add("payout-sync:{$id}", true, 15)) {
+            try {
+                $payouts->sync($id);
+                $request = $this->funding->getRequestById($id) ?? $request;
+            } catch (PayoutException $exception) {
+                report($exception);
+            }
+        }
 
         $queue->refreshSoon();
         $view = $this->presenter->present($request, forAdmin: true);
@@ -47,8 +66,36 @@ class AdminRequestController extends Controller
         $this->messages->markRead($id, 'staff');
         $line = $queue->rowFor($id);
         $transactions = $this->ledger->latest($id);
+        $transfer = $this->transferFor($request, $view, $payouts);
 
-        return view('adminPage.request-show', compact('view', 'pendingCount', 'availableFunds', 'thread', 'line', 'transactions'));
+        return view('adminPage.request-show', compact('view', 'pendingCount', 'availableFunds', 'thread', 'line', 'transactions', 'transfer'));
+    }
+
+    /**
+     * Release step: sending through the payout provider (Xendit). Null when it is not that time,
+     * or when the provider cannot be reached (the transfer can still be recorded by hand).
+     */
+    private function transferFor(array $request, array $view, PayoutService $payouts): ?array
+    {
+        if (! in_array($view['stage']['key'], ['to_release', 'released'], true) && empty($view['disbursement']['payout'])) {
+            return null;
+        }
+        $id = (string) $request['id'];
+        $codeSent = session('pending_payout') === $id;
+        try {
+            return $payouts->readiness($request, $codeSent ? session('pending_payout_amount') : null) + [
+                'enabled' => $payouts->enabled(),
+                'code_sent' => $codeSent,
+                'mode' => $payouts->mode(),
+                'mode_label' => $payouts->modeLabel($payouts->mode()),
+                // Only while it can still be sent (no call to the provider for released requests).
+                'balance' => $view['stage']['key'] === 'to_release' ? $payouts->balance() : null,
+            ];
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return null;
+        }
     }
 
     public function scheduleInterview(Request $request, string $id)
@@ -188,6 +235,17 @@ class AdminRequestController extends Controller
                 : 'The foundation\'s funds could not be read right now. Try again shortly.');
         }
 
+        if ($granted <= 0) {
+            return redirect()->route('admin.fund-request.show', $id)->with('alert_error', 'This request has no approved amount to release.');
+        }
+        // Never pay twice: not while a transfer through Xendit is on its way, or after it went through.
+        $payoutStatus = $fundRequest['disbursement']['payout']['status'] ?? null;
+        if (in_array($payoutStatus, ['processing', 'succeeded'], true)) {
+            return redirect()->to(route('admin.fund-request.show', $id) . '#release')->with('alert_error', $payoutStatus === 'processing'
+                ? 'A transfer through Xendit is on its way for this request. Wait until it goes through or fails before recording a release by hand.'
+                : 'This request was already paid through Xendit; its release is recorded automatically.');
+        }
+
         $validated = $request->validate([
             'method' => ['required', Rule::in(array_keys(config('funding.disbursement_methods')))],
             'amount' => "required|numeric|min:1|max:{$granted}",
@@ -196,6 +254,7 @@ class AdminRequestController extends Controller
             'notes' => 'nullable|string|max:2000',
             'proof' => 'required|' . config('funding.document_rules'),
         ], [
+            'amount.required' => 'Choose the amount released with the amount buttons.',
             'amount.max' => 'The released amount cannot exceed the approved amount.',
             'reference_no.required' => 'Enter the bank transfer reference number.',
             'proof.required' => 'Upload the bank transfer slip.',

@@ -59,7 +59,7 @@
     @if ($key === 'dashboard')
     <div class="sa-grid">
         <article class="sa-card" data-tour="awaiting">
-            <div class="sa-card-head"><div><h2>Requests needing your decision</h2><p>Reviewed by an admin and waiting for you. Open one for the final check.</p></div><a class="sa-link" href="#requests">View all ↗</a></div>
+            <div class="sa-card-head"><div><h2>Requests needing your decision</h2><p>Reviewed by an admin and waiting for you, and cancellations to confirm. Open one for the final check.</p></div><a class="sa-link" href="#requests">View all ↗</a></div>
             <div class="sa-table-wrap"><table class="sa-table"><thead><tr><th>Organization / reviewed by</th><th>Amount</th><th>Review</th></tr></thead><tbody data-sa-request-preview></tbody></table></div>
         </article>
         <article class="sa-card">
@@ -175,7 +175,7 @@
     <article class="sa-card"><div class="sa-card-head"><h2>Audit events</h2><a class="sa-link" href="#activity">Full log ↗</a></div><div class="sa-card-body">{!! $eventList(8) !!}</div></article>
 
     @elseif ($key === 'requests')
-    <article class="sa-card"><div class="sa-card-head"><h2>All fund requests</h2><span class="sa-badge amber">{{ $outcomes['awaiting'] }} awaiting you</span></div><div class="sa-toolbar"><input type="search" data-sa-request-search placeholder="Search organization, administrator, or category" aria-label="Search fund requests"><select data-sa-request-filter aria-label="Filter request status"><option value="">All statuses</option><option>Awaiting you</option><option>With admins</option><option>Approved</option><option>Completed</option><option>Rejected</option><option>Cancelled</option></select></div><div class="sa-table-wrap"><table class="sa-table"><thead><tr><th>Request / requester</th><th>Category</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody data-sa-requests></tbody></table></div></article>
+    <article class="sa-card"><div class="sa-card-head"><h2>All fund requests</h2><span class="sa-badge amber">{{ $outcomes['awaiting'] }} awaiting you</span></div><div class="sa-toolbar"><input type="search" data-sa-request-search placeholder="Search organization, administrator, or category" aria-label="Search fund requests"><select data-sa-request-filter aria-label="Filter request status"><option value="">All statuses</option><option>Awaiting you</option><option>Confirm cancellation</option><option>With admins</option><option>Approved</option><option>Completed</option><option>Rejected</option><option>Cancelled</option></select></div><div class="sa-table-wrap"><table class="sa-table"><thead><tr><th>Request / requester</th><th>Category</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody data-sa-requests></tbody></table></div></article>
 
     @elseif ($key === 'activity')
     <article class="sa-card"><div class="sa-card-head"><h2>Activity log</h2><span class="sa-badge gray">{{ count($logs) }} recent event(s)</span></div>

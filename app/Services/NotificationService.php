@@ -114,7 +114,7 @@ class NotificationService
         'user' => [
             'interview_scheduled' => 'progress', 'document_resubmit' => 'documents', 'message' => 'messages',
             'funding_approved' => 'release', 'funding_denied' => 'progress', 'funds_released' => 'liquidation',
-            'liquidation_returned' => 'liquidation', 'liquidation_verified' => 'history',
+            'liquidation_returned' => 'liquidation', 'liquidation_verified' => 'history', 'cancellation_confirmed' => 'progress',
         ],
         'admin' => [
             'new_request' => 'interview', 'interview_response' => 'interview', 'document_uploaded' => 'documents',
@@ -123,7 +123,7 @@ class NotificationService
             'payout_succeeded' => 'liquidation', 'liquidation_submitted' => 'liquidation',
         ],
         'super_admin' => [
-            'awaiting_final' => 'decision', 'request_cancelled' => 'decision', 'message' => 'messages',
+            'awaiting_final' => 'decision', 'request_cancelled' => 'cancellation', 'message' => 'messages',
             'beneficiaries_submitted' => 'transfer', 'payout_succeeded' => 'transfer', 'payout_failed' => 'transfer',
         ],
     ];

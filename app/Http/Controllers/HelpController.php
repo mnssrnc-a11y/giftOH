@@ -25,6 +25,10 @@ class HelpController extends Controller
         if (collect($tutorials)->contains('record', true)) {
             try {
                 $requests = $role === 'user' ? $funding->getRequestsByUser(Auth::id()) : $funding->getAllRequests();
+                if ($role === 'admin') {
+                    // Cancelled requests are no longer the admins' to open.
+                    $requests = array_filter($requests, fn (array $r): bool => $funding->statusOf($r) !== 'cancelled');
+                }
                 $latest = collect($requests)->sortByDesc(fn ($r) => $r['created_at'] ?? '')->first()['id'] ?? null;
             } catch (\Throwable $e) {
                 report($e);

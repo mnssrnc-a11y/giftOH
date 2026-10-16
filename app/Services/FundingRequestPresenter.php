@@ -49,6 +49,10 @@ class FundingRequestPresenter
             $view['final_notes'] = null;
             $view['staff_notes'] = [];
             $view['need']['basis'] = null;
+            if ($view['cancelled']) {
+                $view['cancelled']['confirmed_by'] = null;
+                $view['cancelled']['confirm_note'] = null;
+            }
         }
 
         return $view;
@@ -107,6 +111,10 @@ class FundingRequestPresenter
                 'at' => $request['cancelled_at'],
                 'reason' => $request['cancel_reason'] ?? null,
                 'stage' => $request['cancelled_stage'] ?? null,
+                // The super admin confirms it; until then the requester cannot ask again.
+                'confirmed_at' => $request['cancel_confirmed_at'] ?? null,
+                'confirmed_by' => $this->nameOf($request['cancel_confirmed_by'] ?? null),
+                'confirm_note' => $request['cancel_confirm_note'] ?? null,
             ] : null,
             'documents' => $this->documents($request),
             'documents_verified' => $this->funding->documentsVerified($request),
@@ -293,6 +301,7 @@ class FundingRequestPresenter
             [$request['rejected_at'] ?? null, 'Rejected', $forAdmin ? ($request['final_notes'] ?? $request['admin_notes'] ?? null) : $this->rejectionReason($request)],
             [$disbursement['recorded_at'] ?? null, 'Funds released', isset($disbursement['amount']) ? '₱' . number_format((float) $disbursement['amount'], 2) . ' · ' . (config('funding.disbursement_methods.' . ($disbursement['method'] ?? '')) ?? '') : null],
             [$request['cancelled_at'] ?? null, 'Cancelled by the requester', $request['cancel_reason'] ?? null],
+            [$request['cancel_confirmed_at'] ?? null, 'Cancellation confirmed by the super admin', $forAdmin ? ($request['cancel_confirm_note'] ?? null) : null],
         ];
         foreach ((array) ($request['appeal_history'] ?? []) as $appeal) {
             $previous = (array) ($appeal['previous_assessment'] ?? []);

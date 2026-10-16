@@ -20,7 +20,8 @@ if (root) {
         amount: row.amount,
         adminAmount: row.admin_amount,
         granted: row.granted,
-        status: STATUS[row.status] ?? row.status,
+        // A cancellation the requester made waits for the super admin to confirm it.
+        status: row.status === 'cancelled' && !row.cancel_confirmed ? 'Confirm cancellation' : (STATUS[row.status] ?? row.status),
         stage: row.stage?.label ?? '',
         admin: row.review?.[0]?.by ?? null,
         adminDecision: row.admin_decision,
@@ -30,15 +31,17 @@ if (root) {
 
     const dialog = $('[data-sa-dialog]');
     const content = $('[data-sa-dialog-content]');
-    const badge = status => `<span class="sa-badge ${status === 'Awaiting you' ? 'amber' : ['Rejected', 'Cancelled', 'Disabled'].includes(status) ? 'red' : ['With admins'].includes(status) ? 'gray' : ''}">${escape(status)}</span>`;
+    const badge = status => `<span class="sa-badge ${['Awaiting you', 'Confirm cancellation'].includes(status) ? 'amber' : ['Rejected', 'Cancelled', 'Disabled'].includes(status) ? 'red' : ['With admins'].includes(status) ? 'gray' : ''}">${escape(status)}</span>`;
     const open = html => { content.innerHTML = html; if (!dialog.open) dialog.showModal(); content.querySelector('input:not([type=hidden]),select,textarea,button')?.focus(); };
     const actions = text => `<div class="sa-actions"><button type="button" class="sa-button secondary" data-sa-close>Cancel</button><button class="sa-button" type="submit">${escape(text)}</button></div>`;
     const empty = columns => `<tr><td colspan="${columns}" class="sa-empty">No matches found. Try another search or filter.</td></tr>`;
 
     function renderRequests() {
         const preview = $('[data-sa-request-preview]');
-        if (preview) preview.innerHTML = requests.filter(r => r.status === 'Awaiting you').slice(0, 5)
-            .map(r => `<tr><td><strong>${escape(r.title)}</strong><small>${r.admin ? `Reviewed by ${escape(r.admin)}` : escape(r.stage)}</small></td><td>${money(r.adminAmount ?? r.amount)}</td><td><a class="sa-link" href="${escape(r.url)}">Review ↗</a></td></tr>`).join('')
+        if (preview) preview.innerHTML = requests.filter(r => ['Awaiting you', 'Confirm cancellation'].includes(r.status)).slice(0, 5)
+            .map(r => r.status === 'Confirm cancellation'
+                ? `<tr><td><strong>${escape(r.title)}</strong><small>Cancelled by the requester · confirm it</small></td><td>${money(r.granted ?? r.adminAmount ?? r.amount)}</td><td><a class="sa-link" href="${escape(r.url)}#cancellation">Confirm ↗</a></td></tr>`
+                : `<tr><td><strong>${escape(r.title)}</strong><small>${r.admin ? `Reviewed by ${escape(r.admin)}` : escape(r.stage)}</small></td><td>${money(r.adminAmount ?? r.amount)}</td><td><a class="sa-link" href="${escape(r.url)}">Review ↗</a></td></tr>`).join('')
             || '<tr><td colspan="3" class="sa-empty">Nothing is waiting for your decision.</td></tr>';
 
         const body = $('[data-sa-requests]');
@@ -47,7 +50,7 @@ if (root) {
         const status = $('[data-sa-request-filter]')?.value ?? '';
         body.innerHTML = requests
             .filter(r => [r.title, r.requester, r.admin, r.category, r.id].join(' ').toLowerCase().includes(q) && (!status || status === r.status))
-            .map(r => `<tr><td><a class="sa-row-link" href="${escape(r.url)}"><strong>${escape(r.title)}</strong></a><small>${escape(r.requester)}${r.admin ? ` · ${escape(r.admin)} ${r.adminDecision === 'approved' ? 'recommends approval' : 'recommends rejection'}` : ''}</small></td><td>${escape(r.category)}</td><td>${money(r.amount)}${r.adminAmount != null && r.status === 'Awaiting you' ? `<small>${money(r.adminAmount)} recommended</small>` : ''}${r.granted != null ? `<small>${money(r.granted)} granted</small>` : ''}</td><td>${badge(r.status)}<small>${escape(r.stage)}</small></td><td><a class="sa-link" href="${escape(r.url)}">${r.status === 'Awaiting you' ? 'Review' : 'View'} ↗</a></td></tr>`)
+            .map(r => `<tr><td><a class="sa-row-link" href="${escape(r.url)}"><strong>${escape(r.title)}</strong></a><small>${escape(r.requester)}${r.admin ? ` · ${escape(r.admin)} ${r.adminDecision === 'approved' ? 'recommends approval' : 'recommends rejection'}` : ''}</small></td><td>${escape(r.category)}</td><td>${money(r.amount)}${r.adminAmount != null && r.status === 'Awaiting you' ? `<small>${money(r.adminAmount)} recommended</small>` : ''}${r.granted != null ? `<small>${money(r.granted)} granted</small>` : ''}</td><td>${badge(r.status)}<small>${escape(r.stage)}</small></td><td><a class="sa-link" href="${escape(r.url)}${r.status === 'Confirm cancellation' ? '#cancellation' : ''}">${r.status === 'Awaiting you' ? 'Review' : r.status === 'Confirm cancellation' ? 'Confirm' : 'View'} ↗</a></td></tr>`)
             .join('') || empty(5);
     }
 

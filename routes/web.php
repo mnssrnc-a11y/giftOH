@@ -111,6 +111,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/admin/fund-request/{id}/documents/{field}/review', [AdminRequestController::class, 'reviewDocument'])->name('admin.fund-request.document-review');
     Route::post('/admin/fund-request/{id}/ai-score', [AdminRequestController::class, 'rescore'])->name('admin.fund-request.ai-score');
     Route::post('/admin/fund-request/{id}/disbursement', [AdminRequestController::class, 'recordDisbursement'])->name('admin.fund-request.disbursement');
+    // Release step: send the amount released through the payout provider (Xendit), confirmed with an emailed code.
+    Route::post('/admin/fund-request/{id}/payout', [PayoutController::class, 'start'])->middleware('throttle:5,10,admin.payout.start')->name('admin.payout.start');
+    Route::post('/admin/fund-request/{id}/payout/confirm', [PayoutController::class, 'confirm'])->middleware('throttle:10,10,admin.payout.confirm')->name('admin.payout.confirm');
+    Route::post('/admin/fund-request/{id}/payout/sync', [PayoutController::class, 'sync'])->middleware('throttle:30,1,admin.payout.sync')->name('admin.payout.sync');
     Route::post('/admin/fund-request/{id}/liquidation', [AdminRequestController::class, 'reviewLiquidation'])->name('admin.fund-request.liquidation');
     Route::post('/admin/fund-request/{id}/action', [AdminController::class, 'initiateApprovalAction'])->name('admin.fund-request.action');
     Route::post('/admin/posts', [AdminController::class, 'storePost'])->name('admin.posts.store');
@@ -123,6 +127,8 @@ Route::middleware(['auth', 'role:super_admin'])->group(function () {
     // Full request (requester, documents, assessment and amount needed, notes, conversation) for the final check.
     Route::get('/superadmin/fund-request/{id}', [SuperAdminController::class, 'showRequest'])->name('superadmin.fund-request.show');
     Route::post('/superadmin/fund-request/{id}/finalize', [SuperAdminController::class, 'finalize'])->name('superadmin.fund-request.finalize');
+    // Confirm a requester's cancellation: the record stays, and the requester may send a new request.
+    Route::post('/superadmin/fund-request/{id}/confirm-cancellation', [SuperAdminController::class, 'confirmCancellation'])->name('superadmin.fund-request.confirm-cancellation');
     // Automatic transfer of the approved funds, confirmed with an emailed code.
     Route::post('/superadmin/fund-request/{id}/payout', [PayoutController::class, 'start'])->middleware('throttle:5,10,superadmin.payout.start')->name('superadmin.payout.start');
     Route::post('/superadmin/fund-request/{id}/payout/confirm', [PayoutController::class, 'confirm'])->middleware('throttle:10,10,superadmin.payout.confirm')->name('superadmin.payout.confirm');

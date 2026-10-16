@@ -58,17 +58,30 @@ class PayoutService
         return app(PayoutGateway::class);
     }
 
+    /**
+     * The payout channel of a bank / e-wallet. Names are matched ignoring case, spaces and dots
+     * ("Gcash", "GCASH" and "G-Cash" are GCash), so an account saved with a slightly different
+     * spelling can still be sent to. A channel saved in System settings comes before the default.
+     */
     public function channelFor(?string $provider): ?string
     {
-        if ($provider === null) {
+        $key = fn (?string $name): string => preg_replace('/[^a-z0-9]/', '', strtolower((string) $name));
+        $wanted = $key($provider);
+        if ($wanted === '') {
             return null;
         }
         if (config('payouts.driver') === 'sandbox') {
-            return collect($this->gateway()->channels())->firstWhere('name', $provider)['code'] ?? null;
+            return collect($this->gateway()->channels())->first(fn (array $channel) => $key($channel['name'] ?? '') === $wanted)['code'] ?? null;
         }
-        $code = $this->settings->payoutChannels()[$provider] ?? ((array) config('payouts.channels', []))[$provider] ?? null;
+        foreach ([$this->settings->payoutChannels(), (array) config('payouts.channels', [])] as $channels) {
+            foreach ($channels as $name => $code) {
+                if ($key((string) $name) === $wanted) {
+                    return filled($code) ? (string) $code : null;
+                }
+            }
+        }
 
-        return filled($code) ? (string) $code : null;
+        return null;
     }
 
     /**
@@ -106,14 +119,16 @@ class PayoutService
     /**
      * @return array{ready: bool, problems: string[], amount: float, channel: ?string, provider: ?string, payout: array}
      */
-    public function readiness(array $request): array
+    public function readiness(array $request, ?float $amount = null): array
     {
         $stage = $this->funding->stageOf($request);
         $disbursement = (array) ($request['disbursement'] ?? []);
         $payout = (array) ($disbursement['payout'] ?? []);
         $provider = $disbursement['provider'] ?? $disbursement['bank_name'] ?? null;
         $channel = $this->channelFor($provider);
-        $amount = (float) ($request['approved_amount'] ?? 0);
+        $approved = (float) ($request['approved_amount'] ?? 0);
+        // The amount released (chosen on the admin's Release step), or the whole approved amount.
+        $amount = round($amount ?? $approved, 2);
 
         $problems = [];
         if (! $this->enabled()) {
@@ -127,8 +142,12 @@ class PayoutService
         if (in_array($payout['status'] ?? null, ['processing', 'succeeded'], true)) {
             $problems[] = 'A transfer for this request is already ' . $payout['status'] . '.';
         }
-        if ($amount <= 0) {
+        if ($approved <= 0) {
             $problems[] = 'There is no approved amount to send.';
+        } elseif ($amount <= 0) {
+            $problems[] = 'Choose the amount to send.';
+        } elseif ($amount > $approved + 0.005) {
+            $problems[] = 'The amount cannot be more than the approved ₱' . number_format($approved, 2) . '.';
         }
         if ($channel === null) {
             $problems[] = "Automatic transfer to {$provider} is not set up. Choose its payout channel in System settings → Bank transfers, or send it from the foundation's account and record the release.";
@@ -158,18 +177,19 @@ class PayoutService
             $problems[] = 'The payout account has ₱' . number_format($balance, 2) . '. Add money to it to send ₱' . number_format($amount, 2) . '.';
         }
 
-        return ['ready' => $problems === [], 'problems' => $problems, 'amount' => $amount, 'channel' => $channel, 'provider' => $provider, 'payout' => $payout];
+        return ['ready' => $problems === [], 'problems' => $problems, 'amount' => $amount, 'approved' => $approved, 'channel' => $channel, 'provider' => $provider, 'payout' => $payout];
     }
 
     /**
-     * Send the approved amount. Call only after the super admin confirmed with the emailed code.
+     * Send the amount released (by default the whole approved amount). Call only after the admin
+     * or super admin confirmed with the code emailed to them.
      *
      * @throws PayoutException
      */
-    public function send(string $requestId, string|int $userId): array
+    public function send(string $requestId, string|int $userId, ?float $amount = null): array
     {
         $request = $this->funding->getRequestById($requestId) ?? throw new PayoutException('The request was not found.');
-        $check = $this->readiness($request);
+        $check = $this->readiness($request, $amount);
         if (! $check['ready']) {
             throw new PayoutException($check['problems'][0]);
         }
@@ -303,8 +323,9 @@ class PayoutService
             }
             $failure = (string) ($failureCode ?: $status);
             $this->funding->setPayout($requestId, array_merge($payout, ['status' => 'failed', 'provider_status' => $status, 'failure_code' => $failure, 'completed_at' => now()->toIso8601String()]));
-            $this->notifications->notifySuperAdmins($requestId, 'payout_failed', 'Transfer did not go through',
-                "The transfer to {$organization} ended as {$status} ({$failure})." . ($status === 'REVERSED' ? ' It was returned after it had succeeded: check the account and the release record.' : ' Check the account details, then try again or send it manually.'));
+            $failed = "The transfer to {$organization} ended as {$status} ({$failure})." . ($status === 'REVERSED' ? ' It was returned after it had succeeded: check the account and the release record.' : ' Check the account details, then try again or send it manually.');
+            $this->notifications->notifySuperAdmins($requestId, 'payout_failed', 'Transfer did not go through', $failed);
+            $this->notifications->notifyAdmins($requestId, 'payout_failed', 'Transfer did not go through', $failed);
             $this->audit->record('funding', "Automatic transfer {$status}: {$failure}", $requestId, ['payout_id' => $payoutId]);
             $this->ledger->record('payout_failed', $request, $amount, ['status' => $status, 'failure_code' => $failure, 'payout_id' => $payoutId, 'mode' => $this->modeLabel($mode)], 'Payout provider');
         } elseif ($status !== '' && $status !== ($payout['provider_status'] ?? null)) {

@@ -259,9 +259,13 @@ class FundController extends Controller
         }
 
         $org = $fundRequest['org_name'] ?? 'A requester';
-        $message = "{$org} cancelled the request." . ($reason ? ' Reason: ' . mb_strimwidth($reason, 0, 140, '…') : '') . ' Nothing more needs to be done on it.';
-        $this->notifications->notifyAdmins($id, 'request_cancelled', 'Request cancelled', $message);
-        $this->notifications->notifySuperAdmins($id, 'request_cancelled', 'Request cancelled', $message);
+        $why = $reason ? ' Reason: ' . mb_strimwidth($reason, 0, 140, '…') : '';
+        // The admins stop working on it: it leaves their list (no link to it). The super admin keeps
+        // the record and confirms the cancellation, which lets the requester ask again.
+        $this->notifications->notifyRole('admin', 'request_cancelled', 'Request cancelled',
+            "{$org} cancelled their request.{$why} The process stopped and it was removed from your list; the super admin keeps the record.");
+        $this->notifications->notifySuperAdmins($id, 'request_cancelled', 'Request cancelled · confirm it',
+            "{$org} cancelled the request.{$why} Confirm the cancellation so the requester can send a new request.");
         $messages->system($id, 'The requester cancelled this request.' . ($reason ? " Reason: {$reason}" : ''), 'staff');
         $audit->record('funding', 'Request cancelled by the requester', $id, ['organization' => $org, 'reason' => $reason]);
         // An approved amount it was holding goes back to the funds; the next request in line moves up.
@@ -272,7 +276,7 @@ class FundController extends Controller
         }
 
         return redirect()->route('fund-request.show', $id)
-            ->with('success', 'Your request was cancelled. Nothing more will happen on it, and no funds will be released.');
+            ->with('success', 'Your request was cancelled. Nothing more will happen on it, and no funds will be released. Once the super admin confirms the cancellation, you can send a new request.');
     }
 
     /**

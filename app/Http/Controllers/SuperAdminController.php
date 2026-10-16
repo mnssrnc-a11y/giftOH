@@ -39,9 +39,15 @@ class SuperAdminController extends Controller
         // New donations come in from the boxes: see if the next request in line is now covered.
         $queue->refreshSoon();
 
-        // Every request, the ones awaiting the final decision first; each opens the full request.
+        // Every request (cancelled ones stay here on record): those awaiting the final decision
+        // first, then cancellations to confirm; each opens the full request.
         $fundRequests = $this->dashboard->fundingRows();
-        usort($fundRequests, static fn (array $a, array $b): int => ($b['status'] === 'awaiting') <=> ($a['status'] === 'awaiting'));
+        $waitingOnMe = static fn (array $row): int => match (true) {
+            $row['status'] === 'awaiting' => 2,
+            $row['status'] === 'cancelled' && ! $row['cancel_confirmed'] => 1,
+            default => 0,
+        };
+        usort($fundRequests, static fn (array $a, array $b): int => $waitingOnMe($b) <=> $waitingOnMe($a));
 
         $accounts = $this->accounts();
         $outcomes = $this->outcomes();
@@ -123,6 +129,32 @@ class SuperAdminController extends Controller
                     'mode' => $payouts->mode(), 'mode_label' => $payouts->modeLabel($payouts->mode()), 'balance' => $payouts->balance()]
                 : null,
         ]);
+    }
+
+    /**
+     * Confirm a requester's cancellation. The request stays on record here (it is no longer on the
+     * admins' list), and the requester may send a new request.
+     */
+    public function confirmCancellation(Request $request, string $id, NotificationService $notifications, RequestMessageService $messages)
+    {
+        $validated = $request->validate(['note' => 'nullable|string|max:1000']);
+        $fundingRequest = $this->fundingService->getRequestById($id);
+        abort_if($fundingRequest === null, 404);
+        $note = filled($validated['note'] ?? null) ? trim($validated['note']) : null;
+
+        if ($this->fundingService->confirmCancellation($id, Auth::id(), $note) === null) {
+            return redirect()->route('superadmin.fund-request.show', $id)
+                ->with('alert_error', 'Only a cancelled request whose cancellation is not yet confirmed can be confirmed.');
+        }
+
+        $org = $fundingRequest['org_name'] ?? 'your organization';
+        $notifications->notify($fundingRequest['user_id'] ?? '', $id, 'cancellation_confirmed', 'Cancellation confirmed',
+            "The foundation confirmed the cancellation of your request for {$org}. You can send a new request.");
+        $messages->system($id, 'The super admin confirmed the cancellation. A new request can now be sent.', 'requester');
+        $this->audit->record('funding', 'Cancellation confirmed', $id, array_filter(['organization' => $org, 'note' => $note]));
+
+        return redirect()->to(route('superadmin.fund-request.show', $id) . '#cancellation')
+            ->with('status', 'Cancellation confirmed. The requester was told they can send a new request.');
     }
 
     public function finalize(Request $request, string $id, NotificationService $notifications, TransactionLog $ledger, FundQueue $queue)

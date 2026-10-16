@@ -92,8 +92,9 @@ Every `git push` to `main` redeploys automatically.
 ## Automatic transfers (bank-to-bank / e-wallet)
 
 Until this is set up, an admin sends each grant from the foundation's bank or e-wallet and records
-the release with the proof (the "manual" process). With transfers connected, the super admin sends
-the approved amount from the request page (Transfer of funds), confirmed by a code emailed to them;
+the release with the proof (the "manual" process). With transfers connected, an admin sends the
+amount released from the request's Release step ("Send through Xendit"), or the super admin sends the
+approved amount from the request page (Transfer of funds), each confirmed by a code emailed to them;
 the result is recorded by itself as the release of funds. Three settings, by `PAYOUT_DRIVER`:
 
 | `PAYOUT_DRIVER` | What happens | Real money? |
@@ -112,7 +113,7 @@ PAYOUT_SANDBOX_SETTLE_SECONDS=20   # a transfer is confirmed this long after it 
 
 Every bank and e-wallet on the request form works. Account numbers 999999, 121212 and 123456 fail on
 purpose (like Xendit's test mode), so you can show a failed transfer too. Email must be set up,
-because the super admin confirms each transfer with an emailed code.
+because whoever sends a transfer confirms it with an emailed code.
 
 ### Xendit (test, then real money)
 

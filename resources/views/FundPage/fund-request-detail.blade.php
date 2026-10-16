@@ -60,6 +60,12 @@
                 @endif
             @elseif ($stage['key'] === 'cancelled')
                 <p class="rounded-lg bg-red-50 p-4 text-sm text-red-800">You cancelled this request on {{ $day($view['cancelled']['at'] ?? null) }}. The interview, the decision and the release of funds were all stopped.@if (! empty($view['cancelled']['reason'])) <br><strong>Your reason:</strong> {{ $view['cancelled']['reason'] }}@endif</p>
+                {{-- The super admin confirms the cancellation; only then can a new request be sent. --}}
+                @if (! empty($view['cancelled']['confirmed_at']))
+                    <p class="mt-3 rounded-lg bg-green-50 p-4 text-sm text-green-800" id="cancellation-status"><strong>Cancellation confirmed</strong> on {{ $day($view['cancelled']['confirmed_at']) }}. You can <a class="font-semibold underline" href="{{ route('fund-request') }}">send a new request</a>.</p>
+                @else
+                    <p class="mt-3 rounded-lg bg-amber-50 p-4 text-sm text-amber-900" id="cancellation-status"><strong>Waiting for the super admin to confirm the cancellation.</strong> You can send a new request once it is confirmed; you will get a notification.</p>
+                @endif
             @else
                 @php($stepTargets = ['#details', '#progress', '#progress', '#progress', '#release', '#liquidation', '#history'])
                 <ol class="grid grid-cols-2 gap-3 md:grid-cols-7">
@@ -72,7 +78,8 @@
 
             @if ($stage['key'] === 'needs_assessment')
                 <p class="mt-5 text-sm text-gray-600">A social worker will contact you to schedule an interview and assessment by <strong>{{ $day($view['assessment_due']) }}</strong>.</p>
-            @elseif (!empty($assessment['interview_at']) && $stage['step'] <= 1)
+            {{-- Only while the interview is still to come (not on a cancelled or rejected request: step 0). --}}
+            @elseif (!empty($assessment['interview_at']) && $stage['step'] === 1)
                 <div class="mt-5 rounded-lg bg-blue-50 p-4 text-sm text-blue-900" data-tour="interview">
                     <strong>Interview:</strong> {{ \Carbon\Carbon::parse($assessment['interview_at'])->format('l, M d, Y g:i A') }}
                     · {{ $assessment['mode_label'] ?? '' }}@if (!empty($assessment['location'])) · {{ $assessment['location'] }}@endif
@@ -129,7 +136,7 @@
                     <summary class="cursor-pointer font-semibold text-red-700">Cancel this request</summary>
                     <form method="POST" action="{{ route('fund-request.cancel', $view['id']) }}" class="mt-3 space-y-3" data-cancel-request>
                         @csrf
-                        <p class="text-gray-700">Cancelling stops everything still to come: the interview, the decision and the release of funds. It cannot be undone; you can send a new request later.</p>
+                        <p class="text-gray-700">Cancelling stops everything still to come: the interview, the decision and the release of funds. It cannot be undone. You can send a new request once the super admin confirms the cancellation.</p>
                         <label class="block text-xs font-semibold text-gray-600">Why are you cancelling? <span class="font-normal">(optional)</span>
                             <textarea name="cancel_reason" maxlength="1000" rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">{{ old('cancel_reason') }}</textarea></label>
                         <label class="flex items-start gap-2 text-gray-800"><input type="checkbox" name="confirm" value="1" required class="mt-1"> I understand the request and its release of funds will be cancelled.</label>
@@ -176,7 +183,7 @@
                         @csrf
                         <div><label class="mb-1 block text-sm font-semibold text-gray-700" for="receipts">Receipts / liquidation sheet <span class="text-red-500">*</span></label><input id="receipts" type="file" name="receipts[]" multiple required accept="image/*,.pdf" class="block w-full text-sm"><p class="mt-1 text-xs text-gray-400">Up to 10 files, JPG/PNG/PDF.</p></div>
                         <div><label class="mb-1 block text-sm font-semibold text-gray-700" for="recipient_list">Signed list of recipients <span class="text-red-500">*</span></label><input id="recipient_list" type="file" name="recipient_list" required accept="image/*,.pdf" class="block w-full text-sm"><p class="mt-1 text-xs text-gray-400">Photo or scan of the list with names and signatures.</p></div>
-                        <div><label class="mb-1 block text-sm font-semibold text-gray-700" for="amount_spent">Amount spent (₱) <span class="text-red-500">*</span></label><input id="amount_spent" type="number" step="0.01" min="0" name="amount_spent" required value="{{ old('amount_spent') }}" class="w-full rounded-lg border border-gray-300 px-4 py-2"></div>
+                        <div><label class="mb-1 block text-sm font-semibold text-gray-700" for="amount_spent">Amount spent (₱) <span class="text-red-500">*</span></label><input id="amount_spent" type="number" step="0.01" min="0" name="amount_spent" data-amount-buttons required value="{{ old('amount_spent') }}" class="w-full rounded-lg border border-gray-300 px-4 py-2"></div>
                         <div><label class="mb-1 block text-sm font-semibold text-gray-700" for="photos">Distribution photos <span class="font-normal text-gray-400">(optional)</span></label><input id="photos" type="file" name="photos[]" multiple accept="image/*" class="block w-full text-sm"></div>
                         @php($listed = $view['recipients'] ?: array_map(fn ($name) => ['last' => '', 'first' => $name, 'middle' => ''], $view['beneficiaries']))
                         <div class="md:col-span-2"><span class="mb-1 block text-sm font-semibold text-gray-700">People who received the donation <span class="font-normal text-gray-400">(check the list; add or remove people)</span></span>

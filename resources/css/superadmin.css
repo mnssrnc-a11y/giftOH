@@ -3,3 +3,6 @@
 @media(max-width:760px){.sa-sidebar{display:none;top:70px;width:250px;box-shadow:15px 20px 40px #0b2a5c22}.sa-shell.nav-open .sa-sidebar{display:flex}.sa-main{margin-left:0}.sa-menu{display:block}.sa-topbar{height:70px;padding:0 18px}.sa-top-right{gap:10px}.sa-content{padding:18px}.sa-preview{align-items:flex-start;flex-direction:column;gap:3px}.sa-heading{align-items:flex-start;flex-direction:column;gap:12px}.sa-heading h1{font-size:25px}.sa-stats{grid-template-columns:1fr 1fr}.sa-grid.equal,.sa-fields{grid-template-columns:1fr}.sa-toolbar{flex-wrap:wrap;padding:16px}.sa-toolbar input{width:100%;flex-basis:100%}.sa-card-head,.sa-card-body{padding:18px}.sa-dialog{padding:24px}.sa-toast{left:16px;right:16px;bottom:16px}.sa-breadcrumb{gap:10px}.sa-top-right .sa-badge{display:none}}
 
 .sa-note-error{background:#fbece9;border-color:#f3c9c4;color:#9d4a3f}.sa-dialog textarea{border:1px solid #d6e1f0;border-radius:7px;padding:10px 12px;font:inherit;min-height:80px;resize:vertical}
+
+/* Decision card: a cancellation by the requester, confirmed by the super admin. */
+.sa-cancel{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}.sa-cancel h3{margin:0 0 10px;font-size:14px;font-weight:650}

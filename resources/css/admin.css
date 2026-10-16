@@ -100,3 +100,9 @@
 .admin-check{display:flex;align-items:center;gap:8px;margin-top:8px;color:var(--admin-text);font-size:12px;font-weight:600}
 .admin-post-image.is-removed{opacity:.35;filter:grayscale(1)}
 .admin-post-image[hidden]{display:none}
+
+/* A field that cannot be typed in: disabled, or read-only and set with the quick-amount buttons
+   (the amount released), which cannot be clicked into either. */
+.admin-field input:disabled,.admin-field input[readonly]{border-style:dashed;font-weight:700;opacity:1}
+.admin-field input:disabled{color:var(--admin-muted);cursor:not-allowed}
+.admin-field input[readonly][data-amount-buttons]{pointer-events:none;user-select:none}

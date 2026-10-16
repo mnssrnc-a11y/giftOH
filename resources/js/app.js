@@ -7,6 +7,7 @@ import './superadmin-ui';
 import './places';
 import './fund-request';
 import './people-list';
+import './amount-buttons';
 import './request-thread';
 import './request-tabs';
 import './notify';
